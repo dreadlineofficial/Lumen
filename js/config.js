@@ -15,5 +15,5 @@ window.LUMEN_CONFIG = {
   giphyKey: "W3Ii3NSyUuSUAqIlQSAQlurfJgKz4ZLi",
 
   // Optional: a YouTube Data API key lets people browse and search YouTube inside Lumen (see SETUP.md).
-  youtubeKey: ""
+  youtubeKey: "AIzaSyCKCUTZnBaUxmbxyT3Xh5yJ7cT1ot33DuY"
 };
