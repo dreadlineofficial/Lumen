@@ -5,7 +5,7 @@ const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`'
  navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
  histDisguise:true,histTitle:'Google Classroom',wipe:false,blurPanic:false,grade:'mid',
  title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#06070b',
- rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',
+ rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',games:[],aiOn:true,aiKey:'',
  webLinks:'YouTube | https://www.youtube.com\nWikipedia | https://en.m.wikipedia.org\nDesmos | https://www.desmos.com/calculator\nCoolmath | https://www.coolmathgames.com',
  jumpLinks:'Google | https://www.google.com\nGoogle Classroom | https://classroom.google.com\nGoogle Docs | https://docs.google.com',
  share:true,shareGame:true,shareYt:true,shareWeb:false,seeOthers:true,timetable:[],materials:[]};
@@ -13,6 +13,7 @@ let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cf
 if(cfg.studyKey==='\\')cfg.studyKey='v';
 if('startStudy' in cfg){if(cfg.startStudy===false&&cfg.startMode==='study')cfg.startMode='lumen';delete cfg.startStudy}
 if(cfg.nbUrl==='../index.html')cfg.nbUrl=DEF.nbUrl;
+if(cfg.extra){String(cfg.extra).split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&p[1].trim()).forEach(p=>cfg.games.push({id:'g'+Date.now()+Math.random().toString(36).slice(2,6),name:p[0].trim(),url:p[1].trim(),emoji:'🎮',color:'#7c5cff'}));cfg.extra=''}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -72,10 +73,31 @@ $('#vReload').onclick=()=>{if(view)openView(view.url,view.title,view.act)};
 $('#vCloak').onclick=()=>{if(view)cloak(view.url,view.title)};
 
 /* games */
-function games(){const g=[{name:'Nightbound',url:cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'}];
-  lines(cfg.extra).forEach((p,i)=>g.push({...p,desc:'Custom game',art:`linear-gradient(135deg,hsl(${i*70+200} 60% 25%),hsl(${i*70+250} 60% 12%))`,fg:'#fff'}));return g}
-function renderGames(){$('#gameGrid').innerHTML=games().map((g,i)=>`<div class="card game-card" data-i="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`).join('');
-  $$('.game-card').forEach(c=>c.onclick=()=>{const g=games()[c.dataset.i];openView(g.url,g.name,{kind:'game',label:g.name})})}
+const BUILTIN=[{name:'Nightbound',url:()=>cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'},
+  {name:'OFFAL',url:()=>'games/offal.html',desc:'Horror · single player',art:'radial-gradient(circle at 70% 30%,#3d2b0f,#140d05 60%,#06070b)',fg:'#e8c07a'}];
+// uploaded game files live in IndexedDB (too big for localStorage)
+const gdb=()=>new Promise((ok,no)=>{const r=indexedDB.open('lumen-games',1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function gfile(op,id,val){const db=await gdb();return new Promise((ok,no)=>{const tx=db.transaction('files',op==='get'?'readonly':'readwrite'),st=tx.objectStore('files');
+  const r=op==='get'?st.get(id):op==='put'?st.put(val,id):st.delete(id);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+let blobUrl=null;
+async function playCustom(g){if(g.file){try{const f=await gfile('get',g.id);if(!f)return toast('That game file is missing on this device');if(blobUrl)URL.revokeObjectURL(blobUrl);
+    blobUrl=URL.createObjectURL(new Blob([f],{type:'text/html'}));openView(blobUrl,g.name,{kind:'game',label:g.name})}catch{toast('Could not open the game file')}}
+  else openView(fixUrl(g.url),g.name,{kind:'game',label:g.name})}
+function renderGames(){
+  const b=BUILTIN.map((g,i)=>`<div class="card game-card" data-b="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`);
+  const c=(cfg.games||[]).map(g=>{const col=/^#[0-9a-f]{6}$/i.test(g.color)?g.color:'#7c5cff';return`<div class="card game-card" data-c="${esc(g.id)}"><button class="g-del" data-del="${esc(g.id)}" title="Remove">✕</button><div class="game-art" style="background:radial-gradient(circle at 30% 20%,${col},#0b0b12 75%);color:#fff"><span style="font-size:52px;font-style:normal">${esc(g.emoji||'🎮')}</span></div><div class="meta"><b>${esc(g.name)}</b><span>${g.file?'Your file · this device':'Custom link'}</span></div></div>`});
+  $('#gameGrid').innerHTML=b.join('')+c.join('')+`<div class="card game-card add-game" id="addGame"><div class="game-art"><span style="font-size:46px;font-style:normal">＋</span></div><div class="meta"><b>Add a game</b><span>A link or an HTML file</span></div></div>`;
+  $$('#gameGrid [data-b]').forEach(e=>e.onclick=()=>{const g=BUILTIN[e.dataset.b];openView(g.url(),g.name,{kind:'game',label:g.name})});
+  $$('#gameGrid [data-c]').forEach(e=>e.onclick=ev=>{if(ev.target.closest('[data-del]'))return;playCustom(cfg.games.find(g=>g.id===e.dataset.c))});
+  $$('#gameGrid [data-del]').forEach(x=>x.onclick=async()=>{const g=cfg.games.find(g=>g.id===x.dataset.del);if(!confirm(`Remove ${g.name}?`))return;cfg.games=cfg.games.filter(y=>y!==g);save();if(g.file)gfile('del',g.id).catch(()=>{});renderGames()});
+  $('#addGame').onclick=()=>{$('#gName').value='';$('#gEmoji').value='';$('#gUrl').value='';$('#gFile').value='';openModal('gameModal');setTimeout(()=>$('#gName').focus(),50)}}
+$$('input[name=gSrc]').forEach(r=>r.onchange=()=>{const f=$('input[name=gSrc]:checked').value==='file';$('#gFileRow').style.display=f?'':'none';$('#gUrlRow').style.display=f?'none':''});
+$('#gFile').onchange=()=>{const f=$('#gFile').files[0];if(f&&!$('#gName').value)$('#gName').value=f.name.replace(/\.html?$/i,'').replace(/[-_]+/g,' ').slice(0,30)};
+$('#gSave').onclick=async()=>{const name=$('#gName').value.trim();if(!name)return toast('Give the game a name');const file=$('input[name=gSrc]:checked').value==='file';
+  const g={id:'g'+Date.now().toString(36),name,emoji:$('#gEmoji').value.trim()||'🎮',color:$('#gColor').value};
+  if(file){const f=$('#gFile').files[0];if(!f)return toast('Choose an HTML file');try{await gfile('put',g.id,await f.arrayBuffer());g.file=true}catch{return toast('Could not save the file (browser storage full?)')}}
+  else{const u=$('#gUrl').value.trim();if(!u)return toast('Paste the game link');g.url=u}
+  cfg.games.push(g);save();closeModal('gameModal');renderGames();toast(name+' added')};
 
 /* about:blank cloak */
 function cloak(url,title){const w=window.open('about:blank','_blank');if(!w){toast('Allow pop-ups for this site');return null}
@@ -173,8 +195,8 @@ addEventListener('keydown',onKey,true);
 addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&document.activeElement?.tagName!=='IFRAME')panic()},150)});
 
 /* ---------- settings ---------- */
-const FIELDS=['startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','extra','webLinks','jumpLinks','rooms'];
-const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim'];
+const FIELDS=['startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','aiKey','jumpLinks','rooms'];
+const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','aiOn'];
 function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
   $('#navToggles').innerHTML=$$('nav .nav-btn').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
 // layout controls preview live

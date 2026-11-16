@@ -254,3 +254,31 @@ body.compact .card{padding:18px}
 body.compact .grid,body.compact .set-grid{gap:12px}
 body.compact .nav-btn{padding:8px 12px}
 body.nav-top .panic{white-space:nowrap}
+
+/* ---- AI overview ---- */
+.ai{margin:10px 0 20px;background:linear-gradient(135deg,rgba(124,92,255,.18),rgba(34,211,238,.08) 60%,rgba(255,154,92,.08))}
+.ai-h{font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;background:linear-gradient(100deg,#9fb4ff,#d6b8ff 40%,#ffc59e);-webkit-background-clip:text;color:transparent}
+.ai-st{font-weight:400;font-size:12px;color:var(--mute);-webkit-text-fill-color:var(--mute)}
+.ai-body{font-size:15.5px;line-height:1.65}.ai-body p{margin:0 0 10px}.ai-body ul{margin:0 0 10px;padding-left:20px}.ai-body h4{margin:12px 0 6px}
+.ai-body code{background:rgba(255,255,255,.1);padding:1px 6px;border-radius:6px}
+.ai-skel{height:12px;border-radius:6px;margin:10px 0;background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.16),rgba(255,255,255,.06));background-size:200% 100%;animation:shim 1.2s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.ai-src{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.ai-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px;color:var(--text);cursor:pointer}
+.ai-chip:hover{background:rgba(255,255,255,.16)}.ai-chip img{width:14px;height:14px}
+/* ---- game tiles ---- */
+.game-card{position:relative}
+.g-del{position:absolute;top:10px;right:10px;z-index:2;width:30px;height:30px;padding:0;opacity:0;background:rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+.game-card:hover .g-del{opacity:1}
+.add-game .game-art{background:rgba(255,255,255,.04);color:var(--mute);border-bottom:1px dashed var(--line)}
+/* ---- custom scrollbars ---- */
+*{scrollbar-width:thin;scrollbar-color:rgba(214,184,255,.35) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(159,180,255,.45),rgba(214,184,255,.45));border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(159,180,255,.8),rgba(255,197,158,.8));border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+#study ::-webkit-scrollbar-thumb,#study::-webkit-scrollbar-thumb{background:#c4c7cc;border:3px solid #f6f8fc;background-clip:padding-box}
+#study{scrollbar-color:#c4c7cc #f6f8fc}
+.game-art span{text-shadow:none}

@@ -68,10 +68,11 @@ function calc(q){if(!/^[\d\s+\-*/().^%]+$/.test(q)||!/\d/.test(q)||!/[+\-*/^%]/.
 async function searchPage(t,q){const c=calc(q);
   t.page.innerHTML=`<div class="sr"><h2 style="font-size:28px;margin:0 0 4px">${esc(q)}</h2>
     ${c!==null?`<div class="card ans"><span class="muted">Calculator</span><div style="font-size:34px;font-weight:600">${esc(q)} = ${+c.toFixed(10)}</div></div>`:''}
-    <div data-sum></div><div data-res><p class="muted">Searching…</p></div>
+    <div data-ai></div><div data-sum></div><div data-res><p class="muted">Searching…</p></div>
     <div class="ext"><span class="muted" style="align-self:center;font-size:13px">Search elsewhere (opens in a cloaked tab):</span>
       <button data-ext="https://duckduckgo.com/?q=">DuckDuckGo</button><button data-ext="https://www.google.com/search?q=">Google</button><button data-ext="https://www.youtube.com/results?search_query=">YouTube</button></div></div>`;
   t.page.querySelectorAll('[data-ext]').forEach(b=>b.onclick=()=>L.cloak(b.dataset.ext+encodeURIComponent(q),q));
+  if(c===null)L.aiOverview?.(q,t.page.querySelector('[data-ai]'));
   const W='https://en.wikipedia.org';
   try{const [s,r]=await Promise.all([
       fetch(`${W}/api/rest_v1/page/summary/${encodeURIComponent(q.replace(/ /g,'_'))}`).then(x=>x.ok?x.json():null).catch(()=>null),

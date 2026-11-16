@@ -8,7 +8,7 @@
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261116c">
+<link rel="stylesheet" href="css/app.css?v=20261116d">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -171,10 +171,14 @@
         </div>
         <div class="card"><h2>🎮 Games &amp; web</h2>
           <label>Nightbound address</label><input id="s_nbUrl">
-          <label>Extra games (one per line: <code>Name | URL</code>)</label><textarea id="s_extra" rows="3"></textarea>
           <label>“Switch to” pages (one per line: <code>Name | URL</code>)</label><textarea id="s_jumpLinks" rows="3"></textarea>
           <label>Web shortcuts (one per line: <code>Name | URL</code>)</label><textarea id="s_webLinks" rows="4"></textarea>
           <label>Chat rooms (comma separated)</label><input id="s_rooms">
+        </div>
+        <div class="card"><h2>✦ AI overview</h2>
+          <label class="chk"><input type="checkbox" id="s_aiOn"> Show AI overviews on searches</label>
+          <label>Your Anthropic API key</label><input id="s_aiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
+          <p class="muted" style="font-size:12px;margin:8px 0 0">Get one at console.anthropic.com → API keys. It's saved only in this browser and sent only to Anthropic. Each search uses Claude with web search, which costs a little on your Anthropic account. Don't share exported settings files, because they include the key.</p>
         </div>
         <div class="card"><h2>🚪 Startup screen</h2>
           <label>When Lumen opens, show</label>
@@ -225,6 +229,18 @@
 <!-- someone else's profile -->
 <div class="modal" id="userModal"><div class="card" id="userCard"></div></div>
 
+<!-- add game -->
+<div class="modal" id="gameModal"><div class="card">
+  <h2>Add a game</h2>
+  <label>Name</label><input id="gName" maxlength="30" placeholder="My game">
+  <div class="row"><div style="flex:1"><label>Icon (emoji or text)</label><input id="gEmoji" maxlength="4" placeholder="🎮"></div><div style="flex:1"><label>Colour</label><input type="color" id="gColor" value="#7c5cff" style="height:42px;padding:4px"></div></div>
+  <label>Where is the game?</label>
+  <div class="row" style="flex-wrap:wrap"><label class="chk" style="margin:0 12px 0 0"><input type="radio" name="gSrc" value="url" checked> A link</label><label class="chk" style="margin:0"><input type="radio" name="gSrc" value="file"> An HTML file on my device</label></div>
+  <div id="gUrlRow"><label>Game link</label><input id="gUrl" placeholder="https://…"></div>
+  <div id="gFileRow" style="display:none"><label>HTML file</label><input type="file" id="gFile" accept=".html,.htm,text/html"><p class="muted" style="font-size:12px;margin:6px 0 0">The file is saved in this browser only. It isn't uploaded anywhere.</p></div>
+  <div class="row" style="margin-top:16px"><button class="btn-acc" id="gSave" style="flex:1">Add game</button><button data-close>Cancel</button></div>
+</div></div>
+
 <!-- switch to any page -->
 <div class="modal" id="jumpModal"><div class="card">
   <h2>Switch to…</h2><p class="muted" style="font-size:13px;margin:0 0 10px">Leaves Lumen right away and opens the page in this tab.</p>
@@ -254,10 +270,11 @@
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261116c"></script>
-<script src="js/study.js?v=20261116c"></script>
-<script src="js/app.js?v=20261116c"></script>
-<script src="js/browser.js?v=20261116c"></script>
-<script type="module" src="js/cloud.js?v=20261116c"></script>
+<script src="js/config.js?v=20261116d"></script>
+<script src="js/study.js?v=20261116d"></script>
+<script src="js/app.js?v=20261116d"></script>
+<script src="js/browser.js?v=20261116d"></script>
+<script type="module" src="js/ai.js?v=20261116d"></script>
+<script type="module" src="js/cloud.js?v=20261116d"></script>
 </body>
 </html>
