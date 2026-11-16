@@ -12,7 +12,7 @@ window.LUMEN_CONFIG = {
   // firebase: { apiKey: "…", authDomain: "…", projectId: "…", appId: "…" },
 
   // Optional: a free GIPHY API key enables GIF search (pasting GIF links works without it).
-  giphyKey: "",
+  giphyKey: "W3Ii3NSyUuSUAqIlQSAQlurfJgKz4ZLi",
 
   // Optional: a YouTube Data API key lets people browse and search YouTube inside Lumen (see SETUP.md).
   youtubeKey: ""
