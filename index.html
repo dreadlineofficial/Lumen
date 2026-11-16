@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Lumen</title>
+<link rel="icon" id="fav" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0f14;--panel:#151821;--panel2:#1c2030;--line:#262b3b;--text:#e8eaf2;--mute:#8b91a7;--acc:#7c5cff;--acc2:#22d3ee;--danger:#ff4d6d;--r:14px}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:10px;padding:9px 14px;background:var(--panel2);transition:.15s}
+button:hover{filter:brightness(1.2)}
+.btn-acc{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:600}
+.btn-danger{background:var(--danger);color:#fff;font-weight:700}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+label{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px;font-weight:500}
+.app{display:grid;grid-template-columns:230px 1fr;height:100vh}
+nav{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px;gap:4px}
+.logo{font-weight:700;font-size:20px;padding:4px 10px 18px;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
+.nav-btn{display:flex;align-items:center;gap:10px;text-align:left;background:none;color:var(--mute);padding:11px 12px;font-weight:500}
+.nav-btn.on{background:var(--panel2);color:var(--text)}
+.nav-btn svg{width:18px;height:18px;flex:none}
+.spacer{flex:1}
+.panic{margin-top:8px;padding:14px;font-size:15px}
+.hint{font-size:11px;color:var(--mute);text-align:center;margin-top:6px}
+main{overflow:auto;position:relative}
+.view{display:none;padding:28px;max-width:1200px;margin:0 auto}
+.view.on{display:block}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:17px;margin:0 0 12px}
+.sub{color:var(--mute);margin:0 0 22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.game-card{overflow:hidden;padding:0;cursor:pointer;transition:.2s}
+.game-card:hover{transform:translateY(-3px);border-color:var(--acc)}
+.game-art{height:150px;display:grid;place-items:center;font-size:42px;font-weight:800;letter-spacing:2px}
+.game-card .meta{padding:14px 16px}
+.game-card .meta b{display:block;font-size:15px}.game-card .meta span{color:var(--mute);font-size:12px}
+#gameFrameWrap{position:fixed;inset:0;left:230px;background:#000;display:none;z-index:5}
+#gameFrameWrap iframe{border:0;width:100%;height:100%}
+#gameBar{position:absolute;top:10px;right:10px;display:flex;gap:8px;z-index:2}
+/* chat */
+.chat{display:grid;grid-template-columns:200px 1fr;height:calc(100vh - 140px);padding:0;overflow:hidden}
+.rooms{border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:4px;overflow:auto}
+.room{background:none;text-align:left;color:var(--mute);padding:8px 10px}.room.on{background:var(--panel2);color:var(--text)}
+.chat-main{display:flex;flex-direction:column;min-width:0}
+.chat-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.status{font-size:12px;color:var(--mute)}.status i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px}
+.status.ok i{background:#22c55e}
+#msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
+.msg{display:flex;gap:10px;max-width:80%}.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none;color:#fff}
+.bub{background:var(--panel2);padding:8px 12px;border-radius:12px;word-wrap:break-word;min-width:0}
+.msg.me .bub{background:var(--acc);color:#fff}
+.bub small{display:block;font-size:11px;opacity:.65;margin-bottom:2px}
+.sysmsg{align-self:center;font-size:12px;color:var(--mute)}
+.chat-in{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+/* settings */
+.set-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.row{display:flex;gap:8px;align-items:center}
+.chk{display:flex;gap:10px;align-items:center;margin-top:12px;color:var(--text);font-size:13px}.chk input{width:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px;border-bottom:1px solid var(--line);text-align:left}
+td input,td select{padding:6px 8px}
+.x{background:none;color:var(--danger);padding:4px 8px}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:10px;opacity:0;transition:.3s;z-index:99;pointer-events:none}
+.toast.show{opacity:1}
+kbd{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:12px}
+
+/* ===== STUDY MODE: looks like a plain school portal ===== */
+#study{display:none;position:fixed;inset:0;background:#f6f8fc;color:#202124;font-family:Arial,Helvetica,sans-serif;overflow:auto;z-index:50}
+#study.on{display:block}
+.s-top{background:#fff;border-bottom:1px solid #dadce0;padding:12px 24px;display:flex;align-items:center;gap:14px;position:sticky;top:0}
+.s-top .s-logo{width:34px;height:34px;border-radius:50%;background:#1a73e8;color:#fff;display:grid;place-items:center;font-weight:700}
+.s-top b{font-size:18px;font-weight:400;color:#3c4043}
+.s-wrap{max-width:900px;margin:24px auto;padding:0 20px}
+.s-banner{border-radius:10px;padding:26px;color:#fff;margin-bottom:20px;background:#1967d2}
+.s-banner h1{font-size:30px;font-weight:400;margin:0}.s-banner p{margin:6px 0 0;opacity:.9}
+.s-card{background:#fff;border:1px solid #dadce0;border-radius:10px;padding:22px;margin-bottom:16px;line-height:1.65}
+.s-card h2{font-size:18px;font-weight:500;color:#1967d2;margin:0 0 10px}
+.s-card h3{font-size:15px;margin:16px 0 6px}
+.s-card a{color:#1a73e8}
+.s-card ul{padding-left:20px;margin:6px 0}
+.s-q{background:#f1f3f4;border-radius:8px;padding:10px 14px;margin:6px 0}
+.s-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.s-tabs button{background:#fff;border:1px solid #dadce0;color:#3c4043;border-radius:20px;padding:6px 14px;font-family:inherit}
+.s-tabs button.on{background:#e8f0fe;border-color:#1a73e8;color:#1967d2}
+@media(max-width:760px){.app{grid-template-columns:1fr}nav{flex-direction:row;overflow:auto;padding:8px}.logo,.spacer,.hint{display:none}.nav-btn span{display:none}#gameFrameWrap{left:0}.chat{grid-template-columns:1fr}.rooms{display:none}.view{padding:16px}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <nav>
+    <div class="logo" id="brand">Hub</div>
+    <button class="nav-btn on" data-v="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg><span>Games</span></button>
+    <button class="nav-btn" data-v="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
+    <button class="nav-btn" data-v="timetable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Timetable</span></button>
+    <button class="nav-btn" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+    <div class="spacer"></div>
+    <button class="btn-acc" id="studyBtn">📘 Study mode</button>
+    <button class="btn-danger panic" id="panicBtn">⚡ PANIC</button>
+    <div class="hint">Panic: <kbd id="kPanic">`</kbd> · Study: <kbd id="kStudy">\</kbd></div>
+  </nav>
+  <main>
+    <!-- GAMES -->
+    <section class="view on" id="v-games">
+      <h1>Games</h1><p class="sub">Click to play. Your panic key still works while playing.</p>
+      <div class="grid" id="gameGrid"></div>
+    </section>
+    <!-- CHAT -->
+    <section class="view" id="v-chat">
+      <h1>Chat</h1><p class="sub">Live rooms. Anyone using the same room name sees your messages, so share the room name only with friends.</p>
+      <div class="card chat">
+        <div class="rooms" id="roomList"></div>
+        <div class="chat-main">
+          <div class="chat-head"><b id="roomName">#general</b><span class="status" id="status"><i></i>Connecting…</span></div>
+          <div id="msgs"></div>
+          <form class="chat-in" id="chatForm"><input id="chatInput" placeholder="Message…" maxlength="500" autocomplete="off"><button class="btn-acc">Send</button></form>
+        </div>
+      </div>
+    </section>
+    <!-- TIMETABLE -->
+    <section class="view" id="v-timetable">
+      <h1>Timetable</h1><p class="sub">Upload or type your timetable. Study mode opens notes for whatever class is on right now.</p>
+      <div class="card" style="margin-bottom:16px">
+        <div class="row" style="flex-wrap:wrap">
+          <button id="ttUploadBtn" class="btn-acc">⬆ Upload CSV / text</button>
+          <input type="file" id="ttFile" accept=".csv,.txt,.tsv" hidden>
+          <button id="ttAdd">+ Add class</button>
+          <button id="ttSample">Load example</button>
+          <button id="ttExport">⬇ Export CSV</button>
+          <span style="color:var(--mute);font-size:12px">Format: <code>Day, Start, End, Subject</code> (e.g. <code>Mon, 09:00, 09:50, Maths</code>)</span>
+        </div>
+        <div id="nowBox" style="margin-top:14px;color:var(--mute)"></div>
+      </div>
+      <div class="card"><table><thead><tr><th>Day</th><th>Start</th><th>End</th><th>Subject</th><th></th></tr></thead><tbody id="ttBody"></tbody></table></div>
+      <h2 style="margin-top:26px">Study material per subject</h2>
+      <p class="sub">Built-in notes exist for Maths, English, Science, Biology, Chemistry, Physics, History, Geography, Computing, French, Spanish. Add your own notes or links for any subject; they show at the top of study mode.</p>
+      <div class="card"><table><thead><tr><th style="width:160px">Subject</th><th>Your notes (one per line, links work)</th><th></th></tr></thead><tbody id="matBody"></tbody></table>
+      <button id="matAdd" style="margin-top:10px">+ Add subject material</button></div>
+    </section>
+    <!-- SETTINGS -->
+    <section class="view" id="v-settings">
+      <h1>Settings</h1><p class="sub">Everything is saved in this browser only.</p>
+      <div class="set-grid">
+        <div class="card"><h2>⚡ Panic button</h2>
+          <label>When panic is pressed</label>
+          <select id="s_panicAction"><option value="redirect">Leave and open my safe page</option><option value="study">Switch to study mode</option></select>
+          <label>Safe page (opens in place of this site)</label><input id="s_panicUrl" placeholder="https://www.google.com">
+          <label>Panic key</label><input id="s_panicKey" readonly placeholder="Click, then press a key">
+          <label>Study-mode key</label><input id="s_studyKey" readonly placeholder="Click, then press a key">
+          <label class="chk"><input type="checkbox" id="s_wipe"> Clear this site's saved chat history on panic</label>
+          <label class="chk"><input type="checkbox" id="s_blurPanic"> Also panic when I switch away from this tab</label>
+        </div>
+        <div class="card"><h2>🕶 Disguise</h2>
+          <label>Tab title</label><input id="s_title" placeholder="Hub">
+          <label>Tab icon (site to copy icon from)</label><input id="s_icon" placeholder="classroom.google.com">
+          <div class="row" style="margin-top:8px;flex-wrap:wrap">
+            <button data-preset="Google Docs|docs.google.com">Docs</button><button data-preset="Classes|classroom.google.com">Classroom</button><button data-preset="Google|google.com">Google</button><button data-preset="Hub|">None</button>
+          </div>
+          <label>Study portal name</label><input id="s_portal" placeholder="Learning Portal">
+          <label>Stealth launch</label>
+          <button id="stealthBtn" style="width:100%">Open hub in an about:blank tab</button>
+          <p style="color:var(--mute);font-size:12px;margin:8px 0 0">Opens the hub inside a blank tab, so its address never shows in the address bar or history. Panic then turns that tab into your safe page.</p>
+        </div>
+        <div class="card"><h2>🎨 Appearance</h2>
+          <label>Hub name</label><input id="s_brand" placeholder="Hub">
+          <label>Accent colours</label><div class="row"><input type="color" id="s_acc" style="height:42px;padding:4px"><input type="color" id="s_acc2" style="height:42px;padding:4px"></div>
+          <label>Background</label><select id="s_bg"><option value="#0d0f14">Midnight</option><option value="#0b1410">Forest</option><option value="#140b12">Plum</option><option value="#000000">OLED black</option></select>
+        </div>
+        <div class="card"><h2>💬 Chat</h2>
+          <label>Display name</label><input id="s_name" maxlength="24">
+          <label>Rooms (comma separated)</label><input id="s_rooms">
+          <label>Private room prefix (only people with the same prefix see you)</label><input id="s_prefix" placeholder="e.g. ourgroup42">
+          <label>Relay server (MQTT over WebSocket)</label><input id="s_broker">
+        </div>
+        <div class="card"><h2>🎮 Games</h2>
+          <label>Nightbound address</label><input id="s_nbUrl">
+          <label>Extra games (one per line: <code>Name | URL</code>)</label><textarea id="s_extra" rows="4" placeholder="My Game | https://example.com/game"></textarea>
+        </div>
+        <div class="card"><h2>💾 Data</h2>
+          <div class="row" style="flex-wrap:wrap"><button id="exportAll">Export settings</button><button id="importAll">Import settings</button><input type="file" id="importFile" accept=".json" hidden><button id="resetAll" style="color:var(--danger)">Reset everything</button></div>
+        </div>
+      </div>
+      <button class="btn-acc" id="saveBtn" style="margin-top:18px;padding:12px 28px">Save settings</button>
+    </section>
+  </main>
+</div>
+<div id="gameFrameWrap"><div id="gameBar"><button id="fsBtn">⛶ Fullscreen</button><button id="closeGame">✕ Close</button></div></div>
+
+<!-- STUDY MODE -->
+<div id="study">
+  <div class="s-top"><div class="s-logo" id="sLogo">L</div><b id="sPortal">Learning Portal</b><span style="flex:1"></span><span id="sClock" style="color:#5f6368"></span><button id="sBack" style="background:none;color:#5f6368;padding:6px" title="">·</button></div>
+  <div class="s-wrap">
+    <div class="s-banner" id="sBanner"><h1 id="sSubject">Maths</h1><p id="sInfo"></p></div>
+    <div class="s-tabs" id="sTabs"></div>
+    <div id="sContent"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="mqtt.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const KEY='hub.cfg.v1';
+const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'\\',wipe:false,blurPanic:false,
+ title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#0d0f14',
+ name:'Player'+Math.floor(Math.random()*900+100),rooms:'general,games,random',prefix:'',broker:'wss://broker.emqx.io:8084/mqtt',
+ nbUrl:'nightbound/index.html',extra:'',timetable:[],materials:[]};
+let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cfg={...DEF}}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
+const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800)};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const linkify=s=>esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+
+/* ---------- appearance / disguise ---------- */
+function applyLook(){
+  const r=document.documentElement.style;r.setProperty('--acc',cfg.acc);r.setProperty('--acc2',cfg.acc2);r.setProperty('--bg',cfg.bg);
+  $('#brand').textContent=cfg.brand||'Hub';
+  if(!$('#study').classList.contains('on')){document.title=cfg.title||'Hub';
+    $('#fav').href=cfg.icon?'https://www.google.com/s2/favicons?sz=64&domain='+encodeURIComponent(cfg.icon):'data:,';}
+  $('#kPanic').textContent=cfg.panicKey;$('#kStudy').textContent=cfg.studyKey;
+  $('#sPortal').textContent=cfg.portal;$('#sLogo').textContent=(cfg.portal||'L')[0];
+}
+
+/* ---------- navigation ---------- */
+$$('.nav-btn').forEach(b=>b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.toggle('on',x===b));$$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));if(b.dataset.v==='settings')fillSettings();if(b.dataset.v==='timetable')renderTT();});
+
+/* ---------- games ---------- */
+function games(){const g=[{name:'Nightbound',url:cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'linear-gradient(135deg,#1a0b0b,#4a0f1a 60%,#0b0b14)',fg:'#ff4d6d'}];
+  cfg.extra.split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&p[1].trim()).forEach((p,i)=>g.push({name:p[0].trim(),url:p[1].trim(),desc:'Custom game',art:`linear-gradient(135deg,hsl(${i*70+200} 60% 25%),hsl(${i*70+250} 60% 12%))`,fg:'#fff'}));return g}
+function renderGames(){$('#gameGrid').innerHTML=games().map((g,i)=>`<div class="card game-card" data-i="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${esc(g.name.toUpperCase())}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`).join('');
+  $$('.game-card').forEach(c=>c.onclick=()=>openGame(games()[c.dataset.i].url));}
+function openGame(url){const w=$('#gameFrameWrap');w.querySelector('iframe')?.remove();const f=document.createElement('iframe');f.src=url;f.allow='fullscreen; autoplay; gamepad; microphone';w.appendChild(f);w.style.display='block';
+  // forward panic keys from inside the game (same-origin only)
+  f.onload=()=>{try{f.contentWindow.addEventListener('keydown',onKey,true)}catch{}};}
+function closeGame(){const w=$('#gameFrameWrap');w.querySelector('iframe')?.remove();w.style.display='none';}
+$('#closeGame').onclick=closeGame;$('#fsBtn').onclick=()=>$('#gameFrameWrap').requestFullscreen?.();
+
+/* ---------- chat (MQTT relay) ---------- */
+let client,room,joined=new Set();
+const topic=r=>'hubchat/v1/'+(cfg.prefix?cfg.prefix.trim()+'/':'')+r;
+const colorOf=n=>`hsl(${[...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360} 60% 45%)`;
+const histKey=r=>'hub.chat.'+topic(r);
+function roomsList(){return cfg.rooms.split(',').map(s=>s.trim().replace(/[^\w-]/g,'')).filter(Boolean)}
+function renderRooms(){$('#roomList').innerHTML=roomsList().map(r=>`<button class="room ${r===room?'on':''}" data-r="${r}"># ${r}</button>`).join('');$$('.room').forEach(b=>b.onclick=()=>switchRoom(b.dataset.r));}
+function hist(r){try{return JSON.parse(localStorage.getItem(histKey(r))||'[]')}catch{return[]}}
+function pushHist(r,m){const h=hist(r);h.push(m);try{localStorage.setItem(histKey(r),JSON.stringify(h.slice(-150)))}catch{}}
+function addMsg(m){const d=document.createElement('div');const me=m.n===cfg.name&&m.id===myId;d.className='msg'+(me?' me':'');
+  d.innerHTML=`<div class="av" style="background:${colorOf(m.n)}">${esc(m.n[0]||'?').toUpperCase()}</div><div class="bub"><small>${esc(m.n)} · ${new Date(m.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>${linkify(m.m)}</div>`;
+  $('#msgs').appendChild(d);$('#msgs').scrollTop=1e9;}
+function switchRoom(r){room=r;$('#roomName').textContent='#'+r;$('#msgs').innerHTML='';const h=hist(r);
+  if(!h.length){const s=document.createElement('div');s.className='sysmsg';s.textContent='No messages yet. Say hi 👋';$('#msgs').appendChild(s)}h.forEach(addMsg);renderRooms();}
+const myId=(()=>{let i=sessionStorage.getItem('hub.id');if(!i){i=Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('hub.id',i)}catch{}}return i})();
+function connectChat(){try{client?.end(true)}catch{}const st=$('#status');st.className='status';st.innerHTML='<i></i>Connecting…';
+  if(!window.mqtt){st.innerHTML='<i></i>Chat library blocked';return}
+  client=mqtt.connect(cfg.broker,{clientId:'hub_'+myId+Math.random().toString(36).slice(2,6),reconnectPeriod:3000,connectTimeout:8000});
+  client.on('connect',()=>{st.className='status ok';st.innerHTML='<i></i>Online';roomsList().forEach(r=>client.subscribe(topic(r)));});
+  client.on('offline',()=>{st.className='status';st.innerHTML='<i></i>Reconnecting…'});
+  client.on('message',(t,p)=>{let m;try{m=JSON.parse(p.toString())}catch{return}if(!m||typeof m.m!=='string'||typeof m.n!=='string')return;
+    m.m=m.m.slice(0,500);m.n=m.n.slice(0,24);const r=roomsList().find(x=>topic(x)===t);if(!r)return;pushHist(r,m);
+    if(r===room){$('#msgs .sysmsg')?.remove();addMsg(m)}});}
+$('#chatForm').onsubmit=e=>{e.preventDefault();const v=$('#chatInput').value.trim();if(!v)return;
+  if(!client?.connected)return toast('Not connected yet');client.publish(topic(room),JSON.stringify({n:cfg.name,m:v,t:Date.now(),id:myId}));$('#chatInput').value='';};
+
+/* ---------- timetable ---------- */
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const normDay=d=>{d=String(d).trim().slice(0,3).toLowerCase();const i=DAYS.findIndex(x=>x.toLowerCase()===d);return i<0?'Mon':DAYS[i]};
+const normTime=t=>{const m=String(t).trim().match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/i);if(!m)return'09:00';let h=+m[1];const mi=m[2]||'00';if(m[3]){if(/pm/i.test(m[3])&&h<12)h+=12;if(/am/i.test(m[3])&&h===12)h=0}return String(h).padStart(2,'0')+':'+mi};
+function parseTT(text){return text.split(/\r?\n/).map(l=>l.split(/[,\t;|]/).map(s=>s.trim())).filter(p=>p.length>=4&&/^(sun|mon|tue|wed|thu|fri|sat)/i.test(p[0]))
+  .map(p=>({day:normDay(p[0]),start:normTime(p[1]),end:normTime(p[2]),subject:p[3]}))}
+function renderTT(){$('#ttBody').innerHTML=cfg.timetable.map((c,i)=>`<tr><td><select data-i="${i}" data-k="day">${DAYS.map(d=>`<option ${d===c.day?'selected':''}>${d}</option>`).join('')}</select></td>
+  <td><input type="time" data-i="${i}" data-k="start" value="${c.start}"></td><td><input type="time" data-i="${i}" data-k="end" value="${c.end}"></td>
+  <td><input data-i="${i}" data-k="subject" value="${esc(c.subject)}"></td><td><button class="x" data-del="${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--mute)">No classes yet. Upload a file or add one.</td></tr>';
+  $$('#ttBody [data-k]').forEach(e=>e.onchange=()=>{cfg.timetable[e.dataset.i][e.dataset.k]=e.value;save();showNow()});
+  $$('#ttBody [data-del]').forEach(b=>b.onclick=()=>{cfg.timetable.splice(b.dataset.del,1);save();renderTT()});
+  $('#matBody').innerHTML=cfg.materials.map((m,i)=>`<tr><td><input data-mi="${i}" data-k="subject" value="${esc(m.subject)}"></td><td><textarea rows="2" data-mi="${i}" data-k="notes">${esc(m.notes)}</textarea></td><td><button class="x" data-mdel="${i}">✕</button></td></tr>`).join('');
+  $$('#matBody [data-mi]').forEach(e=>e.onchange=()=>{cfg.materials[e.dataset.mi][e.dataset.k]=e.value;save()});
+  $$('#matBody [data-mdel]').forEach(b=>b.onclick=()=>{cfg.materials.splice(b.dataset.mdel,1);save();renderTT()});
+  showNow();}
+const mins=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+function currentClass(){const d=new Date(),day=DAYS[d.getDay()],n=d.getHours()*60+d.getMinutes();const today=cfg.timetable.filter(c=>c.day===day).sort((a,b)=>mins(a.start)-mins(b.start));
+  const now=today.find(c=>n>=mins(c.start)&&n<mins(c.end));if(now)return{c:now,state:'now'};
+  const next=today.find(c=>mins(c.start)>n);if(next)return{c:next,state:'next'};
+  const prev=today.filter(c=>mins(c.end)<=n).pop();if(prev)return{c:prev,state:'earlier'};return{c:cfg.timetable[0]||{subject:'Maths',start:'',end:''},state:'none'};}
+function showNow(){const{c,state}=currentClass();$('#nowBox').innerHTML=cfg.timetable.length?`Study mode right now would open <b style="color:var(--text)">${esc(c.subject)}</b> (${state==='now'?'on now':state==='next'?'next class':state==='earlier'?'last class today':'no class today'})`:'';}
+$('#ttUploadBtn').onclick=()=>$('#ttFile').click();
+$('#ttFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const rows=parseTT(await f.text());if(!rows.length)return toast('No rows found. Use: Day, Start, End, Subject');
+  cfg.timetable=rows;rows.forEach(r=>{});save();renderTT();toast(`Loaded ${rows.length} classes`);e.target.value=''};
+$('#ttAdd').onclick=()=>{cfg.timetable.push({day:DAYS[new Date().getDay()],start:'09:00',end:'10:00',subject:'Maths'});save();renderTT()};
+$('#ttSample').onclick=()=>{const subs=['Maths','English','Science','History','Geography','Computing','French'];cfg.timetable=[];
+  ['Mon','Tue','Wed','Thu','Fri'].forEach((d,di)=>['08:50','09:50','11:10','12:10','14:00'].forEach((s,i)=>{const[h,m]=s.split(':').map(Number);cfg.timetable.push({day:d,start:s,end:String(h+(m+50>=60?1:0)).padStart(2,'0')+':'+String((m+50)%60).padStart(2,'0'),subject:subs[(di*2+i)%subs.length]})}));save();renderTT()};
+$('#ttExport').onclick=()=>{const csv='Day,Start,End,Subject\n'+cfg.timetable.map(c=>[c.day,c.start,c.end,c.subject].join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='timetable.csv';a.click()};
+$('#matAdd').onclick=()=>{cfg.materials.push({subject:'',notes:''});save();renderTT()};
+
+/* ---------- built-in study material ---------- */
+const LIB={
+maths:{color:'#1967d2',topics:{'Algebra':`<h3>Solving linear equations</h3><p>Do the same thing to both sides until the unknown is alone.</p><div class="s-q">3x + 7 = 22 → 3x = 15 → <b>x = 5</b></div><h3>Expanding & factorising</h3><ul><li>a(b + c) = ab + ac</li><li>(x + a)(x + b) = x² + (a+b)x + ab</li><li>Difference of two squares: a² − b² = (a − b)(a + b)</li></ul><h3>Quadratic formula</h3><div class="s-q">x = (−b ± √(b² − 4ac)) / 2a</div>`,
+ 'Geometry':`<h3>Key formulas</h3><ul><li>Area of a circle: πr²; circumference: 2πr</li><li>Area of a triangle: ½ × base × height</li><li>Pythagoras: a² + b² = c²</li><li>Angles in a triangle sum to 180°, around a point 360°</li></ul><h3>Trigonometry (SOH CAH TOA)</h3><div class="s-q">sin θ = O/H · cos θ = A/H · tan θ = O/A</div>`,
+ 'Practice':`<div class="s-q">1. Solve 5x − 4 = 2x + 11</div><div class="s-q">2. Factorise x² + 7x + 12</div><div class="s-q">3. A right triangle has legs 6 cm and 8 cm. Find the hypotenuse.</div><div class="s-q">4. Find the area of a circle with radius 4 cm (to 1 d.p.)</div><p><i>Answers: x = 5 · (x+3)(x+4) · 10 cm · 50.3 cm²</i></p>`}},
+english:{color:'#c5221f',topics:{'Language analysis':`<h3>PETAL paragraph</h3><ul><li><b>P</b>oint – answer the question</li><li><b>E</b>vidence – a short quotation</li><li><b>T</b>echnique – name the method</li><li><b>A</b>nalysis – explain effect on the reader</li><li><b>L</b>ink – back to the question</li></ul><h3>Techniques</h3><ul><li>Metaphor, simile, personification</li><li>Alliteration, sibilance, onomatopoeia</li><li>Pathetic fallacy, juxtaposition, foreshadowing</li></ul>`,
+ 'Writing':`<h3>Persuasive writing (AFOREST)</h3><p>Anecdote, Facts, Opinions, Rhetorical questions, Emotive language, Statistics, Triples.</p><h3>Punctuation for effect</h3><ul><li>Semicolons join two related full sentences.</li><li>Colons introduce a list or an explanation.</li><li>Short sentences build tension.</li></ul>`}},
+science:{color:'#188038',topics:{'Overview':`<h3>Working scientifically</h3><ul><li>Independent variable: what you change</li><li>Dependent variable: what you measure</li><li>Control variables: what you keep the same</li></ul><h3>Cells</h3><p>Animal cells: nucleus, cytoplasm, cell membrane, mitochondria, ribosomes. Plant cells also have a cell wall, chloroplasts and a permanent vacuole.</p><h3>Energy</h3><div class="s-q">Kinetic energy = ½mv² · GPE = mgh · Power = energy ÷ time</div>`}},
+biology:{color:'#188038',topics:{'Cells & processes':`<h3>Photosynthesis</h3><div class="s-q">carbon dioxide + water → glucose + oxygen (light energy, chlorophyll)</div><h3>Respiration</h3><div class="s-q">glucose + oxygen → carbon dioxide + water (+ energy)</div><h3>Diffusion, osmosis, active transport</h3><ul><li>Diffusion: high → low concentration, passive</li><li>Osmosis: water across a partially permeable membrane</li><li>Active transport: low → high, needs energy</li></ul>`}},
+chemistry:{color:'#e37400',topics:{'Atoms & bonding':`<h3>Atomic structure</h3><ul><li>Proton: +1, mass 1 · Neutron: 0, mass 1 · Electron: −1, tiny mass</li><li>Atomic number = protons; mass number = protons + neutrons</li></ul><h3>Bonding</h3><ul><li>Ionic: metal + non-metal, electrons transferred</li><li>Covalent: non-metals share electrons</li><li>Metallic: sea of delocalised electrons</li></ul><h3>Moles</h3><div class="s-q">moles = mass ÷ Mr</div>`}},
+physics:{color:'#7b1fa2',topics:{'Forces & electricity':`<h3>Equations</h3><div class="s-q">F = ma · W = mg · speed = distance ÷ time</div><div class="s-q">V = IR · P = IV · Q = It</div><h3>Newton's laws</h3><ol><li>An object stays at rest or constant velocity unless a resultant force acts.</li><li>F = ma</li><li>Every action has an equal and opposite reaction.</li></ol>`}},
+history:{color:'#795548',topics:{'Source skills':`<h3>Analysing a source (NOP)</h3><ul><li><b>N</b>ature – what type of source is it?</li><li><b>O</b>rigin – who made it, when?</li><li><b>P</b>urpose – why was it made?</li></ul><h3>Essay structure</h3><p>Introduction with judgement → 2–3 factors with evidence → counter-argument → conclusion weighing which factor mattered most.</p>`,
+ 'Key dates':`<ul><li>1066 – Battle of Hastings</li><li>1215 – Magna Carta</li><li>1914–1918 – First World War</li><li>1939–1945 – Second World War</li><li>1989 – Fall of the Berlin Wall</li></ul>`}},
+geography:{color:'#00897b',topics:{'Physical':`<h3>Plate tectonics</h3><ul><li>Constructive: plates move apart (e.g. Mid-Atlantic Ridge)</li><li>Destructive: oceanic plate subducts</li><li>Conservative: plates slide past (e.g. San Andreas)</li></ul><h3>Rivers</h3><p>Erosion processes: hydraulic action, abrasion, attrition, solution.</p>`}},
+computing:{color:'#3949ab',topics:{'Programming':`<h3>Three constructs</h3><ul><li>Sequence, selection (if), iteration (loops)</li></ul><div class="s-q"><code>for i in range(5):<br>&nbsp;&nbsp;print(i * 2)</code></div><h3>Binary</h3><p>Place values: 128 64 32 16 8 4 2 1. Example: 1011 0101 = 181.</p><h3>Algorithms</h3><ul><li>Linear search: check each item</li><li>Binary search: sorted list, halve each step</li><li>Bubble sort, merge sort</li></ul>`}},
+french:{color:'#1a73e8',topics:{'Grammar':`<h3>Present tense of être / avoir</h3><div class="s-q">je suis, tu es, il est, nous sommes, vous êtes, ils sont</div><div class="s-q">j'ai, tu as, il a, nous avons, vous avez, ils ont</div><h3>Passé composé</h3><p>avoir/être + past participle: <i>J'ai mangé · Je suis allé(e)</i></p>`}},
+spanish:{color:'#f9ab00',topics:{'Grammar':`<h3>Ser vs estar</h3><p>Ser: permanent traits. Estar: location, feelings, temporary states.</p><div class="s-q">soy, eres, es, somos, sois, son</div><div class="s-q">estoy, estás, está, estamos, estáis, están</div>`}}
+};
+function libFor(sub){const s=sub.toLowerCase();const k=Object.keys(LIB).find(k=>s.includes(k))||(/math/.test(s)?'maths':/bio/.test(s)?'biology':/chem/.test(s)?'chemistry':/phys/.test(s)?'physics':/comp|ict|cs/.test(s)?'computing':/eng|lit/.test(s)?'english':/hist/.test(s)?'history':/geo/.test(s)?'geography':/sci/.test(s)?'science':null);return k?LIB[k]:null}
+
+/* ---------- study mode ---------- */
+let prevTitle,clockT;
+function enterStudy(){closeGame();const{c,state}=currentClass();const sub=c.subject||'Study';const lib=libFor(sub);
+  $('#sSubject').textContent=sub;$('#sBanner').style.background=lib?.color||'#1967d2';
+  $('#sInfo').textContent=state==='now'?`${c.day} · ${c.start}–${c.end} · Current lesson`:state==='next'?`Next lesson at ${c.start}`:'Revision notes';
+  const own=cfg.materials.filter(m=>m.subject&&sub.toLowerCase().includes(m.subject.toLowerCase().trim())||m.subject&&m.subject.toLowerCase().trim().includes(sub.toLowerCase()));
+  const pages={};if(own.length)pages['Class notes']=own.map(m=>'<ul>'+m.notes.split('\n').filter(Boolean).map(l=>`<li>${linkify(l)}</li>`).join('')+'</ul>').join('');
+  Object.assign(pages,lib?lib.topics:{'Notes':`<p>No built-in notes for <b>${esc(sub)}</b> yet. Add your own in Timetable → Study material.</p>`});
+  const names=Object.keys(pages);
+  const show=n=>{$('#sTabs').innerHTML=names.map(x=>`<button class="${x===n?'on':''}">${esc(x)}</button>`).join('');$$('#sTabs button').forEach((b,i)=>b.onclick=()=>show(names[i]));
+    $('#sContent').innerHTML=`<div class="s-card"><h2>${esc(n)}</h2>${pages[n]}</div>`};show(names[0]);
+  document.title=sub+' – '+cfg.portal;$('#fav').href='https://www.google.com/s2/favicons?sz=64&domain=classroom.google.com';
+  $('#study').classList.add('on');const tick=()=>$('#sClock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});tick();clockT=setInterval(tick,10000);}
+function exitStudy(){$('#study').classList.remove('on');clearInterval(clockT);applyLook()}
+$('#studyBtn').onclick=enterStudy;$('#sBack').ondblclick=exitStudy;
+
+/* ---------- panic ---------- */
+function panic(){
+  if(cfg.panicAction==='study'){enterStudy();return}
+  closeGame();try{client?.end(true)}catch{}
+  if(cfg.wipe){Object.keys(localStorage).filter(k=>k.startsWith('hub.chat.')).forEach(k=>localStorage.removeItem(k))}
+  let url=cfg.panicUrl||'https://www.google.com';if(!/^https?:\/\//i.test(url))url='https://'+url;
+  document.body.innerHTML='';document.title='Google';
+  // replace() swaps this page's history entry for the safe page, so Back won't return here
+  try{if(window.top!==window.self){window.top.location.replace(url)}else location.replace(url)}catch{location.replace(url)}
+}
+$('#panicBtn').onclick=panic;
+function onKey(e){const t=e.target;if(capturing)return;
+  if(e.key===cfg.panicKey){e.preventDefault();panic()}
+  else if(e.key===cfg.studyKey&&!(t&&/INPUT|TEXTAREA/.test(t.tagName))){e.preventDefault();$('#study').classList.contains('on')?exitStudy():enterStudy()}}
+addEventListener('keydown',onKey,true);
+addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&!(document.activeElement?.tagName==='IFRAME'))panic()},150)});
+
+/* ---------- stealth launch (about:blank cloak) ---------- */
+$('#stealthBtn').onclick=()=>{const w=window.open('about:blank','_blank');if(!w)return toast('Allow pop-ups for this site');
+  w.document.write(`<!doctype html><title>${esc(cfg.title||'Google')}</title><link rel="icon" href="${cfg.icon?'https://www.google.com/s2/favicons?sz=64&domain='+encodeURIComponent(cfg.icon):'data:,'}"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style><iframe src="${location.href}" allow="fullscreen; autoplay; microphone"></iframe>`);
+  w.document.close();location.replace(cfg.panicUrl||'https://www.google.com');};
+
+/* ---------- settings ---------- */
+const FIELDS=['panicAction','panicUrl','panicKey','studyKey','title','icon','portal','brand','acc','acc2','bg','name','rooms','prefix','broker','nbUrl','extra'];
+let capturing=false;
+function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);$('#s_wipe').checked=cfg.wipe;$('#s_blurPanic').checked=cfg.blurPanic}
+['panicKey','studyKey'].forEach(f=>{const el=$('#s_'+f);el.onfocus=()=>{capturing=true;el.value='Press a key…'};el.onblur=()=>{capturing=false;if(el.value==='Press a key…')el.value=cfg[f]};
+  el.onkeydown=e=>{e.preventDefault();if(e.key==='Tab'||e.key==='Escape'){el.blur();return}el.value=e.key;el.blur()}});
+$$('[data-preset]').forEach(b=>b.onclick=()=>{const[t,i]=b.dataset.preset.split('|');$('#s_title').value=t;$('#s_icon').value=i});
+$('#saveBtn').onclick=()=>{const oldChat=[cfg.broker,cfg.prefix,cfg.rooms].join();FIELDS.forEach(f=>cfg[f]=$('#s_'+f).value);cfg.wipe=$('#s_wipe').checked;cfg.blurPanic=$('#s_blurPanic').checked;
+  cfg.name=cfg.name.trim()||DEF.name;save();applyLook();renderGames();renderRooms();if(oldChat!==[cfg.broker,cfg.prefix,cfg.rooms].join()){if(!roomsList().includes(room))room=roomsList()[0]||'general';switchRoom(room);connectChat()}toast('Saved')};
+$('#exportAll').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));a.download='hub-settings.json';a.click()};
+$('#importAll').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target.files[0].text())};save();location.reload()}catch{toast('Invalid file')}};
+$('#resetAll').onclick=()=>{if(confirm('Reset all settings, timetable and chat history?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
+
+/* ---------- boot ---------- */
+applyLook();renderGames();room=roomsList()[0]||'general';switchRoom(room);connectChat();
+</script>
+</body>
+</html>
