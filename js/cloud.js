@@ -43,11 +43,15 @@ $('#authSwap').onclick=e=>{e.preventDefault();authMode(!signup)};
 const nice=e=>({'auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'That email already has an account','auth/weak-password':'Password needs 6+ characters','auth/invalid-email':'That email doesn’t look right','auth/popup-closed-by-user':'Sign-in window closed','auth/operation-not-allowed':'This sign-in method isn’t turned on in Firebase','auth/unauthorized-domain':'This website isn’t on the Firebase authorised domains list'}[e.code]||e.message);
 $('#authForm').onsubmit=async e=>{e.preventDefault();$('#authErr').textContent='';try{
   if(signup){const name=$('#aName').value.trim();if(name.length<2)throw{message:'Pick a display name (2+ characters)'};
-    const c=await F.createUserWithEmailAndPassword(auth,$('#aEmail').value,$('#aPass').value);await ensureProfile(c.user,name)}
+    pendingName=name;const c=await F.createUserWithEmailAndPassword(auth,$('#aEmail').value,$('#aPass').value);await ensureProfile(c.user,name)}
   else await F.signInWithEmailAndPassword(auth,$('#aEmail').value,$('#aPass').value);closeModal('authModal')}catch(err){$('#authErr').textContent=nice(err)}};
 $('#authGoogle').onclick=async()=>{try{const c=await F.signInWithPopup(auth,new F.GoogleAuthProvider());await ensureProfile(c.user,c.user.displayName);closeModal('authModal')}catch(err){$('#authErr').textContent=nice(err)}};
 $('#authReset').onclick=async e=>{e.preventDefault();const em=$('#aEmail').value;if(!em)return $('#authErr').textContent='Type your email first';try{await F.sendPasswordResetEmail(auth,em);toast('Reset email sent')}catch(err){$('#authErr').textContent=nice(err)}};
-async function ensureProfile(u,name){const r=D('users',u.uid);const s=await F.getDoc(r);if(!s.exists()){name=(name||'Player').slice(0,24);await F.setDoc(r,{name,nameLower:name.toLowerCase(),bio:'',avatar:'',createdAt:F.serverTimestamp()})}}
+let pendingName=null;
+const profileJobs=new Map();
+// one profile creation per user, so sign-up and the auth listener can't race and overwrite the chosen name
+function ensureProfile(u,name){if(!profileJobs.has(u.uid))profileJobs.set(u.uid,makeProfile(u,pendingName||name).catch(e=>{profileJobs.delete(u.uid);throw e}).finally(()=>{pendingName=null}));return profileJobs.get(u.uid)}
+async function makeProfile(u,name){const r=D('users',u.uid);const s=await F.getDoc(r);if(!s.exists()){name=String(name||'').trim().slice(0,24);if(name.length<2)name='Player'+Math.floor(Math.random()*900+100);await F.setDoc(r,{name,nameLower:name.toLowerCase(),bio:'',avatar:'',createdAt:F.serverTimestamp()})}}
 $('#meChip').onclick=()=>me?L.go('profile'):(authMode(false),openModal('authModal'));
 
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
