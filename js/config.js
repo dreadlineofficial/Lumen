@@ -15,5 +15,8 @@ window.LUMEN_CONFIG = {
   giphyKey: "W3Ii3NSyUuSUAqIlQSAQlurfJgKz4ZLi",
 
   // Optional: a YouTube Data API key lets people browse and search YouTube inside Lumen (see SETUP.md).
-  youtubeKey: "AIzaSyCKCUTZnBaUxmbxyT3Xh5yJ7cT1ot33DuY"
+  youtubeKey: "AIzaSyCKCUTZnBaUxmbxyT3Xh5yJ7cT1ot33DuY",
+
+  // Optional: a Google OAuth Client ID lets people sign in to see their YouTube subscriptions, liked videos and playlists (see SETUP.md).
+  googleClientId: ""
 };

@@ -12,7 +12,7 @@ const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch{return'
 /* turn whatever was typed into a destination */
 function resolve(input){let u=String(input||'').trim();if(!u||u==='lumen:newtab')return{internal:'newtab'};
   if(u.startsWith('lumen:search?q='))return{internal:'search',q:decodeURIComponent(u.slice(15))};
-  if(u.startsWith('lumen:youtube')){const p=new URLSearchParams(u.split('?')[1]||'');return{internal:'youtube',q:p.get('q')||'',tab:p.get('tab')||'home'}}
+  if(u.startsWith('lumen:youtube')){const p=new URLSearchParams(u.split('?')[1]||'');return{internal:'youtube',q:p.get('q')||'',tab:p.get('tab')||'home',pid:p.get('id')||''}}
   // YouTube's own site can't be framed: route home/search pages to Lumen's YouTube page
   {const m=u.match(/^(https?:\/\/)?(www\.|m\.)?youtube\.com\/?(results\?search_query=([^&]*)|shorts\/?)?(\?.*)?$/i);if(m&&!L.ytId(u))return{internal:'youtube',q:decodeURIComponent((m[4]||'').replace(/\+/g,' ')),tab:/shorts/i.test(m[3]||'')?'shorts':'home'}}
   const looksUrl=/^https?:\/\//i.test(u)||(!/\s/.test(u)&&/^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/i.test(u));
@@ -35,7 +35,7 @@ function go(t,input,push){const r=resolve(input);const entry={...r,input};
   show(t)}
 function show(t){const e=t.hist[t.idx];$('#bwHint').style.display='none';
   if(e.internal){t.frame.removeAttribute('src');t.frame.src='about:blank';
-    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':e.tab==='shorts'?'Shorts – YouTube':'YouTube';t.fav=L.favUrl('youtube.com');ytPage(t,e.q,e.tab)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
+    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':({shorts:'Shorts',subs:'Subscriptions',liked:'Liked videos',playlists:'Playlists',playlist:'Playlist'}[e.tab]?({shorts:'Shorts',subs:'Subscriptions',liked:'Liked videos',playlists:'Playlists',playlist:'Playlist'}[e.tab]+' – YouTube'):'YouTube');t.fav=L.favUrl('youtube.com');ytPage(t,e.q,e.tab,e.pid)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
     if(t===active)L.setActivity(null)}
   else{t.frame.src=e.url;t.title=e.google?e.q+' – Google':e.yt?'YouTube':host(e.show);t.fav=L.favUrl(host(e.show)||'youtube.com');addRecent(e.show,t.title);
     if(e.yt)ytTitle(t,e.yt);
@@ -96,16 +96,55 @@ function ytCard(v){return`<button class="yt-v" data-vid="${L.esc(v.id)}"><div cl
 function shortCard(v,i){return`<button class="yt-s" data-si="${i}"><div class="yt-sth" style="background-image:url('${L.esc(v.thumb)}')"></div><b>${L.esc(v.title)}</b></button>`}
 async function ytFetch(path){const key=(window.LUMEN_CONFIG||{}).youtubeKey;const j=await (await fetch(`${YT}${path}&key=${encodeURIComponent(key)}`)).json();if(j.error)throw new Error(j.error.message);
   return(j.items||[]).map(it=>({id:typeof it.id==='string'?it.id:it.id?.videoId,title:dec(it.snippet.title),channel:dec(it.snippet.channelTitle),thumb:(it.snippet.thumbnails?.high||it.snippet.thumbnails?.medium)?.url||''})).filter(v=>v.id)}
-async function ytPage(t,q,tab){const key=(window.LUMEN_CONFIG||{}).youtubeKey;tab=tab==='shorts'?'shorts':'home';
-  t.page.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo">▶</span><b>YouTube</b><form data-yq style="flex:1"><input placeholder="Search YouTube" value="${L.esc(q)}" autocomplete="off"></form></div>
-    <div class="yt-tabs"><button data-tab="home" class="${tab==='home'?'on':''}">🏠 Home</button><button data-tab="shorts" class="${tab==='shorts'?'on':''}">⚡ Shorts</button>
-    <form class="row yt-paste" data-yp style="flex:1;margin:0"><input placeholder="Paste a YouTube link to play it here"><button>Play</button></form></div>
+/* Google sign-in for YouTube (read-only): subscriptions, liked videos, playlists */
+const GA={token:null,exp:0,client:null,profile:null};
+try{const s=JSON.parse(sessionStorage.getItem('hub.yt.tok')||'null');if(s&&s.exp>Date.now()+60e3){GA.token=s.token;GA.exp=s.exp;GA.profile=s.profile}}catch{}
+const gaOn=()=>GA.token&&GA.exp>Date.now()+30e3;
+function gaSave(){try{sessionStorage.setItem('hub.yt.tok',JSON.stringify({token:GA.token,exp:GA.exp,profile:GA.profile}))}catch{}}
+function loadGis(){return window.google?.accounts?.oauth2?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=ok;s.onerror=()=>no(new Error('Couldn’t load Google sign-in'));document.head.appendChild(s)})}
+async function gaSignIn(){const cid=(window.LUMEN_CONFIG||{}).googleClientId;if(!cid)throw new Error('Google sign-in isn’t set up yet: add googleClientId to js/config.js (see SETUP.md)');
+  await loadGis();return new Promise((ok,no)=>{GA.client=google.accounts.oauth2.initTokenClient({client_id:cid,scope:'https://www.googleapis.com/auth/youtube.readonly',
+    callback:async r=>{if(r.error)return no(new Error(r.error_description||r.error));GA.token=r.access_token;GA.exp=Date.now()+(+r.expires_in||3600)*1000;
+      try{const me=await ytAuth('channels?part=snippet&mine=true');const c=me.items?.[0]?.snippet;GA.profile=c?{name:dec(c.title),pic:c.thumbnails?.default?.url||''}:null}catch{GA.profile=null}gaSave();ok()},
+    error_callback:e=>no(new Error(e?.type==='popup_closed'?'Sign-in window closed':(e?.message||'Sign-in failed')))});GA.client.requestAccessToken()})}
+function gaSignOut(){try{if(GA.token)google?.accounts?.oauth2?.revoke(GA.token,()=>{})}catch{}GA.token=null;GA.exp=0;GA.profile=null;try{sessionStorage.removeItem('hub.yt.tok')}catch{}}
+async function ytAuth(path){const r=await fetch(YT+path,{headers:{Authorization:'Bearer '+GA.token}});const j=await r.json();if(j.error){if(j.error.code===401){gaSignOut();throw new Error('Your Google sign-in expired. Sign in again.')}throw new Error(j.error.message)}return j}
+const mapItems=items=>(items||[]).map(it=>({id:it.snippet?.resourceId?.videoId||(typeof it.id==='string'?it.id:it.id?.videoId),title:dec(it.snippet.title),channel:dec(it.snippet.videoOwnerChannelTitle||it.snippet.channelTitle),thumb:(it.snippet.thumbnails?.high||it.snippet.thumbnails?.medium)?.url||'',at:it.snippet.publishedAt||''})).filter(v=>v.id&&v.title!=='Private video'&&v.title!=='Deleted video');
+async function subsFeed(){const subs=await ytAuth('subscriptions?part=snippet&mine=true&maxResults=50&order=relevance');
+  const ids=(subs.items||[]).map(s=>s.snippet.resourceId.channelId).slice(0,20);if(!ids.length)return[];
+  const ch=await ytAuth('channels?part=contentDetails&id='+ids.join(','));const ups=(ch.items||[]).map(c=>c.contentDetails?.relatedPlaylists?.uploads).filter(Boolean);
+  const lists=await Promise.all(ups.map(p=>ytAuth(`playlistItems?part=snippet&maxResults=4&playlistId=${p}`).then(j=>mapItems(j.items)).catch(()=>[])));
+  return lists.flat().sort((a,b)=>b.at.localeCompare(a.at)).slice(0,40)}
+
+async function ytPage(t,q,tab,pid){const key=(window.LUMEN_CONFIG||{}).youtubeKey;
+  const TABS=[['home','🏠 Home'],['shorts','⚡ Shorts'],['subs','📺 Subscriptions'],['liked','👍 Liked'],['playlists','🎵 Playlists']];
+  if(!TABS.some(x=>x[0]===tab)&&tab!=='playlist')tab='home';
+  const acct=gaOn()?`<button class="yt-acct" data-gout title="Sign out of Google">${GA.profile?.pic?`<img src="${L.esc(GA.profile.pic)}" alt="">`:'👤'}<span>${L.esc(GA.profile?.name||'Signed in')}</span></button>`:`<button class="yt-signin" data-gin><svg viewBox="0 0 48 48" width="18" height="18"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Sign in</button>`;
+  t.page.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo">▶</span><b>YouTube</b><form data-yq style="flex:1"><input placeholder="Search YouTube" value="${L.esc(q)}" autocomplete="off"></form>${acct}</div>
+    <div class="yt-tabs">${TABS.map(([k,l])=>`<button data-tab="${k}" class="${tab===k||(tab==='playlist'&&k==='playlists')?'on':''}">${l}</button>`).join('')}
+    <form class="row yt-paste" data-yp style="flex:1;margin:0;min-width:220px"><input placeholder="Paste a YouTube link to play it here"><button>Play</button></form></div>
     <div data-yr class="${tab==='shorts'?'yt-sgrid':'yt-grid'}"></div></div>`;
-  const nav=(tb,qq)=>go(t,`lumen:youtube?tab=${tb}&q=${encodeURIComponent(qq||'')}`,true);
-  t.page.querySelector('[data-yq]').onsubmit=e=>{e.preventDefault();nav(tab,e.target.querySelector('input').value.trim())};
-  t.page.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>nav(b.dataset.tab,q));
+  const nav=(tb,qq,extra='')=>go(t,`lumen:youtube?tab=${tb}&q=${encodeURIComponent(qq||'')}${extra}`,true);
+  t.page.querySelector('[data-yq]').onsubmit=e=>{e.preventDefault();const v=e.target.querySelector('input').value.trim();nav(tab==='shorts'?'shorts':'home',v)};
+  t.page.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>nav(b.dataset.tab,['home','shorts'].includes(b.dataset.tab)?q:''));
   t.page.querySelector('[data-yp]').onsubmit=e=>{e.preventDefault();const v=e.target.querySelector('input').value.trim();if(L.ytId(v))go(t,v,true);else toast('That isn’t a YouTube video link')};
+  t.page.querySelector('[data-gin]')?.addEventListener('click',async()=>{try{await gaSignIn();show(t)}catch(err){toast(err.message)}});
+  t.page.querySelector('[data-gout]')?.addEventListener('click',()=>{if(confirm('Sign out of Google in Lumen?')){gaSignOut();show(t)}});
   const res=t.page.querySelector('[data-yr]');
+  const playVid=list=>res.querySelectorAll('[data-vid]').forEach(b=>b.onclick=()=>{const v=list.find(x=>x.id===b.dataset.vid);go(t,'https://www.youtube.com/watch?v='+v.id,true);t.title=v.title;renderTabs()});
+  const needSignIn=what=>{res.innerHTML=`<div class="yt-need card" style="grid-column:1/-1"><b>Sign in with Google to see your ${what}</b><p class="muted">Lumen only gets read-only access to your YouTube account, and only in this browser tab. It can't post, like or change anything.</p><button class="yt-signin" data-gin2>Sign in with Google</button></div>`;
+    res.querySelector('[data-gin2]').onclick=async()=>{try{await gaSignIn();show(t)}catch(err){toast(err.message)}}};
+  if(['subs','liked','playlists','playlist'].includes(tab)){
+    if(!gaOn())return needSignIn(tab==='subs'?'subscriptions':tab==='liked'?'liked videos':'playlists');
+    res.innerHTML='<p class="muted">Loading…</p>';
+    try{if(tab==='subs'){const v=await subsFeed();res.innerHTML=v.length?'<div class="side-h" style="grid-column:1/-1;padding-left:0">Latest from your subscriptions</div>'+v.map(ytCard).join(''):'<p class="muted">No subscriptions yet.</p>';playVid(v)}
+      else if(tab==='liked'){const v=mapItems((await ytAuth('videos?part=snippet&myRating=like&maxResults=36')).items);res.innerHTML=v.map(ytCard).join('')||'<p class="muted">No liked videos.</p>';playVid(v)}
+      else if(tab==='playlists'){const pl=(await ytAuth('playlists?part=snippet,contentDetails&mine=true&maxResults=36')).items||[];
+        res.innerHTML=pl.map(p=>`<button class="yt-v" data-pl="${L.esc(p.id)}"><div class="yt-th" style="background-image:url('${L.esc((p.snippet.thumbnails?.high||p.snippet.thumbnails?.medium)?.url||'')}')"><span class="yt-count">${+p.contentDetails?.itemCount||0} videos</span></div><b>${L.esc(dec(p.snippet.title))}</b><span>Playlist</span></button>`).join('')||'<p class="muted">You have no playlists.</p>';
+        res.querySelectorAll('[data-pl]').forEach(b=>b.onclick=()=>nav('playlist','','&id='+encodeURIComponent(b.dataset.pl)))}
+      else{const v=mapItems((await ytAuth(`playlistItems?part=snippet&maxResults=50&playlistId=${encodeURIComponent(pid||'')}`)).items);res.innerHTML=v.map(ytCard).join('')||'<p class="muted">This playlist is empty.</p>';playVid(v)}}
+    catch(err){res.innerHTML=`<p class="muted" style="grid-column:1/-1">${L.esc(err.message)}</p>`}
+    return}
   if(!key){res.innerHTML='<p class="muted" style="grid-column:1/-1">Browsing and searching YouTube here needs a free YouTube API key added once to <code>js/config.js</code> (see SETUP.md). Pasting a video link above works right now.</p>';return}
   res.innerHTML='<p class="muted">Loading…</p>';
   try{if(tab==='shorts'){
@@ -113,9 +152,9 @@ async function ytPage(t,q,tab){const key=(window.LUMEN_CONFIG||{}).youtubeKey;ta
       res.innerHTML=list.map(shortCard).join('')||'<p class="muted">No Shorts found.</p>';
       res.querySelectorAll('[data-si]').forEach(b=>b.onclick=()=>shortsPlayer(t,list,+b.dataset.si))}
     else{const vids=await ytFetch(q?`search?part=snippet&type=video&maxResults=24&safeSearch=moderate&regionCode=${region()}&q=${encodeURIComponent(q)}`:`videos?part=snippet&chart=mostPopular&maxResults=24&regionCode=${region()}`);
-      res.innerHTML=(q?'':'<div class="side-h" style="grid-column:1/-1;padding-left:0">Trending</div>')+(vids.map(ytCard).join('')||'<p class="muted">No videos found.</p>');
-      res.querySelectorAll('[data-vid]').forEach(b=>b.onclick=()=>{const v=vids.find(x=>x.id===b.dataset.vid);go(t,'https://www.youtube.com/watch?v='+v.id,true);t.title=v.title;renderTabs()})}}
+      res.innerHTML=(q?'':'<div class="side-h" style="grid-column:1/-1;padding-left:0">Trending</div>')+(vids.map(ytCard).join('')||'<p class="muted">No videos found.</p>');playVid(vids)}}
   catch(err){res.innerHTML=`<p class="muted" style="grid-column:1/-1">YouTube couldn’t load: ${L.esc(err.message)}</p>`}}
+
 /* vertical Shorts player: arrows, mouse wheel or swipe to move between Shorts */
 function shortsPlayer(t,list,i){const ov=document.createElement('div');ov.className='shorts-ov';t.page.scrollTop=0;t.page.style.overflow='hidden';t.page.appendChild(ov);
   const show=()=>{const v=list[i];ov.innerHTML=`<button class="ib s-x" title="Close">✕</button><div class="s-stage"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&loop=1&playlist=${encodeURIComponent(v.id)}&enablejsapi=1" allow="autoplay; encrypted-media; fullscreen"></iframe><div class="s-cap"><b>${L.esc(v.title)}</b><span>${L.esc(v.channel)}</span></div></div>

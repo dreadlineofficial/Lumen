@@ -407,3 +407,9 @@ body.nav-top .dc-view.on{height:calc(100vh - 80px)}
 .s-cap b{display:block;font-size:14px}.s-cap span{font-size:12px;color:var(--mute)}
 .s-nav{display:flex;flex-direction:column;gap:10px}.s-nav .ib{background:rgba(255,255,255,.12);width:46px;height:46px}
 .s-x{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.12)!important}
+.yt-signin{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#1f1f1f;font-weight:600;padding:9px 16px}
+.yt-signin:hover{background:#f1f1f1}
+.yt-acct{display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;max-width:220px}
+.yt-acct img{width:28px;height:28px;border-radius:50%}.yt-acct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yt-need{text-align:center;padding:34px}.yt-need b{font-size:18px;display:block;margin-bottom:6px}.yt-need .yt-signin{margin-top:8px}
+.yt-th{position:relative}.yt-count{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.75);font-size:11px;padding:2px 8px;border-radius:6px}

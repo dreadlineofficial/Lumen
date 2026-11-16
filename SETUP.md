@@ -66,6 +66,16 @@ These keys are set **once for the whole site**. Users never need their own.
 
 The free YouTube quota allows about 100 searches a day (browsing trending videos costs far less). Pasting a video link always works, even without a key.
 
+**Google sign-in for YouTube (subscriptions, liked videos, playlists):**
+1. In <https://console.cloud.google.com>, pick the same project, then open **Google Auth Platform** (search "OAuth consent" if you can't find it) and click **Get started**.
+2. **App name** `Lumen`, your email as the support email, **Audience: External**, your email again as the contact, then **Create**.
+3. Go to **Data access → Add or remove scopes**, search for `youtube.readonly`, tick it, then **Update** and **Save**.
+4. Go to **Audience → Test users → Add users** and add the Google accounts that should be able to sign in (up to 100 while the app is in testing).
+5. Go to **Clients → Create client**. Pick **Web application** and name it `Lumen`. Under **Authorized JavaScript origins** add `https://dreadlineofficial.github.io` (no slash or path at the end). Click **Create**.
+6. Copy the **Client ID** (it ends in `.apps.googleusercontent.com`) into `googleClientId: "…"` in `js/config.js`.
+
+People see a "Google hasn't verified this app" screen until you submit the app for Google's review. Testers click **Continue** to get past it. Access is read-only, and the sign-in lasts until the tab is closed.
+
 ## 6. Put it online
 In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch → `main` / `(root)` → Save**. A minute later the site is live at `https://dreadlineofficial.github.io/Lumen/`.
 
