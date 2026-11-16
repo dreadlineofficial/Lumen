@@ -71,7 +71,7 @@ In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch 
 
 ## Using it
 - Click **Sign in** at the bottom-left to create an account. Click your name to change your picture, description and privacy settings.
-- **Friends:** search by name, send a request, and accept requests on the Friends page. Friends show up under **Chat → Friends** for private messages.
+- **Friends:** search by name, send a request, and accept requests on the Friends page. Click a friend there to open your private chat; their profile shows on the right. A green dot means online, yellow means idle (Lumen open in a background tab), and grey shows when they were last seen.
 - **Activity:** in your profile you choose what friends can see (the game you're playing, the YouTube video you're watching, the site you have open) and whether you see theirs. Study mode and panic always hide your activity.
 - **Posts:** write something, add an image if you like, and others can comment with text or GIFs. You can delete your own posts, and comments on them.
 
