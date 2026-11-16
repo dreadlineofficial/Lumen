@@ -8,7 +8,7 @@
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261116b">
+<link rel="stylesheet" href="css/app.css?v=20261116c">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -36,9 +36,16 @@
     </section>
 
     <section class="view" id="v-web">
-      <h1>Browse <span class="serif iri">inside.</span></h1><p class="sub">Open any page inside Lumen. YouTube links play here too. Some sites refuse to open inside other sites; use “Open cloaked” for those.</p>
-      <form class="urlbar" id="urlForm"><input id="urlIn" placeholder="Paste a link or type a site, e.g. youtube.com/watch?v=…" autocomplete="off"><button class="btn-acc">Open</button></form>
-      <div class="grid" id="webGrid"></div>
+      <div class="bw card" id="bw">
+        <div class="bw-tabs" id="bwTabs"></div>
+        <div class="bw-bar">
+          <button class="ib" id="bwBack" title="Back">‹</button><button class="ib" id="bwFwd" title="Forward">›</button><button class="ib" id="bwReload" title="Reload">↻</button><button class="ib" id="bwHome" title="Home">⌂</button>
+          <form class="bw-url" id="bwForm"><span id="bwLock">🔍</span><input id="bwIn" placeholder="Search or type an address" autocomplete="off" spellcheck="false"></form>
+          <button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open in a cloaked tab">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
+        </div>
+        <div class="bw-hint" id="bwHint" style="display:none">Page blank or “refused to connect”? This site blocks being shown inside other sites. <a href="#" id="bwHintCloak">Open it in a cloaked tab</a> · <a href="#" id="bwHintX">dismiss</a></div>
+        <div class="bw-body" id="bwBody"></div>
+      </div>
     </section>
 
     <section class="view" id="v-chat">
@@ -138,15 +145,15 @@
           <label>Panic key</label><input id="s_panicKey" readonly>
           <label>Study mode key (closes what's open)</label><input id="s_studyKey" readonly>
           <label>Swap key (flips to notes, keeps your game)</label><input id="s_swapKey" readonly>
-          <label class="chk"><input type="checkbox" id="s_startStudy"> Always open in study mode</label>
+          
           <label class="chk"><input type="checkbox" id="s_swapMute"> Mute the game while swapped</label>
         </div>
         <div class="card"><h2>🎓 Study material</h2>
-          <label>Your grade / year</label>
+          <label>Your IB programme</label>
           <select id="s_grade">
-            <option value="lower">Grades 6–8 · Years 7–9</option>
-            <option value="mid">Grades 9–10 · Years 10–11 (GCSE)</option>
-            <option value="upper">Grades 11–12 · Years 12–13 (A-level)</option>
+            <option value="lower">IB MYP 1–3 (Grades 6–8)</option>
+            <option value="mid">IB MYP 4–5 (Grades 9–10)</option>
+            <option value="upper">IB Diploma Programme (Grades 11–12)</option>
           </select>
           <label>Study portal name</label><input id="s_portal" placeholder="Learning Portal">
         </div>
@@ -168,6 +175,27 @@
           <label>“Switch to” pages (one per line: <code>Name | URL</code>)</label><textarea id="s_jumpLinks" rows="3"></textarea>
           <label>Web shortcuts (one per line: <code>Name | URL</code>)</label><textarea id="s_webLinks" rows="4"></textarea>
           <label>Chat rooms (comma separated)</label><input id="s_rooms">
+        </div>
+        <div class="card"><h2>🚪 Startup screen</h2>
+          <label>When Lumen opens, show</label>
+          <select id="s_startMode"><option value="study">Study mode</option><option value="cover">A web page I choose</option><option value="lumen">Lumen straight away</option></select>
+          <label>Page to show on startup</label><input id="s_startUrl" placeholder="https://www.google.com/webhp?igu=1">
+          <p class="muted" style="font-size:12px;margin:8px 0 0">Press your Panic, Study or Swap key (or triple-click the top-left corner) to get into Lumen.</p>
+        </div>
+        <div class="card" style="grid-column:1/-1"><h2>⏰ Timed cover pages</h2>
+          <p class="muted" style="font-size:13px;margin:4px 0 10px">During these times, Panic and Swap show your chosen page inside Lumen instead. Press Panic again to come straight back. Tip: for Google Docs or Slides, use <i>File → Share → Publish to web</i> links; normal Google links refuse to load inside other sites.</p>
+          <table><thead><tr><th>Day</th><th>From</th><th>To</th><th>Page to show</th><th></th><th></th></tr></thead><tbody id="schedBody"></tbody></table>
+          <button id="schedAdd" style="margin-top:10px">+ Add time</button>
+        </div>
+        <div class="card"><h2>🧩 Layout</h2>
+          <label>Menu position</label><select id="s_navPos"><option value="left">Left</option><option value="right">Right</option><option value="top">Top bar</option></select>
+          <label>Menu style</label><select id="s_navStyle"><option value="full">Icons and labels</option><option value="icons">Icons only</option></select>
+          <label>Spacing</label><select id="s_density"><option value="comfy">Comfortable</option><option value="compact">Compact</option></select>
+          <label>Text size: <span id="fsVal"></span></label><input type="range" id="s_fontScale" min="80" max="125" step="5">
+          <label>Corner roundness</label><input type="range" id="s_radius" min="6" max="36" step="2">
+          <label>Glass blur</label><input type="range" id="s_blur" min="0" max="40" step="2">
+          <label class="chk"><input type="checkbox" id="s_anim"> Animated background</label>
+          <label>Show these menu items</label><div id="navToggles" class="row" style="flex-wrap:wrap;gap:6px"></div>
         </div>
         <div class="card"><h2>💾 Data</h2>
           <div class="row" style="flex-wrap:wrap"><button id="exportAll">Export settings</button><button id="importAll">Import settings</button><input type="file" id="importFile" accept=".json" hidden><button id="resetAll" style="color:var(--danger)">Reset everything</button></div>
@@ -223,11 +251,13 @@
     <div id="sContent"></div>
   </div>
 </div>
+<div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261116b"></script>
-<script src="js/study.js?v=20261116b"></script>
-<script src="js/app.js?v=20261116b"></script>
-<script type="module" src="js/cloud.js?v=20261116b"></script>
+<script src="js/config.js?v=20261116c"></script>
+<script src="js/study.js?v=20261116c"></script>
+<script src="js/app.js?v=20261116c"></script>
+<script src="js/browser.js?v=20261116c"></script>
+<script type="module" src="js/cloud.js?v=20261116c"></script>
 </body>
 </html>

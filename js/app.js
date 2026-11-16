@@ -1,7 +1,8 @@
 /* Lumen core: settings, games, web viewer, study / swap / panic, timetable. Online features live in cloud.js. */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const KEY='hub.cfg.v1';
-const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startStudy:true,swapMute:true,
+const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startMode:'study',startUrl:'https://www.google.com/webhp?igu=1',schedule:[],swapMute:true,
+ navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
  histDisguise:true,histTitle:'Google Classroom',wipe:false,blurPanic:false,grade:'mid',
  title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#06070b',
  rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',
@@ -10,6 +11,7 @@ const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`'
  share:true,shareGame:true,shareYt:true,shareWeb:false,seeOthers:true,timetable:[],materials:[]};
 let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cfg={...DEF}}
 if(cfg.studyKey==='\\')cfg.studyKey='v';
+if('startStudy' in cfg){if(cfg.startStudy===false&&cfg.startMode==='study')cfg.startMode='lumen';delete cfg.startStudy}
 if(cfg.nbUrl==='../index.html')cfg.nbUrl=DEF.nbUrl;
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200)};
@@ -37,7 +39,12 @@ function applyLook(){const r=document.documentElement.style;r.setProperty('--acc
   $('#brand').textContent=cfg.brand||'Lumen';
   if(!$('#study').classList.contains('on')){document.title=cfg.title||'Lumen';$('#fav').href=cfg.icon?favUrl(cfg.icon):'data:,'}
   $('#kPanic').textContent=cfg.panicKey;$('#kStudy').textContent=cfg.studyKey;$('#kSwap').textContent=cfg.swapKey;
-  $('#sPortal').textContent=cfg.portal;$('#sLogo').textContent=(cfg.portal||'L')[0];}
+  $('#sPortal').textContent=cfg.portal;$('#sLogo').textContent=(cfg.portal||'L')[0];applyLayout()}
+function applyLayout(){const b=document.body.classList,r=document.documentElement.style;
+  b.toggle('nav-right',cfg.navPos==='right');b.toggle('nav-top',cfg.navPos==='top');b.toggle('nav-icons',cfg.navStyle==='icons'&&cfg.navPos!=='top');
+  b.toggle('compact',cfg.density==='compact');b.toggle('anim-off',!cfg.anim);
+  r.setProperty('--r',cfg.radius+'px');r.setProperty('--blur',cfg.blur+'px');$('#app').style.zoom=(+cfg.fontScale||100)/100;
+  $$('nav .nav-btn').forEach(n=>n.style.display=(cfg.hiddenNav||[]).includes(n.dataset.v)?'none':'')}
 
 /* ---------- navigation ---------- */
 function go(v){$$('.nav-btn').forEach(x=>x.classList.toggle('on',x.dataset.v===v));$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
@@ -70,19 +77,6 @@ function games(){const g=[{name:'Nightbound',url:cfg.nbUrl,desc:'1v4 asymmetric 
 function renderGames(){$('#gameGrid').innerHTML=games().map((g,i)=>`<div class="card game-card" data-i="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`).join('');
   $$('.game-card').forEach(c=>c.onclick=()=>{const g=games()[c.dataset.i];openView(g.url,g.name,{kind:'game',label:g.name})})}
 
-/* web */
-async function openWeb(raw){let u=String(raw).trim();if(!u)return;if(!/^https?:\/\//i.test(u))u=/\s/.test(u)||!/\./.test(u)?'https://www.bing.com/search?q='+encodeURIComponent(u):'https://'+u;
-  const id=ytId(u);
-  if(id){openView(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&enablejsapi=1`,'YouTube',{kind:'youtube',label:'a YouTube video'});
-    try{const r=await fetch('https://www.youtube.com/oembed?format=json&url='+encodeURIComponent('https://www.youtube.com/watch?v='+id));const j=await r.json();
-      if(view&&view.url.includes(id)){view.title=j.title;$('#viewTitle').textContent=j.title;view.act={kind:'youtube',label:j.title};setActivity(view.act)}}catch{}return}
-  if(/^https?:\/\/(www\.|m\.)?youtube\.com\/?(\?|$)/i.test(u)){toast('Paste a YouTube video link in the box to play it here');$('#urlIn').focus();return}
-  let host;try{host=new URL(u).hostname.replace(/^www\./,'')}catch{return toast('That doesn’t look like a link')}
-  openView(u,host,{kind:'web',label:host})}
-function renderWeb(){$('#webGrid').innerHTML=lines(cfg.webLinks).map((l,i)=>{let h='';try{h=new URL(l.url).hostname}catch{}return`<div class="card tile" data-i="${i}"><div class="ic"><img src="${favUrl(h)}" alt=""></div><b>${esc(l.name)}</b><span>${esc(h)}</span></div>`}).join('');
-  $$('.tile').forEach(t=>t.onclick=()=>openWeb(lines(cfg.webLinks)[t.dataset.i].url))}
-$('#urlForm').onsubmit=e=>{e.preventDefault();openWeb($('#urlIn').value)};
-
 /* about:blank cloak */
 function cloak(url,title){const w=window.open('about:blank','_blank');if(!w){toast('Allow pop-ups for this site');return null}
   w.document.write(`<!doctype html><title>${esc(title||cfg.title||'Google')}</title><link rel="icon" href="${cfg.icon?favUrl(cfg.icon):'data:,'}"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style><iframe src="${esc(url)}" allow="fullscreen; autoplay; microphone; encrypted-media"></iframe>`);w.document.close();return w}
@@ -113,10 +107,10 @@ $('#matAdd').onclick=()=>{cfg.materials.push({subject:'',notes:''});save();rende
 
 /* ---------- study mode & swap ---------- */
 let clockT,swapped=false;
-function enterStudy({keep=false}={}){if(!keep)closeView();else setFrameMuted(cfg.swapMute);swapped=keep;
-  const{c,state}=currentClass();const sub=c.subject||'Study';const lib=libFor(sub);const lvl=lib&&(lib[cfg.grade]||lib.mid);
+function enterStudy({keep=false}={}){if(!keep)closeView();else{setFrameMuted(cfg.swapMute);if(cfg.swapMute)window.Lumen?.browser?.pause(true)}swapped=keep;
+  const{c,state}=currentClass();const sub=c.subject||'Study';const lib=libFor(sub);const lvl=lib&&(lib[cfg.grade]||lib.mid||lib.upper||lib.lower);
   $('#sSubject').textContent=sub;$('#sBanner').style.background=lib?.color||'#1967d2';
-  $('#sInfo').textContent=(state==='now'?`${c.day} · ${c.start}–${c.end} · Current lesson`:state==='next'?`Next lesson at ${c.start}`:'Revision notes')+' · '+({lower:'Key Stage 3',mid:'GCSE',upper:'A-level'}[cfg.grade]||'');
+  $('#sInfo').textContent=(state==='now'?`${c.day} · ${c.start}–${c.end} · Current lesson`:state==='next'?`Next lesson at ${c.start}`:'Revision notes')+' · '+({lower:'MYP 1–3',mid:'MYP 4–5',upper:'IB Diploma'}[cfg.grade]||'');
   const s=sub.toLowerCase();const own=cfg.materials.filter(m=>{const t=m.subject.toLowerCase().trim();return t&&(s.includes(t)||t.includes(s))});
   const pages={};if(own.length)pages['Class notes']=own.map(m=>'<ul>'+m.notes.split('\n').filter(Boolean).map(l=>`<li>${linkify(l)}</li>`).join('')+'</ul>').join('');
   Object.assign(pages,lvl||{'Notes':`<p>No built-in notes for <b>${esc(sub)}</b> yet. Add your own on the Timetable page.</p>`});
@@ -124,7 +118,7 @@ function enterStudy({keep=false}={}){if(!keep)closeView();else setFrameMuted(cfg
   document.title=sub+' – '+cfg.portal;$('#fav').href=favUrl('classroom.google.com');$('#study').classList.add('on');$('#study').scrollTop=0;
   const tick=()=>$('#sClock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});tick();clearInterval(clockT);clockT=setInterval(tick,10000);
   if(!keep)setActivity(null);else window.Lumen?.onActivity?.(null)}
-function exitStudy(){$('#study').classList.remove('on');clearInterval(clockT);applyLook();if(swapped){setFrameMuted(false);swapped=false;window.Lumen?.onActivity?.(activity)}}
+function exitStudy(){$('#study').classList.remove('on');clearInterval(clockT);applyLook();if(swapped){setFrameMuted(false);window.Lumen?.browser?.pause(false);swapped=false;window.Lumen?.onActivity?.(activity)}}
 const studyOn=()=>$('#study').classList.contains('on');
 $('#studyBtn').onclick=()=>enterStudy();$('#sBack').ondblclick=exitStudy;
 
@@ -134,8 +128,29 @@ function disguiseHistory(){if(!cfg.histDisguise)return;const t=cfg.histTitle||'G
   try{if(window.top!==window.self)window.top.document.title=t}catch{}}
 function leaveTo(url){url=fixUrl(url||'https://www.google.com');document.body.innerHTML='';
   try{if(window.top!==window.self)window.top.location.replace(url);else location.replace(url)}catch{location.replace(url)}}
-function cleanup(){closeView();window.Lumen?.onPanic?.();if(cfg.wipe){try{sessionStorage.clear();Object.keys(localStorage).filter(k=>k.startsWith('hub.chat.')).forEach(k=>localStorage.removeItem(k))}catch{}}}
-function panic(){if(cfg.panicAction==='study'){enterStudy();return}
+/* ---------- cover pages (startup page + timed pages) ---------- */
+let coverOn=false,coverSwap=false;
+function showCover(url,{fromSwap=false}={}){url=fixUrl(url||'https://www.google.com/webhp?igu=1');const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}`;
+  if(/^https?:\/\/(www\.)?google\.[a-z.]+\/?(\?.*)?$/i.test(url))url='https://www.google.com/webhp?igu=1';
+  coverSwap=fromSwap;if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}
+  $('#coverFrame').src=url;$('#cover').classList.add('on');coverOn=true;window.Lumen?.onActivity?.(null);
+  let h='';try{h=new URL(url).hostname.replace(/^www\./,'')}catch{}document.title=h.includes('google')?'Google':h||'New Tab';$('#fav').href=favUrl(h||'google.com')}
+function hideCover(){if(!coverOn)return;coverOn=false;$('#cover').classList.remove('on');$('#coverFrame').src='about:blank';if(coverSwap){setFrameMuted(false);window.Lumen?.browser?.pause(false)}coverSwap=false;applyLook();window.Lumen?.onActivity?.(activity)}
+// cross-origin pages swallow key presses; pull focus back so Panic keeps working
+addEventListener('blur',()=>{if(coverOn)setTimeout(()=>{if(document.activeElement===$('#coverFrame')){$('#coverFrame').blur();window.focus()}},0)});
+let hotN=0,hotT;$('#coverHot').onclick=()=>{hotN++;clearTimeout(hotT);hotT=setTimeout(()=>hotN=0,600);if(hotN>=3){hotN=0;hideCover()}};
+function scheduledCover(){const d=new Date(),day=DAYS[d.getDay()],n=d.getHours()*60+d.getMinutes();
+  return(cfg.schedule||[]).find(r=>r.url&&r.start&&r.end&&(r.day==='all'||r.day===day||(r.day==='weekdays'&&d.getDay()%6!==0))&&n>=mins(r.start)&&n<mins(r.end))}
+function renderSched(){const opts=[['all','Every day'],['weekdays','Weekdays'],...DAYS.map(d=>[d,d])];
+  $('#schedBody').innerHTML=(cfg.schedule||[]).map((r,i)=>`<tr><td><select data-si="${i}" data-k="day">${opts.map(([v,t])=>`<option value="${v}" ${r.day===v?'selected':''}>${t}</option>`).join('')}</select></td><td><input type="time" data-si="${i}" data-k="start" value="${r.start}"></td><td><input type="time" data-si="${i}" data-k="end" value="${r.end}"></td><td><input data-si="${i}" data-k="url" value="${esc(r.url)}" placeholder="https://…"></td><td><button data-test="${i}">Test</button></td><td><button class="x" data-sdel="${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="6" class="muted">No timed pages yet.</td></tr>';
+  $$('#schedBody [data-si]').forEach(e=>e.onchange=()=>{cfg.schedule[e.dataset.si][e.dataset.k]=e.value;save()});
+  $$('#schedBody [data-sdel]').forEach(b=>b.onclick=()=>{cfg.schedule.splice(b.dataset.sdel,1);save();renderSched()});
+  $$('#schedBody [data-test]').forEach(b=>b.onclick=()=>{showCover(cfg.schedule[b.dataset.test].url);toast('Press Panic to come back')})}
+$('#schedAdd').onclick=()=>{cfg.schedule=cfg.schedule||[];cfg.schedule.push({day:'weekdays',start:'09:00',end:'10:00',url:''});save();renderSched()};
+
+function cleanup(){closeView();window.Lumen?.browser?.wipe();window.Lumen?.onPanic?.();if(cfg.wipe){try{sessionStorage.clear();Object.keys(localStorage).filter(k=>k.startsWith('hub.chat.')).forEach(k=>localStorage.removeItem(k))}catch{}}}
+function panic(){if(coverOn){hideCover();return}const sc=scheduledCover();if(sc){showCover(sc.url,{fromSwap:true});return}
+  if(cfg.panicAction==='study'){enterStudy();return}
   cleanup();disguiseHistory();
   setTimeout(()=>{if(cfg.panicAction==='close'){try{(window.top!==window.self?window.top:window).close()}catch{}setTimeout(()=>leaveTo(cfg.panicUrl),120)}else leaveTo(cfg.panicUrl)},cfg.histDisguise?180:0)}
 function switchTo(url){cleanup();disguiseHistory();setTimeout(()=>leaveTo(url),cfg.histDisguise?150:0)}
@@ -149,30 +164,36 @@ let capturing=false;
 const typing=t=>t&&(/INPUT|TEXTAREA|SELECT/.test(t.tagName)||t.isContentEditable);
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
 function onKey(e){if(capturing)return;const t=e.target;
+  if(coverOn&&[cfg.panicKey,cfg.studyKey,cfg.swapKey].some(k=>same(k,e.key))){e.preventDefault();e.stopPropagation();hideCover();return}
   if(e.key===cfg.panicKey){e.preventDefault();e.stopPropagation();panic();return}
   if(typing(t)||e.ctrlKey||e.metaKey||e.altKey)return;
   if(same(e.key,cfg.studyKey)){e.preventDefault();e.stopPropagation();studyOn()?exitStudy():enterStudy()}
-  else if(same(e.key,cfg.swapKey)){e.preventDefault();e.stopPropagation();studyOn()?exitStudy():enterStudy({keep:true})}}
+  else if(same(e.key,cfg.swapKey)){e.preventDefault();e.stopPropagation();if(studyOn())exitStudy();else{const sc=scheduledCover();sc?showCover(sc.url,{fromSwap:true}):enterStudy({keep:true})}}}
 addEventListener('keydown',onKey,true);
 addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&document.activeElement?.tagName!=='IFRAME')panic()},150)});
 
 /* ---------- settings ---------- */
-const FIELDS=['panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','extra','webLinks','jumpLinks','rooms'];
-const CHECKS=['histDisguise','wipe','blurPanic','startStudy','swapMute'];
-function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f])}
+const FIELDS=['startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','extra','webLinks','jumpLinks','rooms'];
+const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim'];
+function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
+  $('#navToggles').innerHTML=$$('nav .nav-btn').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
+// layout controls preview live
+['navPos','navStyle','density','fontScale','radius','blur'].forEach(f=>$('#s_'+f).addEventListener('input',()=>{cfg[f]=$('#s_'+f).value;$('#fsVal').textContent=cfg.fontScale+'%';applyLayout()}));
+$('#s_anim').addEventListener('change',()=>{cfg.anim=$('#s_anim').checked;applyLayout()});
+$('#navToggles').addEventListener('change',e=>{const v=e.target.dataset.nav;if(!v)return;const h=new Set(cfg.hiddenNav||[]);e.target.checked?h.delete(v):h.add(v);if(v==='settings'&&h.has(v)){e.target.checked=true;return toast('Settings has to stay visible')}cfg.hiddenNav=[...h];applyLayout()});
 ['panicKey','studyKey','swapKey'].forEach(f=>{const el=$('#s_'+f);el.onfocus=()=>{capturing=true;el.value='Press a key…'};el.onblur=()=>{capturing=false;if(el.value==='Press a key…')el.value=cfg[f]};
   el.onkeydown=e=>{e.preventDefault();if(e.key==='Tab'||e.key==='Escape'){el.blur();return}el.value=e.key.length===1?e.key.toLowerCase():e.key;el.blur()}});
 $$('[data-preset]').forEach(b=>b.onclick=()=>{const[t,i]=b.dataset.preset.split('|');$('#s_title').value=t;$('#s_icon').value=i});
 $('#saveBtn').onclick=()=>{const keys=['panicKey','studyKey','swapKey'].map(f=>$('#s_'+f).value);if(new Set(keys.map(k=>k.toLowerCase())).size<3)return toast('Panic, study and swap need different keys');
-  const oldRooms=cfg.rooms;FIELDS.forEach(f=>cfg[f]=$('#s_'+f).value);CHECKS.forEach(f=>cfg[f]=$('#s_'+f).checked);save();applyLook();renderGames();renderWeb();if(oldRooms!==cfg.rooms)window.Lumen?.onRooms?.();toast('Saved')};
+  const oldRooms=cfg.rooms;FIELDS.forEach(f=>cfg[f]=$('#s_'+f).value);CHECKS.forEach(f=>cfg[f]=$('#s_'+f).checked);save();applyLook();renderGames();window.Lumen?.browser?.refresh();if(oldRooms!==cfg.rooms)window.Lumen?.onRooms?.();toast('Saved')};
 $('#exportAll').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));a.download='lumen-settings.json';a.click()};
 $('#importAll').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target.files[0].text())};save();location.reload()}catch{toast('Invalid file')}};
 $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this device?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
 
 /* shared with cloud.js */
-window.Lumen={cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,getActivity:()=>studyOn()?null:activity};
+window.Lumen={cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
 
 /* ---------- boot ---------- */
-applyLook();renderGames();renderWeb();
-if(cfg.startStudy)enterStudy();
+applyLook();renderGames();
+if(cfg.startMode==='study')enterStudy();else if(cfg.startMode==='cover')showCover(cfg.startUrl);
