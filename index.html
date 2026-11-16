@@ -127,7 +127,7 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
     <div class="spacer"></div>
     <button class="btn-acc" id="studyBtn">📘 Study mode</button>
     <button class="btn-danger panic" id="panicBtn">⚡ PANIC</button>
-    <div class="hint">Panic: <kbd id="kPanic">`</kbd> · Study: <kbd id="kStudy">\</kbd></div>
+    <div class="hint">Panic: <kbd id="kPanic">`</kbd> · Study: <kbd id="kStudy">v</kbd></div>
   </nav>
   <main>
     <!-- GAMES -->
@@ -152,12 +152,14 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
       <h1>Your <span class="serif iri">timetable.</span></h1><p class="sub">Upload or type your timetable. Study mode opens notes for whatever class is on right now.</p>
       <div class="card" style="margin-bottom:16px">
         <div class="row" style="flex-wrap:wrap">
-          <button id="ttUploadBtn" class="btn-acc">⬆ Upload CSV / text</button>
+          <button id="ttImgBtn" class="btn-acc">📷 Upload timetable photo</button>
+          <input type="file" id="ttImg" accept="image/*" hidden>
+          <button id="ttUploadBtn">⬆ CSV / text</button>
           <input type="file" id="ttFile" accept=".csv,.txt,.tsv" hidden>
           <button id="ttAdd">+ Add class</button>
           <button id="ttSample">Load example</button>
           <button id="ttExport">⬇ Export CSV</button>
-          <span style="color:var(--mute);font-size:12px">Format: <code>Day, Start, End, Subject</code> (e.g. <code>Mon, 09:00, 09:50, Maths</code>)</span>
+          </div><div id="ocrBox" style="margin-top:14px;color:var(--mute);font-size:13px">Upload a photo or screenshot of your timetable. Lumen reads it on your device, works out which class is at each time, and fills the table below. Check the results and fix anything it got wrong. Works best with a clear, straight picture that shows the day names and times.</div><div class="row" style="display:none">
         </div>
         <div id="nowBox" style="margin-top:14px;color:var(--mute)"></div>
       </div>
@@ -178,6 +180,7 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
           <label>Panic key</label><input id="s_panicKey" readonly placeholder="Click, then press a key">
           <label>Study-mode key</label><input id="s_studyKey" readonly placeholder="Click, then press a key">
           <label class="chk"><input type="checkbox" id="s_wipe"> Clear this site's saved chat history on panic</label>
+          <label class="chk"><input type="checkbox" id="s_startStudy"> Always open in study mode</label>
           <label class="chk"><input type="checkbox" id="s_blurPanic"> Also panic when I switch away from this tab</label>
         </div>
         <div class="card"><h2>🕶 Disguise</h2>
@@ -231,11 +234,12 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const KEY='hub.cfg.v1';
-const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'\\',wipe:false,blurPanic:false,
+const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',startStudy:true,wipe:false,blurPanic:false,
  title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#0d0f14',
  name:'Player'+Math.floor(Math.random()*900+100),rooms:'general,games,random',prefix:'',broker:'wss://broker.emqx.io:8084/mqtt',
  nbUrl:'nightbound/index.html',extra:'',timetable:[],materials:[]};
 let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cfg={...DEF}}
+if(cfg.studyKey==='\\')cfg.studyKey='v';
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800)};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -321,6 +325,83 @@ $('#ttSample').onclick=()=>{const subs=['Maths','English','Science','History','G
 $('#ttExport').onclick=()=>{const csv='Day,Start,End,Subject\n'+cfg.timetable.map(c=>[c.day,c.start,c.end,c.subject].join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='timetable.csv';a.click()};
 $('#matAdd').onclick=()=>{cfg.materials.push({subject:'',notes:''});save();renderTT()};
 
+
+/* ---------- timetable from image (OCR, runs in browser) ---------- */
+const DAYRE=/^(mon|tue|wed|thu|fri|sat|sun)/i;
+const TIMERE=/(\d{1,2})[:.h](\d{2})\s*(am|pm)?/ig;
+let tessP;
+const FULLD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
+function dayMatch(t){t=String(t).toLowerCase().replace(/[^a-z]/g,'');if(t.length<3||t.length>10)return null;
+  if(t.length<=4){const i=FULLD.findIndex(f=>f.startsWith(t.slice(0,3)));return i<0?null:DAYS[i]}
+  let best=null,bd=99;FULLD.forEach((f,i)=>{const d=lev(t,f);if(d<bd){bd=d;best=i}});return bd<=Math.max(2,Math.floor(t.length*.4))?DAYS[best]:null}
+function loadTess(){return tessP||(tessP=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='ocr/tesseract.min.js';sc.onload=ok;sc.onerror=()=>{tessP=null;no(new Error('Could not load the text reader'))};document.head.appendChild(sc)}))}
+async function prepImage(file){const img=await createImageBitmap(file);const sc=Math.min(3,Math.max(1,2000/Math.max(img.width,img.height)));
+  const c=document.createElement('canvas');c.width=img.width*sc;c.height=img.height*sc;const x=c.getContext('2d');x.filter='grayscale(1) contrast(1.4)';x.drawImage(img,0,0,c.width,c.height);return c}
+function toHM(h,m,ap){h=+h;if(ap){ap=ap.toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0}else if(h>=1&&h<=6)h+=12;return String(h).padStart(2,'0')+':'+m}
+function addMin(t,n){let v=mins(t)+n;return String(Math.floor(v/60)%24).padStart(2,'0')+':'+String(v%60).padStart(2,'0')}
+function wordsToTimetable(words){
+  words=words.filter(w=>w.text&&/[a-z0-9]/i.test(w.text)&&(w.confidence>30||dayMatch(w.text))).map(w=>({t:w.text.trim(),x:(w.bbox.x0+w.bbox.x1)/2,y:(w.bbox.y0+w.bbox.y1)/2,h:w.bbox.y1-w.bbox.y0,x0:w.bbox.x0,x1:w.bbox.x1,y0:w.bbox.y0,y1:w.bbox.y1}));
+  // day headers (keep first of each day)
+  const days=[];words.forEach(w=>{const d=dayMatch(w.t);if(d&&!days.find(x=>x.d===d))days.push({d,x:w.x,y:w.y,w})});
+  if(days.length<2)throw new Error('Could not find the day names (Mon, Tue…) in the picture');
+  const xs=days.map(d=>d.x),ys=days.map(d=>d.y);const spread=a=>Math.max(...a)-Math.min(...a);
+  const daysAcross=spread(xs)>spread(ys); // days are columns
+  { // fill in day headers the reader missed, using the spacing of the ones it found
+    const ax=daysAcross?'x':'y';days.sort((p,q)=>p[ax]-q[ax]);const idx=d=>DAYS.indexOf(d.d);
+    const gaps=[];for(let i=1;i<days.length;i++){const n=idx(days[i])-idx(days[i-1]);if(n>0)gaps.push((days[i][ax]-days[i-1][ax])/n)}
+    const g=gaps.sort((p,q)=>p-q)[gaps.length>>1];
+    if(g>0){const lo=days[0],hi=days[days.length-1],other=daysAcross?'y':'x',hd=lo[other];
+      const fill=(from,step,stop)=>{for(let k=1;;k++){const di=idx(from)+step*k;if(di<1||di>6)break;const pos=from[ax]+step*g*k;
+        if(!words.some(w=>Math.abs(w[ax]-pos)<g*.4&&w[other]>hd+5)||stop(pos))break;days.push({d:DAYS[di],[ax]:pos,[other]:hd,w:null})}};
+      fill(hi,1,()=>false);fill(lo,-1,pos=>pos<0);
+      const have=new Set(days.map(d=>d.d));for(let di=idx(lo)+1;di<idx(hi);di++)if(!have.has(DAYS[di]))days.push({d:DAYS[di],[ax]:lo[ax]+(di-idx(lo))*g,[other]:hd,w:null});
+    }}
+  // time labels: group words on same line/column, find times
+  const times=[];words.forEach(w=>{TIMERE.lastIndex=0;let m;while((m=TIMERE.exec(w.t)))times.push({v:toHM(m[1],m[2],m[3]),x:w.x,y:w.y,w})});
+  // cluster times by row (days across) or column (days down)
+  const key=daysAcross?'y':'x',tol=daysAcross?Math.max(14,(words[0]?.h||14)*1.2):60;
+  const slots=[];times.sort((a,b)=>a[key]-b[key]).forEach(t=>{const s=slots.find(s=>Math.abs(s.pos-t[key])<tol);if(s)s.list.push(t);else slots.push({pos:t[key],list:[t]})});
+  // keep slots that sit outside the day header line (labels)
+  const lbl=slots.map(s=>{const l=s.list.sort((a,b)=>mins(a.v)-mins(b.v));return{pos:s.pos,start:l[0].v,end:l.length>1&&l[l.length-1].v!==l[0].v?l[l.length-1].v:null,words:new Set(l.map(t=>t.w))}}).sort((a,b)=>a.pos-b.pos);
+  if(!lbl.length)throw new Error('Could not find any times (like 9:00) in the picture');
+  lbl.forEach((s,i)=>{if(!s.end)s.end=lbl[i+1]?lbl[i+1].start:addMin(s.start,50);if(mins(s.end)<=mins(s.start))s.end=addMin(s.start,50)});
+  // assign remaining words to cells
+  const used=new Set([...days.map(d=>d.w).filter(Boolean),...times.map(t=>t.w)]);
+  const dayAxis=daysAcross?'x':'y',slotAxis=daysAcross?'y':'x';
+  const dayEdge=daysAcross?Math.max(...ys):Math.max(...xs);
+  const firstSlot=lbl[0].pos-(lbl[1]?(lbl[1].pos-lbl[0].pos)/2:40);
+  const cells={};
+  words.forEach(w=>{if(used.has(w))return;if(!/[a-z]{2,}/i.test(w.t))return;
+    if(w[slotAxis]<=dayEdge+5)return; // header line
+    const d=days.reduce((a,b)=>Math.abs(b[dayAxis]-w[dayAxis])<Math.abs(a[dayAxis]-w[dayAxis])?b:a);
+    // distance gate: must be closer to a day than half the gap between days
+    const sorted=days.map(x=>x[dayAxis]).sort((a,b)=>a-b);const gap=sorted.length>1?(sorted[sorted.length-1]-sorted[0])/(sorted.length-1):200;
+    if(Math.abs(d[dayAxis]-w[dayAxis])>gap*.75)return;
+    // slot = last label whose position is <= word (labels mark the start of a band), else nearest
+    let s=lbl.reduce((a,b)=>Math.abs(b.pos-w[slotAxis])<Math.abs(a.pos-w[slotAxis])?b:a);
+    if(w[slotAxis]<firstSlot)return;
+    const k=d.d+'|'+s.start;(cells[k]=cells[k]||{day:d.d,start:s.start,end:s.end,parts:[]}).parts.push(w)});
+  const skip=/^(break|lunch|tutor|registration|reg|free|study|room|rm|period|p\d)$/i;
+  const out=Object.values(cells).map(c=>{c.parts.sort((a,b)=>a.y0-b.y0||a.x0-b.x0);
+    // subject = first meaningful line of words
+    const line=c.parts.filter(p=>Math.abs(p.y-c.parts[0].y)<p.h*.8).map(p=>p.t).join(' ');
+    const subject=line.replace(/[^\w &'+-]/g,'').replace(/\b[A-Z]?\d{1,3}[A-Z]?\b/g,'').trim();
+    return{day:c.day,start:c.start,end:c.end,subject}}).filter(c=>c.subject.length>1&&!skip.test(c.subject));
+  const order=DAYS;out.sort((a,b)=>order.indexOf(a.day)-order.indexOf(b.day)||mins(a.start)-mins(b.start));
+  return out}
+async function readTimetableImage(file){const box=$('#ocrBox');box.style.color='var(--text)';
+  try{box.textContent='Loading the text reader…';await loadTess();
+    const worker=await Tesseract.createWorker('eng',1,{workerPath:new URL('ocr/worker.min.js',location.href).href,corePath:new URL('ocr/core/',location.href).href,langPath:new URL('ocr/lang',location.href).href,workerBlobURL:false,logger:m=>{if(m.status==='recognizing text')box.textContent='Reading your timetable… '+Math.round(m.progress*100)+'%'}});
+    await worker.setParameters({tessedit_pageseg_mode:'11'});
+    const {data}=await worker.recognize(await prepImage(file),{},{blocks:true});await worker.terminate();
+    const words=data.words||(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines.flatMap(l=>l.words)));
+    const rows=wordsToTimetable(words);if(!rows.length)throw new Error('Found the days and times but no class names');
+    cfg.timetable=rows;save();renderTT();box.style.color='var(--mute)';box.innerHTML=`✅ Found <b style="color:var(--text)">${rows.length}</b> classes. Check them below and fix anything that's wrong.`;
+  }catch(err){box.style.color='var(--danger)';box.textContent='⚠ '+err.message+'. Try a clearer, straight-on picture, or add classes by hand.'}}
+$('#ttImgBtn').onclick=()=>$('#ttImg').click();
+$('#ttImg').onchange=e=>{const f=e.target.files[0];if(f)readTimetableImage(f);e.target.value=''};
+
 /* ---------- built-in study material ---------- */
 const LIB={
 maths:{color:'#1967d2',topics:{'Algebra':`<h3>Solving linear equations</h3><p>Do the same thing to both sides until the unknown is alone.</p><div class="s-q">3x + 7 = 22 → 3x = 15 → <b>x = 5</b></div><h3>Expanding & factorising</h3><ul><li>a(b + c) = ab + ac</li><li>(x + a)(x + b) = x² + (a+b)x + ab</li><li>Difference of two squares: a² − b² = (a − b)(a + b)</li></ul><h3>Quadratic formula</h3><div class="s-q">x = (−b ± √(b² − 4ac)) / 2a</div>`,
@@ -370,7 +451,7 @@ function panic(){
 $('#panicBtn').onclick=panic;
 function onKey(e){const t=e.target;if(capturing)return;
   if(e.key===cfg.panicKey){e.preventDefault();panic()}
-  else if(e.key===cfg.studyKey&&!(t&&/INPUT|TEXTAREA/.test(t.tagName))){e.preventDefault();$('#study').classList.contains('on')?exitStudy():enterStudy()}}
+  else if(e.key.toLowerCase()===String(cfg.studyKey).toLowerCase()&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!(t&&/INPUT|TEXTAREA/.test(t.tagName))){e.preventDefault();$('#study').classList.contains('on')?exitStudy():enterStudy()}}
 addEventListener('keydown',onKey,true);
 addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&!(document.activeElement?.tagName==='IFRAME'))panic()},150)});
 
@@ -382,11 +463,11 @@ $('#stealthBtn').onclick=()=>{const w=window.open('about:blank','_blank');if(!w)
 /* ---------- settings ---------- */
 const FIELDS=['panicAction','panicUrl','panicKey','studyKey','title','icon','portal','brand','acc','acc2','bg','name','rooms','prefix','broker','nbUrl','extra'];
 let capturing=false;
-function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);$('#s_wipe').checked=cfg.wipe;$('#s_blurPanic').checked=cfg.blurPanic}
+function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);$('#s_wipe').checked=cfg.wipe;$('#s_startStudy').checked=cfg.startStudy;$('#s_blurPanic').checked=cfg.blurPanic}
 ['panicKey','studyKey'].forEach(f=>{const el=$('#s_'+f);el.onfocus=()=>{capturing=true;el.value='Press a key…'};el.onblur=()=>{capturing=false;if(el.value==='Press a key…')el.value=cfg[f]};
   el.onkeydown=e=>{e.preventDefault();if(e.key==='Tab'||e.key==='Escape'){el.blur();return}el.value=e.key;el.blur()}});
 $$('[data-preset]').forEach(b=>b.onclick=()=>{const[t,i]=b.dataset.preset.split('|');$('#s_title').value=t;$('#s_icon').value=i});
-$('#saveBtn').onclick=()=>{const oldChat=[cfg.broker,cfg.prefix,cfg.rooms].join();FIELDS.forEach(f=>cfg[f]=$('#s_'+f).value);cfg.wipe=$('#s_wipe').checked;cfg.blurPanic=$('#s_blurPanic').checked;
+$('#saveBtn').onclick=()=>{const oldChat=[cfg.broker,cfg.prefix,cfg.rooms].join();FIELDS.forEach(f=>cfg[f]=$('#s_'+f).value);cfg.wipe=$('#s_wipe').checked;cfg.startStudy=$('#s_startStudy').checked;cfg.blurPanic=$('#s_blurPanic').checked;
   cfg.name=cfg.name.trim()||DEF.name;save();applyLook();renderGames();renderRooms();if(oldChat!==[cfg.broker,cfg.prefix,cfg.rooms].join()){if(!roomsList().includes(room))room=roomsList()[0]||'general';switchRoom(room);connectChat()}toast('Saved')};
 $('#exportAll').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));a.download='hub-settings.json';a.click()};
 $('#importAll').onclick=()=>$('#importFile').click();
@@ -395,6 +476,7 @@ $('#resetAll').onclick=()=>{if(confirm('Reset all settings, timetable and chat h
 
 /* ---------- boot ---------- */
 applyLook();renderGames();room=roomsList()[0]||'general';switchRoom(room);connectChat();
+if(cfg.startStudy)enterStudy();
 </script>
 </body>
 </html>
