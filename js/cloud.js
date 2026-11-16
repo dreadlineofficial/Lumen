@@ -11,6 +11,7 @@ if(!CONF.firebase){
   ['#v-chat .sub','#v-friends .sub','#v-posts .sub'].forEach(s=>$(s).insertAdjacentHTML('afterend',msg));
   $('#meName').textContent='Offline mode';$('#meSt').textContent='Online features not set up';
   $('#meChip').onclick=()=>toast('Online features need setting up first (see SETUP.md)');
+  $('#v-profile .sub').insertAdjacentHTML('afterend',msg);$('#profWrap').style.display='none';
   $('#chatForm').onsubmit=e=>{e.preventDefault();toast('Chat isn’t set up yet')};
   throw new Error('Lumen: no Firebase config, running offline');
 }
@@ -47,7 +48,7 @@ $('#authForm').onsubmit=async e=>{e.preventDefault();$('#authErr').textContent='
 $('#authGoogle').onclick=async()=>{try{const c=await F.signInWithPopup(auth,new F.GoogleAuthProvider());await ensureProfile(c.user,c.user.displayName);closeModal('authModal')}catch(err){$('#authErr').textContent=nice(err)}};
 $('#authReset').onclick=async e=>{e.preventDefault();const em=$('#aEmail').value;if(!em)return $('#authErr').textContent='Type your email first';try{await F.sendPasswordResetEmail(auth,em);toast('Reset email sent')}catch(err){$('#authErr').textContent=nice(err)}};
 async function ensureProfile(u,name){const r=D('users',u.uid);const s=await F.getDoc(r);if(!s.exists()){name=(name||'Player').slice(0,24);await F.setDoc(r,{name,nameLower:name.toLowerCase(),bio:'',avatar:'',createdAt:F.serverTimestamp()})}}
-$('#meChip').onclick=()=>me?openProfile():(authMode(false),openModal('authModal'));
+$('#meChip').onclick=()=>me?L.go('profile'):(authMode(false),openModal('authModal'));
 
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
   if(!u){myProfile=null;$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
@@ -57,24 +58,51 @@ F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
   startPresence();listenFriends();listenFeed();renderConvos();openConvo(convo||{type:'room',id:rooms()[0]||'general'})});
 function renderSignedOut(){const b=`<div class="banner">Sign in (bottom-left) to use this.</div>`;$('#friendList').innerHTML=b;$('#reqList').innerHTML='';$('#feed').innerHTML=b;$('#msgs').innerHTML=b;$('#roomList').innerHTML='';$('#status').className='status';$('#status').innerHTML='<i></i>Signed out';$('#reqBadge').style.display='none'}
 
-/* ---------- my profile ---------- */
-let newAvatar=null;
-function openProfile(){newAvatar=null;const p=myProfile||{};$('#pPic').outerHTML=pic(p,84).replace('class="pic"','class="pic" id="pPic"');$('#pName').value=p.name||'';$('#pBio').value=p.bio||'';
-  $('#pShare').checked=cfg.share;$('#pShareGame').checked=cfg.shareGame;$('#pShareYt').checked=cfg.shareYt;$('#pShareWeb').checked=cfg.shareWeb;$('#pSeeOthers').checked=cfg.seeOthers;openModal('profModal')}
+/* ---------- profile card (preview + viewing others) ---------- */
+const GRADS=['linear-gradient(135deg,#3b5bff,#9b6bff,#ff9a5c)','linear-gradient(135deg,#0f2027,#2c5364)','linear-gradient(135deg,#ff5c7a,#ffc59e)','linear-gradient(135deg,#11998e,#38ef7d)','linear-gradient(135deg,#1a0608,#5a1020)','linear-gradient(135deg,#232526,#414345)','linear-gradient(135deg,#9fb4ff,#9ff0e6)','linear-gradient(135deg,#f7971e,#ffd200)'];
+const okColor=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#d6b8ff';
+function banStyle(u){const img=safeImg(u.banner);if(img)return`background-image:url('${img}')`;return`background:${GRADS[+u.bannerG||0]||GRADS[0]}`}
+function card(u,{uid,online,act,buttons=''}={}){const links=String(u.links||'').split('\n').map(l=>l.trim()).filter(l=>/^https?:\/\/\S+$/i.test(l)).slice(0,3);
+  return`<div class="pcard" style="--pc:${okColor(u.color)}"><div class="ban" style="${banStyle(u)}"></div><div class="body">${pic(u,92,online)}
+   <h3 style="color:${okColor(u.color)}">${esc(u.name||'Your name')}${u.pronouns?`<span class="pron">${esc(u.pronouns)}</span>`:''}</h3>
+   ${u.status||u.emoji?`<div class="stat">${esc(u.emoji||'')} ${esc(u.status||'')}</div>`:''}
+   ${uid?`<div class="muted" style="font-size:13px;margin-top:4px">${online?'<span style="color:#4ade80">● Online</span>':'Offline'}</div>`:''}
+   ${act?`<div class="act" style="font-size:13px;margin-top:2px">${act}</div>`:''}
+   <div class="sect"><b>About me</b><p>${esc(u.bio)||'<span class="muted">Nothing here yet.</span>'}</p></div>
+   ${u.favGame?`<div class="sect"><b>Favourite game</b><p>🎮 ${esc(u.favGame)}</p></div>`:''}
+   ${links.length?`<div class="sect"><b>Links</b>${links.map(l=>`<a href="${esc(l)}" target="_blank" rel="noopener">${esc(l.replace(/^https?:\/\//,''))}</a>`).join('')}</div>`:''}
+   ${buttons?`<div class="row" style="margin-top:16px;flex-wrap:wrap">${buttons}</div>`:''}</div></div>`}
+
+/* ---------- my profile tab ---------- */
+let draft={};
+function formToDraft(){Object.assign(draft,{name:$('#pName').value.trim(),pronouns:$('#pPron').value.trim(),emoji:$('#pEmoji').value.trim(),status:$('#pStatus').value.trim(),bio:$('#pBio').value,favGame:$('#pFav').value.trim(),links:$('#pLinks').value,color:$('#pColor').value})}
+function preview(){formToDraft();$('#pPreview').innerHTML=card(draft);$$('#pSwatches button').forEach((b,i)=>b.style.outline=!safeImg(draft.banner)&&(+draft.bannerG||0)===i?'2px solid #fff':'none')}
+function openProfile(){const p=myProfile||{};draft={...p};
+  $('#pName').value=p.name||'';$('#pPron').value=p.pronouns||'';$('#pEmoji').value=p.emoji||'';$('#pStatus').value=p.status||'';$('#pBio').value=p.bio||'';$('#pFav').value=p.favGame||'';$('#pLinks').value=p.links||'';$('#pColor').value=okColor(p.color);
+  $('#pShare').checked=cfg.share;$('#pShareGame').checked=cfg.shareGame;$('#pShareYt').checked=cfg.shareYt;$('#pShareWeb').checked=cfg.shareWeb;$('#pSeeOthers').checked=cfg.seeOthers;
+  $('#pEmail').textContent='Signed in as '+(me?.email||'');preview()}
+$('#pSwatches').innerHTML=GRADS.map((g,i)=>`<button type="button" data-g="${i}" style="background:${g}" title="Banner colour"></button>`).join('');
+$$('#pSwatches button').forEach(b=>b.onclick=()=>{draft.banner='';draft.bannerG=+b.dataset.g;preview()});
+['#pName','#pPron','#pEmoji','#pStatus','#pBio','#pFav','#pLinks','#pColor'].forEach(s=>$(s).addEventListener('input',preview));
 $('#pPicBtn').onclick=()=>$('#pPicIn').click();
-$('#pPicIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;newAvatar=await L.shrinkImage(f,160,.85);$('#pPic').outerHTML=pic({avatar:newAvatar},84).replace('class="pic"','class="pic" id="pPic"')};
-$('#pPicDel').onclick=()=>{newAvatar='';$('#pPic').outerHTML=pic({name:$('#pName').value},84).replace('class="pic"','class="pic" id="pPic"')};
-$('#pSave').onclick=async()=>{const name=$('#pName').value.trim().slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');
-  const d={name,nameLower:name.toLowerCase(),bio:$('#pBio').value.slice(0,300)};if(newAvatar!==null)d.avatar=newAvatar;
+$('#pPicIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;draft.avatar=await L.shrinkImage(f,200,.85);preview()};
+$('#pPicDel').onclick=()=>{draft.avatar='';preview()};
+$('#pBanBtn').onclick=()=>$('#pBanIn').click();
+$('#pBanIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let d=await L.shrinkImage(f,900,.75);if(d.length>300000)d=await L.shrinkImage(f,640,.6);draft.banner=d;preview()};
+$('#pBanDel').onclick=()=>{draft.banner='';preview()};
+$('#pSave').onclick=async()=>{if(!me)return openModal('authModal');formToDraft();const name=draft.name.slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');
+  const d={name,nameLower:name.toLowerCase(),bio:String(draft.bio||'').slice(0,300),avatar:draft.avatar||'',banner:draft.banner||'',bannerG:+draft.bannerG||0,color:okColor(draft.color),pronouns:draft.pronouns.slice(0,20),emoji:draft.emoji.slice(0,4),status:draft.status.slice(0,80),favGame:draft.favGame.slice(0,40),links:String(draft.links||'').slice(0,400)};
   cfg.share=$('#pShare').checked;cfg.shareGame=$('#pShareGame').checked;cfg.shareYt=$('#pShareYt').checked;cfg.shareWeb=$('#pShareWeb').checked;cfg.seeOthers=$('#pSeeOthers').checked;save();
-  try{await F.updateDoc(D('users',me.uid),d);pushPresence();renderFriends();closeModal('profModal');toast('Profile saved')}catch(e){toast('Could not save: '+e.message)}};
-$('#pOut').onclick=async()=>{try{await F.setDoc(D('presence',me.uid),{seen:null,act:null})}catch{}await F.signOut(auth);closeModal('profModal')};
+  $('#pSave').disabled=true;try{await F.updateDoc(D('users',me.uid),d);pushPresence();renderFriends();toast('Profile saved ✨')}catch(e){toast('Could not save: '+e.message)}$('#pSave').disabled=false};
+$('#pOut').onclick=async()=>{try{await F.setDoc(D('presence',me.uid),{seen:null,act:null})}catch{}await F.signOut(auth);L.go('games')};
+$('#pResetPw').onclick=async()=>{try{await F.sendPasswordResetEmail(auth,me.email);toast('Reset email sent to '+me.email)}catch(e){toast(nice(e))}};
+const prevOnView=L.onView;L.onView=v=>{prevOnView?.(v);if(v==='profile'){$('#profSignedOut').style.display=me?'none':'';$('#profWrap').style.display=me?'':'none';if(me)openProfile()}};
 
 /* ---------- someone else's profile ---------- */
 async function showUser(uid){const u=await getUser(uid,uid!==me?.uid);const fr=friendships.find(f=>f.users.includes(uid));
-  const status=uid===me?.uid?'':fr?.status==='accepted'?`<button class="btn-acc" data-dm="${uid}">Message</button><button data-unfriend="${fr.id}">Remove friend</button>`:fr?`<button disabled>Request ${fr.from===me.uid?'sent':'received'}</button>`:`<button class="btn-acc" data-add="${uid}">Add friend</button>`;
-  $('#userCard').innerHTML=`<div class="row" style="gap:16px">${pic(u,84,isOnline(uid))}<div><h2 style="margin:0">${esc(u.name)}</h2><span class="muted" style="font-size:13px">${isOnline(uid)?'Online':'Offline'}</span><div class="act" style="font-size:13px">${actText(uid)}</div></div></div>
-   <p style="margin:16px 0;white-space:pre-wrap">${esc(u.bio)||'<span class="muted">No description yet.</span>'}</p><div class="row">${status}<button data-close>Close</button></div>`;
+  const btns=uid===me?.uid?`<button class="btn-acc" data-goprof>Edit profile</button>`:fr?.status==='accepted'?`<button class="btn-acc" data-dm="${uid}">Message</button><button data-unfriend="${fr.id}">Remove friend</button>`:fr?`<button disabled>Request ${fr.from===me.uid?'sent':'received'}</button>`:`<button class="btn-acc" data-add="${uid}">Add friend</button>`;
+  $('#userCard').innerHTML=card(u,{uid,online:isOnline(uid),act:actText(uid),buttons:btns+'<button data-close>Close</button>'});
+  $('#userCard [data-goprof]')?.addEventListener('click',()=>{closeModal('userModal');L.go('profile')});
   bindPeople($('#userCard'));openModal('userModal')}
 
 /* ---------- presence & activity ---------- */

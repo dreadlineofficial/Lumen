@@ -8,7 +8,7 @@
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/app.css?v=20261116b">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -21,6 +21,7 @@
     <button class="nav-btn" data-v="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a7 7 0 0 1 14 0v1M17 11a4 4 0 0 0 0-8M23 21v-1a7 7 0 0 0-5-6.7"/></svg><span>Friends</span><em class="badge" id="reqBadge" style="display:none;font-style:normal"></em></button>
     <button class="nav-btn" data-v="posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h6"/></svg><span>Posts</span></button>
     <button class="nav-btn" data-v="timetable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Timetable</span></button>
+    <button class="nav-btn" data-v="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg><span>Profile</span></button>
     <button class="nav-btn" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Settings</span></button>
     <div class="spacer"></div>
     <button class="me-chip" id="meChip"><div class="pic" id="mePic" style="width:38px;height:38px">?</div><div><div class="nm" id="meName">Sign in</div><div class="st" id="meSt">Accounts, friends &amp; posts</div></div></button>
@@ -86,6 +87,38 @@
       <p class="sub">These show first in study mode. Links work.</p>
       <div class="card"><table><thead><tr><th style="width:160px">Subject</th><th>Notes (one per line)</th><th></th></tr></thead><tbody id="matBody"></tbody></table>
       <button id="matAdd" style="margin-top:10px">+ Add subject notes</button></div>
+    </section>
+
+    <section class="view" id="v-profile">
+      <h1>Be <span class="serif iri">you.</span></h1><p class="sub" id="profSub">Shape how friends see you. The preview updates as you type.</p>
+      <div id="profSignedOut" class="banner" style="display:none">Sign in (bottom-left) to set up your profile.</div>
+      <div class="prof-wrap" id="profWrap">
+        <div class="prof-edit">
+          <div class="card"><h2>Look</h2>
+            <label>Banner</label><div class="row" style="flex-wrap:wrap"><button id="pBanBtn">Upload banner</button><input type="file" id="pBanIn" accept="image/*" hidden><button id="pBanDel">Remove</button></div>
+            <div class="swatches" id="pSwatches"></div>
+            <label>Profile picture</label><div class="row" style="flex-wrap:wrap"><button id="pPicBtn">Upload picture</button><input type="file" id="pPicIn" accept="image/*" hidden><button id="pPicDel">Remove</button></div>
+            <label>Profile colour</label><input type="color" id="pColor" style="height:42px;padding:4px">
+          </div>
+          <div class="card"><h2>About</h2>
+            <div class="row"><div style="flex:2"><label>Display name</label><input id="pName" maxlength="24"></div><div style="flex:1"><label>Pronouns</label><input id="pPron" maxlength="20" placeholder="optional"></div></div>
+            <label>Status</label><div class="row"><input id="pEmoji" maxlength="4" style="width:64px;text-align:center" placeholder="😎"><input id="pStatus" maxlength="80" placeholder="What's up?"></div>
+            <label>About me</label><textarea id="pBio" rows="4" maxlength="300"></textarea>
+            <label>Favourite game</label><input id="pFav" maxlength="40" placeholder="Nightbound">
+            <label>Links (one per line, up to 3)</label><textarea id="pLinks" rows="3" maxlength="400" placeholder="https://…"></textarea>
+          </div>
+          <div class="card"><h2>Privacy</h2>
+            <label class="chk"><input type="checkbox" id="pShare"> Let friends see what I'm doing</label>
+            <div style="padding-left:24px"><label class="chk"><input type="checkbox" id="pShareGame"> Which game I'm playing</label><label class="chk"><input type="checkbox" id="pShareYt"> Which YouTube video I'm watching</label><label class="chk"><input type="checkbox" id="pShareWeb"> Which site I have open</label></div>
+            <label class="chk"><input type="checkbox" id="pSeeOthers"> Show what my friends are doing</label>
+            <p class="muted" style="font-size:12px">Study mode and panic are never shared.</p>
+          </div>
+          <div class="card"><h2>Account</h2><p class="muted" id="pEmail" style="margin:4px 0 10px"></p>
+            <div class="row" style="flex-wrap:wrap"><button id="pResetPw">Send password reset email</button><button id="pOut" style="color:var(--danger)">Sign out</button></div></div>
+          <button class="btn-acc" id="pSave" style="padding:13px 30px;align-self:flex-start">Save profile</button>
+        </div>
+        <div class="prof-prev"><div class="label-sm">Preview</div><div id="pPreview"></div></div>
+      </div>
     </section>
 
     <section class="view" id="v-settings">
@@ -161,20 +194,6 @@
   <p style="font-size:13px;margin:14px 0 0" class="muted"><a href="#" id="authSwap" style="color:var(--text)">New here? Create an account</a> · <a href="#" id="authReset" style="color:var(--mute)">Forgot password</a> · <a href="#" data-close style="color:var(--mute)">Close</a></p>
 </div></div>
 
-<!-- my profile modal -->
-<div class="modal" id="profModal"><div class="card">
-  <h2>Your profile</h2>
-  <div class="row" style="margin-top:12px;gap:16px"><div class="pic" id="pPic" style="width:84px;height:84px;font-size:28px"></div><div><button id="pPicBtn">Change picture</button><input type="file" id="pPicIn" accept="image/*" hidden><br><button id="pPicDel" style="margin-top:6px;font-size:12px;padding:6px 12px">Remove</button></div></div>
-  <label>Display name</label><input id="pName" maxlength="24">
-  <label>About me</label><textarea id="pBio" rows="3" maxlength="300"></textarea>
-  <h2 style="margin-top:20px">Privacy</h2>
-  <label class="chk"><input type="checkbox" id="pShare"> Let friends see what I'm doing</label>
-  <div style="padding-left:24px"><label class="chk"><input type="checkbox" id="pShareGame"> Which game I'm playing</label><label class="chk"><input type="checkbox" id="pShareYt"> Which YouTube video I'm watching</label><label class="chk"><input type="checkbox" id="pShareWeb"> Which site I have open</label></div>
-  <label class="chk"><input type="checkbox" id="pSeeOthers"> Show what my friends are doing</label>
-  <p class="muted" style="font-size:12px">Study mode and panic are never shared.</p>
-  <div class="row" style="margin-top:16px"><button class="btn-acc" id="pSave" style="flex:1">Save</button><button id="pOut">Sign out</button><button data-close>Close</button></div>
-</div></div>
-
 <!-- someone else's profile -->
 <div class="modal" id="userModal"><div class="card" id="userCard"></div></div>
 
@@ -206,9 +225,9 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js"></script>
-<script src="js/study.js"></script>
-<script src="js/app.js"></script>
-<script type="module" src="js/cloud.js"></script>
+<script src="js/config.js?v=20261116b"></script>
+<script src="js/study.js?v=20261116b"></script>
+<script src="js/app.js?v=20261116b"></script>
+<script type="module" src="js/cloud.js?v=20261116b"></script>
 </body>
 </html>

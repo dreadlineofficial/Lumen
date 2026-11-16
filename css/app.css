@@ -150,3 +150,20 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
 .msg .bub img.gif{max-width:220px;border-radius:12px;display:block;margin-top:4px}
 .muted{color:var(--mute)}
 @media(max-width:760px){.two{grid-template-columns:1fr}#viewer{inset:0;left:0;border-radius:0}}
+
+.prof-wrap{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+.prof-edit{display:flex;flex-direction:column;gap:20px}
+.prof-prev{position:sticky;top:20px}.label-sm{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-bottom:10px}
+.pcard{border-radius:28px;overflow:hidden;background:rgba(20,20,28,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 30px 80px -20px #000;border:1px solid var(--line)}
+.pcard .ban{height:120px;background-size:cover;background-position:center}
+.pcard .body{padding:0 22px 22px;margin-top:-46px}
+.pcard .pic{border:4px solid #14151c}
+.pcard h3{font-size:24px;margin:10px 0 0;letter-spacing:-.03em}.pcard .pron{color:var(--mute);font-size:13px;font-weight:400;margin-left:6px}
+.pcard .stat{margin-top:6px;font-size:14px}
+.pcard .sect{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.pcard .sect b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+.pcard .sect p{margin:0;white-space:pre-wrap;word-wrap:break-word}
+.pcard .sect a{color:var(--pc,#d6b8ff);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.swatches button{width:34px;height:34px;padding:0;border-radius:10px}
+#userModal .card{padding:0;width:min(420px,100%)}#userModal .pcard{background:transparent;border:0;box-shadow:none}
+@media(max-width:1000px){.prof-wrap{grid-template-columns:1fr}.prof-prev{position:static}}
