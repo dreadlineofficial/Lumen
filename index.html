@@ -8,206 +8,133 @@
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#06070b;--panel:rgba(255,255,255,.06);--panel2:rgba(255,255,255,.1);--line:rgba(255,255,255,.12);--text:#f4f2ee;--mute:rgba(244,242,238,.58);--acc:#7c5cff;--acc2:#22d3ee;--danger:#ff5c7a;--r:28px;--ease:cubic-bezier(.16,1,.3,1)}
-*{box-sizing:border-box}html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--text);font:15px/1.5 "Inter Tight",system-ui,sans-serif;letter-spacing:-.01em;overflow:hidden;-webkit-font-smoothing:antialiased}
-.serif{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400}
-.iri{background:linear-gradient(100deg,#9fb4ff,#d6b8ff 30%,#ffc59e 60%,#9ff0e6 90%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:iri 10s ease-in-out infinite alternate}
-@keyframes iri{to{background-position:100% 0}}
-.bgfx{position:fixed;inset:0;z-index:-2;overflow:hidden}
-.orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.6;animation:drift 28s ease-in-out infinite alternate}
-.o1{width:55vmax;height:55vmax;background:radial-gradient(circle,var(--acc),transparent 65%);top:-20%;left:-15%}
-.o2{width:50vmax;height:50vmax;background:radial-gradient(circle,#9b6bff,transparent 65%);top:10%;right:-20%;animation-delay:-8s}
-.o3{width:45vmax;height:45vmax;background:radial-gradient(circle,#ff9a5c,transparent 65%);bottom:-25%;left:15%;opacity:.4;animation-delay:-14s}
-.o4{width:35vmax;height:35vmax;background:radial-gradient(circle,var(--acc2),transparent 65%);bottom:5%;right:5%;opacity:.35;animation-delay:-20s}
-@keyframes drift{50%{transform:translate3d(6vw,-5vh,0) scale(1.1)}100%{transform:translate3d(-4vw,6vh,0) scale(.95)}}
-.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.glass,nav,.card{position:relative;isolation:isolate;background:linear-gradient(135deg,rgba(255,255,255,.13),rgba(255,255,255,.03) 45%,rgba(255,255,255,.06));backdrop-filter:blur(24px) saturate(190%);-webkit-backdrop-filter:blur(24px) saturate(190%);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -1px 0 rgba(255,255,255,.06),0 30px 80px -20px rgba(0,0,0,.6)}
-.card::before,nav::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(140deg,rgba(255,255,255,.6),rgba(255,255,255,.06) 30%,transparent 55%,rgba(255,255,255,.2) 85%,rgba(255,255,255,.5));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
-button{cursor:pointer;border:0;border-radius:999px;padding:10px 18px;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.25);transition:transform .5s var(--ease),background .4s var(--ease);font-weight:500}
-button:hover{background:rgba(255,255,255,.18);transform:translateY(-1px)}
-.btn-acc{background:var(--text);color:#0a0a0f;box-shadow:0 10px 40px -10px rgba(255,255,255,.4)}
-.btn-acc:hover{background:#fff}
-.btn-danger{background:linear-gradient(135deg,#ff5c7a,#ff9a5c);color:#fff;font-weight:600;box-shadow:0 10px 40px -10px rgba(255,92,122,.7)}
-input,select,textarea{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:14px;padding:10px 14px;width:100%;outline:none;transition:border-color .3s}
-select option{background:#14151c}
-input:focus,select:focus,textarea:focus{border-color:rgba(255,255,255,.45)}
-label{display:block;font-size:12px;color:var(--mute);margin:14px 0 6px;font-weight:500;letter-spacing:.02em}
-.app{display:grid;grid-template-columns:250px 1fr;height:100vh;gap:0}
-nav{margin:16px 0 16px 16px;border-radius:30px;display:flex;flex-direction:column;padding:22px 14px;gap:4px}
-.logo{font-family:"Instrument Serif",serif;font-style:italic;font-size:34px;padding:0 12px 22px;background:linear-gradient(100deg,#9fb4ff,#d6b8ff 40%,#ffc59e 80%);-webkit-background-clip:text;color:transparent}
-.nav-btn{display:flex;align-items:center;gap:12px;text-align:left;background:none;box-shadow:none;color:var(--mute);padding:12px 14px;border-radius:16px}
-.nav-btn:hover{background:rgba(255,255,255,.07);transform:none;color:var(--text)}
-.nav-btn.on{background:rgba(255,255,255,.12);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
-.nav-btn svg{width:18px;height:18px;flex:none}
-.spacer{flex:1}
-.panic{margin-top:8px;padding:15px;font-size:15px}
-#studyBtn{padding:13px}
-.hint{font-size:11px;color:var(--mute);text-align:center;margin-top:8px}
-main{overflow:auto;position:relative}
-.view{display:none;padding:56px 40px 40px;max-width:1180px;margin:0 auto}
-.view.on{display:block;animation:rise 1s var(--ease)}
-@keyframes rise{from{opacity:0;transform:translateY(30px);filter:blur(10px)}}
-h1{font-size:clamp(44px,6vw,84px);font-weight:600;letter-spacing:-.05em;line-height:.95;margin:0 0 14px}
-h2{font-size:20px;font-weight:600;letter-spacing:-.03em;margin:0 0 6px}
-.sub{color:var(--mute);margin:0 0 34px;font-size:17px;max-width:620px}
-.card{background-color:transparent;border-radius:var(--r);padding:26px}
-.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
-.game-card{overflow:hidden;padding:0;cursor:pointer;transition:transform .7s var(--ease)}
-.game-card:hover{transform:translateY(-6px) scale(1.01)}
-.game-art{height:190px;display:grid;place-items:center;font-family:"Instrument Serif",serif;font-style:italic;font-size:46px;letter-spacing:0;text-shadow:0 4px 30px currentColor}
-.game-card .meta{padding:18px 22px 22px}
-.game-card .meta b{display:block;font-size:19px;letter-spacing:-.03em}.game-card .meta span{color:var(--mute);font-size:13px}
-#gameFrameWrap{position:fixed;inset:16px;left:282px;border-radius:30px;overflow:hidden;background:#000;display:none;z-index:5;box-shadow:0 30px 80px -20px #000}
-#gameFrameWrap iframe{border:0;width:100%;height:100%}
-#gameBar{position:absolute;top:12px;right:12px;display:flex;gap:8px;z-index:2}
-#gameBar button{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-.chat{display:grid;grid-template-columns:210px 1fr;height:calc(100vh - 250px);min-height:420px;padding:0;overflow:hidden}
-.rooms{border-right:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:4px;overflow:auto}
-.room{background:none;box-shadow:none;text-align:left;color:var(--mute);padding:10px 14px;border-radius:14px}.room:hover{transform:none}.room.on{background:rgba(255,255,255,.12);color:var(--text)}
-.chat-main{display:flex;flex-direction:column;min-width:0}
-.chat-head{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-.status{font-size:12px;color:var(--mute)}.status i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px}
-.status.ok i{background:#4ade80;box-shadow:0 0 10px #4ade80}
-#msgs{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:12px}
-.msg{display:flex;gap:10px;max-width:78%;animation:rise .6s var(--ease)}.msg.me{align-self:flex-end;flex-direction:row-reverse}
-.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:13px;flex:none;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
-.bub{background:rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.15);padding:9px 14px;border-radius:18px;word-wrap:break-word;min-width:0}
-.msg.me .bub{background:var(--text);color:#0a0a0f}
-.bub a{color:inherit}
-.bub small{display:block;font-size:11px;opacity:.6;margin-bottom:2px}
-.sysmsg{align-self:center;font-size:13px;color:var(--mute);margin:auto}
-.chat-in{display:flex;gap:8px;padding:14px;border-top:1px solid var(--line)}
-.chat-in input{border-radius:999px;padding:12px 18px}
-.set-grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
-.row{display:flex;gap:8px;align-items:center}
-.chk{display:flex;gap:10px;align-items:center;margin-top:14px;color:var(--text);font-size:14px}.chk input{width:auto;accent-color:#d6b8ff}
-input[type=color]{border-radius:14px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{color:var(--mute);font-weight:500;font-size:12px}
-th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
-td input,td select{padding:7px 10px}
-.x{background:none;box-shadow:none;color:var(--danger);padding:4px 10px}
-code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:12px}
-.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:rgba(20,20,28,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--line);padding:12px 22px;border-radius:999px;opacity:0;transition:.6s var(--ease);z-index:99;pointer-events:none}
-.toast.show{opacity:1;transform:translate(-50%,0)}
-kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px}
-/* ===== STUDY MODE: looks like a plain school portal ===== */
-#study{display:none;position:fixed;inset:0;background:#f6f8fc;color:#202124;font-family:Arial,Helvetica,sans-serif;overflow:auto;z-index:50}
-#study.on{display:block}
-.s-top{background:#fff;border-bottom:1px solid #dadce0;padding:12px 24px;display:flex;align-items:center;gap:14px;position:sticky;top:0}
-.s-top .s-logo{width:34px;height:34px;border-radius:50%;background:#1a73e8;color:#fff;display:grid;place-items:center;font-weight:700}
-.s-top b{font-size:18px;font-weight:400;color:#3c4043}
-.s-wrap{max-width:900px;margin:24px auto;padding:0 20px}
-.s-banner{border-radius:10px;padding:26px;color:#fff;margin-bottom:20px;background:#1967d2}
-.s-banner h1{font-size:30px;font-weight:400;margin:0}.s-banner p{margin:6px 0 0;opacity:.9}
-.s-card{background:#fff;border:1px solid #dadce0;border-radius:10px;padding:22px;margin-bottom:16px;line-height:1.65}
-.s-card h2{font-size:18px;font-weight:500;color:#1967d2;margin:0 0 10px}
-.s-card h3{font-size:15px;margin:16px 0 6px}
-.s-card a{color:#1a73e8}
-.s-card ul{padding-left:20px;margin:6px 0}
-.s-q{background:#f1f3f4;border-radius:8px;padding:10px 14px;margin:6px 0}
-.s-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-.s-tabs button{background:#fff;border:1px solid #dadce0;color:#3c4043;border-radius:20px;padding:6px 14px;font-family:inherit}
-.s-tabs button.on{background:#e8f0fe;border-color:#1a73e8;color:#1967d2}
-@media(max-width:760px){body{overflow:auto}.app{grid-template-columns:1fr;height:auto}nav{flex-direction:row;overflow:auto;padding:8px;margin:12px;position:sticky;top:12px;z-index:6}.view{padding:28px 16px}#gameFrameWrap{inset:0;border-radius:0}.logo,.spacer,.hint{display:none}.nav-btn span{display:none}#gameFrameWrap{left:0}.chat{grid-template-columns:1fr}.rooms{display:none}.view{padding:16px}}
-</style>
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
 <div class="app" id="app">
   <nav>
-    <div class="logo" id="brand">Hub</div>
+    <div class="logo" id="brand">Lumen</div>
     <button class="nav-btn on" data-v="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg><span>Games</span></button>
+    <button class="nav-btn" data-v="web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span>Web</span></button>
     <button class="nav-btn" data-v="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
+    <button class="nav-btn" data-v="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a7 7 0 0 1 14 0v1M17 11a4 4 0 0 0 0-8M23 21v-1a7 7 0 0 0-5-6.7"/></svg><span>Friends</span><em class="badge" id="reqBadge" style="display:none;font-style:normal"></em></button>
+    <button class="nav-btn" data-v="posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h6"/></svg><span>Posts</span></button>
     <button class="nav-btn" data-v="timetable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Timetable</span></button>
-    <button class="nav-btn" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+    <button class="nav-btn" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Settings</span></button>
     <div class="spacer"></div>
-    <button class="btn-acc" id="studyBtn">📘 Study mode</button>
+    <button class="me-chip" id="meChip"><div class="pic" id="mePic" style="width:38px;height:38px">?</div><div><div class="nm" id="meName">Sign in</div><div class="st" id="meSt">Accounts, friends &amp; posts</div></div></button>
+    <div class="row"><button class="btn-acc" id="studyBtn" style="flex:1">📘 Study</button><button id="jumpBtn" title="Switch to another page">↗ Switch</button></div>
     <button class="btn-danger panic" id="panicBtn">⚡ PANIC</button>
-    <div class="hint">Panic: <kbd id="kPanic">`</kbd> · Study: <kbd id="kStudy">v</kbd></div>
+    <div class="hint">Panic <kbd id="kPanic">`</kbd> · Study <kbd id="kStudy">v</kbd> · Swap <kbd id="kSwap">b</kbd></div>
   </nav>
   <main>
-    <!-- GAMES -->
     <section class="view on" id="v-games">
-      <h1>Play <span class="serif iri">anything.</span></h1><p class="sub">Click to play. Your panic key still works while playing.</p>
+      <h1>Play <span class="serif iri">anything.</span></h1><p class="sub">Click to play. Press your Swap key to flip to study notes and back without losing your game.</p>
       <div class="grid" id="gameGrid"></div>
     </section>
-    <!-- CHAT -->
+
+    <section class="view" id="v-web">
+      <h1>Browse <span class="serif iri">inside.</span></h1><p class="sub">Open any page inside Lumen. YouTube links play here too. Some sites refuse to open inside other sites; use “Open cloaked” for those.</p>
+      <form class="urlbar" id="urlForm"><input id="urlIn" placeholder="Paste a link or type a site, e.g. youtube.com/watch?v=…" autocomplete="off"><button class="btn-acc">Open</button></form>
+      <div class="grid" id="webGrid"></div>
+    </section>
+
     <section class="view" id="v-chat">
-      <h1>Talk <span class="serif iri">freely.</span></h1><p class="sub">Live rooms. Anyone using the same room name sees your messages, so share the room name only with friends.</p>
+      <h1>Talk <span class="serif iri">freely.</span></h1><p class="sub" id="chatSub">Public rooms and private chats with friends.</p>
       <div class="card chat">
         <div class="rooms" id="roomList"></div>
         <div class="chat-main">
-          <div class="chat-head"><b id="roomName">#general</b><span class="status" id="status"><i></i>Connecting…</span></div>
+          <div class="chat-head"><b id="roomName">#general</b><span class="status" id="status"><i></i>Offline</span></div>
           <div id="msgs"></div>
-          <form class="chat-in" id="chatForm"><input id="chatInput" placeholder="Message…" maxlength="500" autocomplete="off"><button class="btn-acc">Send</button></form>
+          <form class="chat-in" id="chatForm"><button type="button" id="chatGif" title="GIF">GIF</button><input id="chatInput" placeholder="Message…" maxlength="1000" autocomplete="off"><button class="btn-acc">Send</button></form>
         </div>
       </div>
     </section>
-    <!-- TIMETABLE -->
-    <section class="view" id="v-timetable">
-      <h1>Your <span class="serif iri">timetable.</span></h1><p class="sub">Upload or type your timetable. Study mode opens notes for whatever class is on right now.</p>
-      <div class="card" style="margin-bottom:16px">
-        <div class="row" style="flex-wrap:wrap">
-          <button id="ttImgBtn" class="btn-acc">📷 Upload timetable photo</button>
-          <input type="file" id="ttImg" accept="image/*" hidden>
-          <button id="ttUploadBtn">⬆ CSV / text</button>
-          <input type="file" id="ttFile" accept=".csv,.txt,.tsv" hidden>
-          <button id="ttAdd">+ Add class</button>
-          <button id="ttSample">Load example</button>
-          <button id="ttExport">⬇ Export CSV</button>
-          </div><div id="ocrBox" style="margin-top:14px;color:var(--mute);font-size:13px">Upload a photo or screenshot of your timetable. Lumen reads it on your device, works out which class is at each time, and fills the table below. Check the results and fix anything it got wrong. Works best with a clear, straight picture that shows the day names and times.</div><div class="row" style="display:none">
+
+    <section class="view" id="v-friends">
+      <h1>Your <span class="serif iri">people.</span></h1><p class="sub">Add friends by name to chat privately and see what they're up to (if they share it).</p>
+      <div class="two">
+        <div>
+          <div class="card" style="margin-bottom:20px"><h2>Find people</h2><form class="row" id="findForm" style="margin-top:10px"><input id="findIn" placeholder="Search by name"><button class="btn-acc">Search</button></form><div class="list" id="findList" style="margin-top:12px"></div></div>
+          <div class="card"><h2>Requests</h2><div class="list" id="reqList" style="margin-top:12px"></div></div>
         </div>
+        <div class="card"><h2>Friends</h2><div class="list" id="friendList" style="margin-top:12px"></div></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-posts">
+      <h1>What's <span class="serif iri">new.</span></h1><p class="sub">Post anything. Everyone signed in can see posts and comment.</p>
+      <div style="max-width:720px">
+        <div class="card composer" style="margin-bottom:22px">
+          <textarea id="postText" maxlength="2000" placeholder="Say something…"></textarea>
+          <img id="postThumb" class="thumb" style="display:none">
+          <div class="row" style="margin-top:10px"><button id="postImgBtn">🖼 Image</button><input type="file" id="postImg" accept="image/*" hidden><button id="postImgClear" style="display:none">Remove image</button><span class="spacer" style="flex:1"></span><button class="btn-acc" id="postBtn">Post</button></div>
+        </div>
+        <div id="feed"></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-timetable">
+      <h1>Your <span class="serif iri">timetable.</span></h1><p class="sub">Add your classes. Study mode opens notes for whatever class is on right now, at your grade level.</p>
+      <div class="card" style="margin-bottom:16px">
+        <div class="row" style="flex-wrap:wrap"><button id="ttAdd" class="btn-acc">+ Add class</button><button id="ttSample">Load example</button><button id="ttUploadBtn">⬆ Import CSV</button><input type="file" id="ttFile" accept=".csv,.txt,.tsv" hidden><button id="ttExport">⬇ Export CSV</button></div>
         <div id="nowBox" style="margin-top:14px;color:var(--mute)"></div>
       </div>
       <div class="card"><table><thead><tr><th>Day</th><th>Start</th><th>End</th><th>Subject</th><th></th></tr></thead><tbody id="ttBody"></tbody></table></div>
-      <h2 style="margin-top:26px">Study material per subject</h2>
-      <p class="sub">Built-in notes exist for Maths, English, Science, Biology, Chemistry, Physics, History, Geography, Computing, French, Spanish. Add your own notes or links for any subject; they show at the top of study mode.</p>
-      <div class="card"><table><thead><tr><th style="width:160px">Subject</th><th>Your notes (one per line, links work)</th><th></th></tr></thead><tbody id="matBody"></tbody></table>
-      <button id="matAdd" style="margin-top:10px">+ Add subject material</button></div>
+      <h2 style="margin-top:26px">Your own notes per subject</h2>
+      <p class="sub">These show first in study mode. Links work.</p>
+      <div class="card"><table><thead><tr><th style="width:160px">Subject</th><th>Notes (one per line)</th><th></th></tr></thead><tbody id="matBody"></tbody></table>
+      <button id="matAdd" style="margin-top:10px">+ Add subject notes</button></div>
     </section>
-    <!-- SETTINGS -->
+
     <section class="view" id="v-settings">
-      <h1>Make it <span class="serif iri">yours.</span></h1><p class="sub">Everything is saved in this browser only.</p>
+      <h1>Make it <span class="serif iri">yours.</span></h1><p class="sub">Saved in this browser. Your profile and privacy are under your account (bottom-left).</p>
       <div class="set-grid">
         <div class="card"><h2>⚡ Panic button</h2>
           <label>When panic is pressed</label>
-          <select id="s_panicAction"><option value="redirect">Leave and open my safe page</option><option value="study">Switch to study mode</option></select>
-          <label>Safe page (opens in place of this site)</label><input id="s_panicUrl" placeholder="https://www.google.com">
-          <label>Panic key</label><input id="s_panicKey" readonly placeholder="Click, then press a key">
-          <label>Study-mode key</label><input id="s_studyKey" readonly placeholder="Click, then press a key">
-          <label class="chk"><input type="checkbox" id="s_wipe"> Clear this site's saved chat history on panic</label>
-          <label class="chk"><input type="checkbox" id="s_startStudy"> Always open in study mode</label>
+          <select id="s_panicAction"><option value="redirect">Leave and open my safe page</option><option value="close">Close the tab (falls back to safe page)</option><option value="study">Switch to study mode</option></select>
+          <label>Safe page</label><input id="s_panicUrl" placeholder="https://www.google.com">
+          <label class="chk"><input type="checkbox" id="s_histDisguise"> Disguise this visit in history</label>
+          <label>Show in history as</label><input id="s_histTitle" placeholder="Google Classroom">
+          <label class="chk"><input type="checkbox" id="s_wipe"> Clear saved data for this visit on panic</label>
           <label class="chk"><input type="checkbox" id="s_blurPanic"> Also panic when I switch away from this tab</label>
+          <p class="muted" style="font-size:12px;margin:10px 0 0">Browsers only let a site close tabs that it opened itself. Use “Stealth launch” (Disguise card) so Close always works.</p>
+        </div>
+        <div class="card"><h2>⌨ Keys &amp; modes</h2>
+          <label>Panic key</label><input id="s_panicKey" readonly>
+          <label>Study mode key (closes what's open)</label><input id="s_studyKey" readonly>
+          <label>Swap key (flips to notes, keeps your game)</label><input id="s_swapKey" readonly>
+          <label class="chk"><input type="checkbox" id="s_startStudy"> Always open in study mode</label>
+          <label class="chk"><input type="checkbox" id="s_swapMute"> Mute the game while swapped</label>
+        </div>
+        <div class="card"><h2>🎓 Study material</h2>
+          <label>Your grade / year</label>
+          <select id="s_grade">
+            <option value="lower">Grades 6–8 · Years 7–9</option>
+            <option value="mid">Grades 9–10 · Years 10–11 (GCSE)</option>
+            <option value="upper">Grades 11–12 · Years 12–13 (A-level)</option>
+          </select>
+          <label>Study portal name</label><input id="s_portal" placeholder="Learning Portal">
         </div>
         <div class="card"><h2>🕶 Disguise</h2>
-          <label>Tab title</label><input id="s_title" placeholder="Hub">
+          <label>Tab title</label><input id="s_title" placeholder="Lumen">
           <label>Tab icon (site to copy icon from)</label><input id="s_icon" placeholder="classroom.google.com">
-          <div class="row" style="margin-top:8px;flex-wrap:wrap">
-            <button data-preset="Google Docs|docs.google.com">Docs</button><button data-preset="Classes|classroom.google.com">Classroom</button><button data-preset="Google|google.com">Google</button><button data-preset="Hub|">None</button>
-          </div>
-          <label>Study portal name</label><input id="s_portal" placeholder="Learning Portal">
-          <label>Stealth launch</label>
-          <button id="stealthBtn" style="width:100%">Open hub in an about:blank tab</button>
-          <p style="color:var(--mute);font-size:12px;margin:8px 0 0">Opens the hub inside a blank tab, so its address never shows in the address bar or history. Panic then turns that tab into your safe page.</p>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap"><button data-preset="Google Docs|docs.google.com">Docs</button><button data-preset="Classes|classroom.google.com">Classroom</button><button data-preset="Google|google.com">Google</button><button data-preset="Lumen|">None</button></div>
+          <label>Stealth launch</label><button id="stealthBtn" style="width:100%">Open Lumen in an about:blank tab</button>
+          <p class="muted" style="font-size:12px;margin:8px 0 0">The address never shows in the address bar or history, and panic can close the tab.</p>
         </div>
         <div class="card"><h2>🎨 Appearance</h2>
-          <label>Hub name</label><input id="s_brand" placeholder="Hub">
+          <label>Hub name</label><input id="s_brand" placeholder="Lumen">
           <label>Accent colours</label><div class="row"><input type="color" id="s_acc" style="height:42px;padding:4px"><input type="color" id="s_acc2" style="height:42px;padding:4px"></div>
-          <label>Background</label><select id="s_bg"><option value="#0d0f14">Midnight</option><option value="#0b1410">Forest</option><option value="#140b12">Plum</option><option value="#000000">OLED black</option></select>
+          <label>Background</label><select id="s_bg"><option value="#06070b">Midnight</option><option value="#0b1410">Forest</option><option value="#140b12">Plum</option><option value="#000000">OLED black</option></select>
         </div>
-        <div class="card"><h2>💬 Chat</h2>
-          <label>Display name</label><input id="s_name" maxlength="24">
-          <label>Rooms (comma separated)</label><input id="s_rooms">
-          <label>Private room prefix (only people with the same prefix see you)</label><input id="s_prefix" placeholder="e.g. ourgroup42">
-          <label>Relay server (MQTT over WebSocket)</label><input id="s_broker">
-        </div>
-        <div class="card"><h2>🎮 Games</h2>
+        <div class="card"><h2>🎮 Games &amp; web</h2>
           <label>Nightbound address</label><input id="s_nbUrl">
-          <label>Extra games (one per line: <code>Name | URL</code>)</label><textarea id="s_extra" rows="4" placeholder="My Game | https://example.com/game"></textarea>
+          <label>Extra games (one per line: <code>Name | URL</code>)</label><textarea id="s_extra" rows="3"></textarea>
+          <label>“Switch to” pages (one per line: <code>Name | URL</code>)</label><textarea id="s_jumpLinks" rows="3"></textarea>
+          <label>Web shortcuts (one per line: <code>Name | URL</code>)</label><textarea id="s_webLinks" rows="4"></textarea>
+          <label>Chat rooms (comma separated)</label><input id="s_rooms">
         </div>
         <div class="card"><h2>💾 Data</h2>
           <div class="row" style="flex-wrap:wrap"><button id="exportAll">Export settings</button><button id="importAll">Import settings</button><input type="file" id="importFile" accept=".json" hidden><button id="resetAll" style="color:var(--danger)">Reset everything</button></div>
@@ -217,11 +144,60 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
     </section>
   </main>
 </div>
-<div id="gameFrameWrap"><div id="gameBar"><button id="fsBtn">⛶ Fullscreen</button><button id="closeGame">✕ Close</button></div></div>
+
+<div id="viewer"><div id="viewBar"><span class="vt" id="viewTitle"></span><button id="vReload">↻</button><button id="vCloak">Open cloaked</button><button id="fsBtn">⛶</button><button id="closeView">✕ Close</button></div></div>
+
+<!-- account modal -->
+<div class="modal" id="authModal"><div class="card">
+  <h2 id="authH">Sign in to Lumen</h2>
+  <p class="muted" style="margin:0 0 6px;font-size:13px">Needed for chat, friends and posts.</p>
+  <form id="authForm">
+    <div id="nameRow"><label>Display name</label><input id="aName" maxlength="24"></div>
+    <label>Email</label><input id="aEmail" type="email" autocomplete="email" required>
+    <label>Password</label><input id="aPass" type="password" minlength="6" autocomplete="current-password" required>
+    <p id="authErr" style="color:var(--danger);font-size:13px;min-height:18px;margin:8px 0"></p>
+    <div class="row"><button class="btn-acc" id="authGo" style="flex:1">Sign in</button><button type="button" id="authGoogle">Google</button></div>
+  </form>
+  <p style="font-size:13px;margin:14px 0 0" class="muted"><a href="#" id="authSwap" style="color:var(--text)">New here? Create an account</a> · <a href="#" id="authReset" style="color:var(--mute)">Forgot password</a> · <a href="#" data-close style="color:var(--mute)">Close</a></p>
+</div></div>
+
+<!-- my profile modal -->
+<div class="modal" id="profModal"><div class="card">
+  <h2>Your profile</h2>
+  <div class="row" style="margin-top:12px;gap:16px"><div class="pic" id="pPic" style="width:84px;height:84px;font-size:28px"></div><div><button id="pPicBtn">Change picture</button><input type="file" id="pPicIn" accept="image/*" hidden><br><button id="pPicDel" style="margin-top:6px;font-size:12px;padding:6px 12px">Remove</button></div></div>
+  <label>Display name</label><input id="pName" maxlength="24">
+  <label>About me</label><textarea id="pBio" rows="3" maxlength="300"></textarea>
+  <h2 style="margin-top:20px">Privacy</h2>
+  <label class="chk"><input type="checkbox" id="pShare"> Let friends see what I'm doing</label>
+  <div style="padding-left:24px"><label class="chk"><input type="checkbox" id="pShareGame"> Which game I'm playing</label><label class="chk"><input type="checkbox" id="pShareYt"> Which YouTube video I'm watching</label><label class="chk"><input type="checkbox" id="pShareWeb"> Which site I have open</label></div>
+  <label class="chk"><input type="checkbox" id="pSeeOthers"> Show what my friends are doing</label>
+  <p class="muted" style="font-size:12px">Study mode and panic are never shared.</p>
+  <div class="row" style="margin-top:16px"><button class="btn-acc" id="pSave" style="flex:1">Save</button><button id="pOut">Sign out</button><button data-close>Close</button></div>
+</div></div>
+
+<!-- someone else's profile -->
+<div class="modal" id="userModal"><div class="card" id="userCard"></div></div>
+
+<!-- switch to any page -->
+<div class="modal" id="jumpModal"><div class="card">
+  <h2>Switch to…</h2><p class="muted" style="font-size:13px;margin:0 0 10px">Leaves Lumen right away and opens the page in this tab.</p>
+  <div class="list" id="jumpList"></div>
+  <form class="row" id="jumpForm" style="margin-top:12px"><input id="jumpIn" placeholder="Any address, e.g. docs.google.com"><button class="btn-acc">Go</button></form>
+  <div class="row" style="margin-top:14px"><button data-close>Cancel</button></div>
+</div></div>
+
+<!-- gif picker -->
+<div class="modal" id="gifModal"><div class="card">
+  <h2>Add a GIF</h2>
+  <form class="row" id="gifForm" style="margin-top:10px"><input id="gifQ" placeholder="Search GIFs"><button class="btn-acc">Search</button></form>
+  <div class="gifgrid" id="gifGrid"></div>
+  <label>…or paste a GIF link</label><form class="row" id="gifUrlForm"><input id="gifUrl" placeholder="https://media.giphy.com/….gif"><button>Use</button></form>
+  <div class="row" style="margin-top:14px"><button data-close>Cancel</button></div>
+</div></div>
 
 <!-- STUDY MODE -->
 <div id="study">
-  <div class="s-top"><div class="s-logo" id="sLogo">L</div><b id="sPortal">Learning Portal</b><span style="flex:1"></span><span id="sClock" style="color:#5f6368"></span><button id="sBack" style="background:none;color:#5f6368;padding:6px" title="">·</button></div>
+  <div class="s-top"><div class="s-logo" id="sLogo">L</div><b id="sPortal">Learning Portal</b><span style="flex:1"></span><span id="sClock" style="color:#5f6368"></span><button id="sBack" style="background:none;color:#5f6368;padding:6px;box-shadow:none">·</button></div>
   <div class="s-wrap">
     <div class="s-banner" id="sBanner"><h1 id="sSubject">Maths</h1><p id="sInfo"></p></div>
     <div class="s-tabs" id="sTabs"></div>
@@ -230,253 +206,9 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="mqtt.min.js"></script>
-<script>
-const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const KEY='hub.cfg.v1';
-const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',startStudy:true,wipe:false,blurPanic:false,
- title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#0d0f14',
- name:'Player'+Math.floor(Math.random()*900+100),rooms:'general,games,random',prefix:'',broker:'wss://broker.emqx.io:8084/mqtt',
- nbUrl:'nightbound/index.html',extra:'',timetable:[],materials:[]};
-let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cfg={...DEF}}
-if(cfg.studyKey==='\\')cfg.studyKey='v';
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
-const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800)};
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const linkify=s=>esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
-
-/* ---------- appearance / disguise ---------- */
-function applyLook(){
-  const r=document.documentElement.style;r.setProperty('--acc',cfg.acc);r.setProperty('--acc2',cfg.acc2);r.setProperty('--bg',cfg.bg);
-  $('#brand').textContent=cfg.brand||'Hub';
-  if(!$('#study').classList.contains('on')){document.title=cfg.title||'Hub';
-    $('#fav').href=cfg.icon?'https://www.google.com/s2/favicons?sz=64&domain='+encodeURIComponent(cfg.icon):'data:,';}
-  $('#kPanic').textContent=cfg.panicKey;$('#kStudy').textContent=cfg.studyKey;
-  $('#sPortal').textContent=cfg.portal;$('#sLogo').textContent=(cfg.portal||'L')[0];
-}
-
-/* ---------- navigation ---------- */
-$$('.nav-btn').forEach(b=>b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.toggle('on',x===b));$$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));if(b.dataset.v==='settings')fillSettings();if(b.dataset.v==='timetable')renderTT();});
-
-/* ---------- games ---------- */
-function games(){const g=[{name:'Nightbound',url:cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'}];
-  cfg.extra.split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&p[1].trim()).forEach((p,i)=>g.push({name:p[0].trim(),url:p[1].trim(),desc:'Custom game',art:`linear-gradient(135deg,hsl(${i*70+200} 60% 25%),hsl(${i*70+250} 60% 12%))`,fg:'#fff'}));return g}
-function renderGames(){$('#gameGrid').innerHTML=games().map((g,i)=>`<div class="card game-card" data-i="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${esc(g.name.toUpperCase())}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`).join('');
-  $$('.game-card').forEach(c=>c.onclick=()=>openGame(games()[c.dataset.i].url));}
-function openGame(url){const w=$('#gameFrameWrap');w.querySelector('iframe')?.remove();const f=document.createElement('iframe');f.src=url;f.allow='fullscreen; autoplay; gamepad; microphone';w.appendChild(f);w.style.display='block';
-  // forward panic keys from inside the game (same-origin only)
-  f.onload=()=>{try{f.contentWindow.addEventListener('keydown',onKey,true)}catch{}};}
-function closeGame(){const w=$('#gameFrameWrap');w.querySelector('iframe')?.remove();w.style.display='none';}
-$('#closeGame').onclick=closeGame;$('#fsBtn').onclick=()=>$('#gameFrameWrap').requestFullscreen?.();
-
-/* ---------- chat (MQTT relay) ---------- */
-let client,room,joined=new Set();
-const topic=r=>'hubchat/v1/'+(cfg.prefix?cfg.prefix.trim()+'/':'')+r;
-const colorOf=n=>`hsl(${[...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360} 60% 45%)`;
-const histKey=r=>'hub.chat.'+topic(r);
-function roomsList(){return cfg.rooms.split(',').map(s=>s.trim().replace(/[^\w-]/g,'')).filter(Boolean)}
-function renderRooms(){$('#roomList').innerHTML=roomsList().map(r=>`<button class="room ${r===room?'on':''}" data-r="${r}"># ${r}</button>`).join('');$$('.room').forEach(b=>b.onclick=()=>switchRoom(b.dataset.r));}
-function hist(r){try{return JSON.parse(localStorage.getItem(histKey(r))||'[]')}catch{return[]}}
-function pushHist(r,m){const h=hist(r);h.push(m);try{localStorage.setItem(histKey(r),JSON.stringify(h.slice(-150)))}catch{}}
-function addMsg(m){const d=document.createElement('div');const me=m.n===cfg.name&&m.id===myId;d.className='msg'+(me?' me':'');
-  d.innerHTML=`<div class="av" style="background:${colorOf(m.n)}">${esc(m.n[0]||'?').toUpperCase()}</div><div class="bub"><small>${esc(m.n)} · ${new Date(m.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>${linkify(m.m)}</div>`;
-  $('#msgs').appendChild(d);$('#msgs').scrollTop=1e9;}
-function switchRoom(r){room=r;$('#roomName').textContent='#'+r;$('#msgs').innerHTML='';const h=hist(r);
-  if(!h.length){const s=document.createElement('div');s.className='sysmsg';s.textContent='No messages yet. Say hi 👋';$('#msgs').appendChild(s)}h.forEach(addMsg);renderRooms();}
-const myId=(()=>{let i=sessionStorage.getItem('hub.id');if(!i){i=Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('hub.id',i)}catch{}}return i})();
-function connectChat(){try{client?.end(true)}catch{}const st=$('#status');st.className='status';st.innerHTML='<i></i>Connecting…';
-  if(!window.mqtt){st.innerHTML='<i></i>Chat library blocked';return}
-  client=mqtt.connect(cfg.broker,{clientId:'hub_'+myId+Math.random().toString(36).slice(2,6),reconnectPeriod:3000,connectTimeout:8000});
-  client.on('connect',()=>{st.className='status ok';st.innerHTML='<i></i>Online';roomsList().forEach(r=>client.subscribe(topic(r)));});
-  client.on('offline',()=>{st.className='status';st.innerHTML='<i></i>Reconnecting…'});
-  client.on('message',(t,p)=>{let m;try{m=JSON.parse(p.toString())}catch{return}if(!m||typeof m.m!=='string'||typeof m.n!=='string')return;
-    m.m=m.m.slice(0,500);m.n=m.n.slice(0,24);const r=roomsList().find(x=>topic(x)===t);if(!r)return;pushHist(r,m);
-    if(r===room){$('#msgs .sysmsg')?.remove();addMsg(m)}});}
-$('#chatForm').onsubmit=e=>{e.preventDefault();const v=$('#chatInput').value.trim();if(!v)return;
-  if(!client?.connected)return toast('Not connected yet');client.publish(topic(room),JSON.stringify({n:cfg.name,m:v,t:Date.now(),id:myId}));$('#chatInput').value='';};
-
-/* ---------- timetable ---------- */
-const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const normDay=d=>{d=String(d).trim().slice(0,3).toLowerCase();const i=DAYS.findIndex(x=>x.toLowerCase()===d);return i<0?'Mon':DAYS[i]};
-const normTime=t=>{const m=String(t).trim().match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/i);if(!m)return'09:00';let h=+m[1];const mi=m[2]||'00';if(m[3]){if(/pm/i.test(m[3])&&h<12)h+=12;if(/am/i.test(m[3])&&h===12)h=0}return String(h).padStart(2,'0')+':'+mi};
-function parseTT(text){return text.split(/\r?\n/).map(l=>l.split(/[,\t;|]/).map(s=>s.trim())).filter(p=>p.length>=4&&/^(sun|mon|tue|wed|thu|fri|sat)/i.test(p[0]))
-  .map(p=>({day:normDay(p[0]),start:normTime(p[1]),end:normTime(p[2]),subject:p[3]}))}
-function renderTT(){$('#ttBody').innerHTML=cfg.timetable.map((c,i)=>`<tr><td><select data-i="${i}" data-k="day">${DAYS.map(d=>`<option ${d===c.day?'selected':''}>${d}</option>`).join('')}</select></td>
-  <td><input type="time" data-i="${i}" data-k="start" value="${c.start}"></td><td><input type="time" data-i="${i}" data-k="end" value="${c.end}"></td>
-  <td><input data-i="${i}" data-k="subject" value="${esc(c.subject)}"></td><td><button class="x" data-del="${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--mute)">No classes yet. Upload a file or add one.</td></tr>';
-  $$('#ttBody [data-k]').forEach(e=>e.onchange=()=>{cfg.timetable[e.dataset.i][e.dataset.k]=e.value;save();showNow()});
-  $$('#ttBody [data-del]').forEach(b=>b.onclick=()=>{cfg.timetable.splice(b.dataset.del,1);save();renderTT()});
-  $('#matBody').innerHTML=cfg.materials.map((m,i)=>`<tr><td><input data-mi="${i}" data-k="subject" value="${esc(m.subject)}"></td><td><textarea rows="2" data-mi="${i}" data-k="notes">${esc(m.notes)}</textarea></td><td><button class="x" data-mdel="${i}">✕</button></td></tr>`).join('');
-  $$('#matBody [data-mi]').forEach(e=>e.onchange=()=>{cfg.materials[e.dataset.mi][e.dataset.k]=e.value;save()});
-  $$('#matBody [data-mdel]').forEach(b=>b.onclick=()=>{cfg.materials.splice(b.dataset.mdel,1);save();renderTT()});
-  showNow();}
-const mins=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
-function currentClass(){const d=new Date(),day=DAYS[d.getDay()],n=d.getHours()*60+d.getMinutes();const today=cfg.timetable.filter(c=>c.day===day).sort((a,b)=>mins(a.start)-mins(b.start));
-  const now=today.find(c=>n>=mins(c.start)&&n<mins(c.end));if(now)return{c:now,state:'now'};
-  const next=today.find(c=>mins(c.start)>n);if(next)return{c:next,state:'next'};
-  const prev=today.filter(c=>mins(c.end)<=n).pop();if(prev)return{c:prev,state:'earlier'};return{c:cfg.timetable[0]||{subject:'Maths',start:'',end:''},state:'none'};}
-function showNow(){const{c,state}=currentClass();$('#nowBox').innerHTML=cfg.timetable.length?`Study mode right now would open <b style="color:var(--text)">${esc(c.subject)}</b> (${state==='now'?'on now':state==='next'?'next class':state==='earlier'?'last class today':'no class today'})`:'';}
-$('#ttUploadBtn').onclick=()=>$('#ttFile').click();
-$('#ttFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const rows=parseTT(await f.text());if(!rows.length)return toast('No rows found. Use: Day, Start, End, Subject');
-  cfg.timetable=rows;rows.forEach(r=>{});save();renderTT();toast(`Loaded ${rows.length} classes`);e.target.value=''};
-$('#ttAdd').onclick=()=>{cfg.timetable.push({day:DAYS[new Date().getDay()],start:'09:00',end:'10:00',subject:'Maths'});save();renderTT()};
-$('#ttSample').onclick=()=>{const subs=['Maths','English','Science','History','Geography','Computing','French'];cfg.timetable=[];
-  ['Mon','Tue','Wed','Thu','Fri'].forEach((d,di)=>['08:50','09:50','11:10','12:10','14:00'].forEach((s,i)=>{const[h,m]=s.split(':').map(Number);cfg.timetable.push({day:d,start:s,end:String(h+(m+50>=60?1:0)).padStart(2,'0')+':'+String((m+50)%60).padStart(2,'0'),subject:subs[(di*2+i)%subs.length]})}));save();renderTT()};
-$('#ttExport').onclick=()=>{const csv='Day,Start,End,Subject\n'+cfg.timetable.map(c=>[c.day,c.start,c.end,c.subject].join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='timetable.csv';a.click()};
-$('#matAdd').onclick=()=>{cfg.materials.push({subject:'',notes:''});save();renderTT()};
-
-
-/* ---------- timetable from image (OCR, runs in browser) ---------- */
-const DAYRE=/^(mon|tue|wed|thu|fri|sat|sun)/i;
-const TIMERE=/(\d{1,2})[:.h](\d{2})\s*(am|pm)?/ig;
-let tessP;
-const FULLD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
-function dayMatch(t){t=String(t).toLowerCase().replace(/[^a-z]/g,'');if(t.length<3||t.length>10)return null;
-  if(t.length<=4){const i=FULLD.findIndex(f=>f.startsWith(t.slice(0,3)));return i<0?null:DAYS[i]}
-  let best=null,bd=99;FULLD.forEach((f,i)=>{const d=lev(t,f);if(d<bd){bd=d;best=i}});return bd<=Math.max(2,Math.floor(t.length*.4))?DAYS[best]:null}
-function loadTess(){return tessP||(tessP=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='ocr/tesseract.min.js';sc.onload=ok;sc.onerror=()=>{tessP=null;no(new Error('Could not load the text reader'))};document.head.appendChild(sc)}))}
-async function prepImage(file){const img=await createImageBitmap(file);const sc=Math.min(3,Math.max(1,2000/Math.max(img.width,img.height)));
-  const c=document.createElement('canvas');c.width=img.width*sc;c.height=img.height*sc;const x=c.getContext('2d');x.filter='grayscale(1) contrast(1.4)';x.drawImage(img,0,0,c.width,c.height);return c}
-function toHM(h,m,ap){h=+h;if(ap){ap=ap.toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0}else if(h>=1&&h<=6)h+=12;return String(h).padStart(2,'0')+':'+m}
-function addMin(t,n){let v=mins(t)+n;return String(Math.floor(v/60)%24).padStart(2,'0')+':'+String(v%60).padStart(2,'0')}
-function wordsToTimetable(words){
-  words=words.filter(w=>w.text&&/[a-z0-9]/i.test(w.text)&&(w.confidence>30||dayMatch(w.text))).map(w=>({t:w.text.trim(),x:(w.bbox.x0+w.bbox.x1)/2,y:(w.bbox.y0+w.bbox.y1)/2,h:w.bbox.y1-w.bbox.y0,x0:w.bbox.x0,x1:w.bbox.x1,y0:w.bbox.y0,y1:w.bbox.y1}));
-  // day headers (keep first of each day)
-  const days=[];words.forEach(w=>{const d=dayMatch(w.t);if(d&&!days.find(x=>x.d===d))days.push({d,x:w.x,y:w.y,w})});
-  if(days.length<2)throw new Error('Could not find the day names (Mon, Tue…) in the picture');
-  const xs=days.map(d=>d.x),ys=days.map(d=>d.y);const spread=a=>Math.max(...a)-Math.min(...a);
-  const daysAcross=spread(xs)>spread(ys); // days are columns
-  { // fill in day headers the reader missed, using the spacing of the ones it found
-    const ax=daysAcross?'x':'y';days.sort((p,q)=>p[ax]-q[ax]);const idx=d=>DAYS.indexOf(d.d);
-    const gaps=[];for(let i=1;i<days.length;i++){const n=idx(days[i])-idx(days[i-1]);if(n>0)gaps.push((days[i][ax]-days[i-1][ax])/n)}
-    const g=gaps.sort((p,q)=>p-q)[gaps.length>>1];
-    if(g>0){const lo=days[0],hi=days[days.length-1],other=daysAcross?'y':'x',hd=lo[other];
-      const fill=(from,step,stop)=>{for(let k=1;;k++){const di=idx(from)+step*k;if(di<1||di>6)break;const pos=from[ax]+step*g*k;
-        if(!words.some(w=>Math.abs(w[ax]-pos)<g*.4&&w[other]>hd+5)||stop(pos))break;days.push({d:DAYS[di],[ax]:pos,[other]:hd,w:null})}};
-      fill(hi,1,()=>false);fill(lo,-1,pos=>pos<0);
-      const have=new Set(days.map(d=>d.d));for(let di=idx(lo)+1;di<idx(hi);di++)if(!have.has(DAYS[di]))days.push({d:DAYS[di],[ax]:lo[ax]+(di-idx(lo))*g,[other]:hd,w:null});
-    }}
-  // time labels: group words on same line/column, find times
-  const times=[];words.forEach(w=>{TIMERE.lastIndex=0;let m;while((m=TIMERE.exec(w.t)))times.push({v:toHM(m[1],m[2],m[3]),x:w.x,y:w.y,w})});
-  // cluster times by row (days across) or column (days down)
-  const key=daysAcross?'y':'x',tol=daysAcross?Math.max(14,(words[0]?.h||14)*1.2):60;
-  const slots=[];times.sort((a,b)=>a[key]-b[key]).forEach(t=>{const s=slots.find(s=>Math.abs(s.pos-t[key])<tol);if(s)s.list.push(t);else slots.push({pos:t[key],list:[t]})});
-  // keep slots that sit outside the day header line (labels)
-  const lbl=slots.map(s=>{const l=s.list.sort((a,b)=>mins(a.v)-mins(b.v));return{pos:s.pos,start:l[0].v,end:l.length>1&&l[l.length-1].v!==l[0].v?l[l.length-1].v:null,words:new Set(l.map(t=>t.w))}}).sort((a,b)=>a.pos-b.pos);
-  if(!lbl.length)throw new Error('Could not find any times (like 9:00) in the picture');
-  lbl.forEach((s,i)=>{if(!s.end)s.end=lbl[i+1]?lbl[i+1].start:addMin(s.start,50);if(mins(s.end)<=mins(s.start))s.end=addMin(s.start,50)});
-  // assign remaining words to cells
-  const used=new Set([...days.map(d=>d.w).filter(Boolean),...times.map(t=>t.w)]);
-  const dayAxis=daysAcross?'x':'y',slotAxis=daysAcross?'y':'x';
-  const dayEdge=daysAcross?Math.max(...ys):Math.max(...xs);
-  const firstSlot=lbl[0].pos-(lbl[1]?(lbl[1].pos-lbl[0].pos)/2:40);
-  const cells={};
-  words.forEach(w=>{if(used.has(w))return;if(!/[a-z]{2,}/i.test(w.t))return;
-    if(w[slotAxis]<=dayEdge+5)return; // header line
-    const d=days.reduce((a,b)=>Math.abs(b[dayAxis]-w[dayAxis])<Math.abs(a[dayAxis]-w[dayAxis])?b:a);
-    // distance gate: must be closer to a day than half the gap between days
-    const sorted=days.map(x=>x[dayAxis]).sort((a,b)=>a-b);const gap=sorted.length>1?(sorted[sorted.length-1]-sorted[0])/(sorted.length-1):200;
-    if(Math.abs(d[dayAxis]-w[dayAxis])>gap*.75)return;
-    // slot = last label whose position is <= word (labels mark the start of a band), else nearest
-    let s=lbl.reduce((a,b)=>Math.abs(b.pos-w[slotAxis])<Math.abs(a.pos-w[slotAxis])?b:a);
-    if(w[slotAxis]<firstSlot)return;
-    const k=d.d+'|'+s.start;(cells[k]=cells[k]||{day:d.d,start:s.start,end:s.end,parts:[]}).parts.push(w)});
-  const skip=/^(break|lunch|tutor|registration|reg|free|study|room|rm|period|p\d)$/i;
-  const out=Object.values(cells).map(c=>{c.parts.sort((a,b)=>a.y0-b.y0||a.x0-b.x0);
-    // subject = first meaningful line of words
-    const line=c.parts.filter(p=>Math.abs(p.y-c.parts[0].y)<p.h*.8).map(p=>p.t).join(' ');
-    const subject=line.replace(/[^\w &'+-]/g,'').replace(/\b[A-Z]?\d{1,3}[A-Z]?\b/g,'').trim();
-    return{day:c.day,start:c.start,end:c.end,subject}}).filter(c=>c.subject.length>1&&!skip.test(c.subject));
-  const order=DAYS;out.sort((a,b)=>order.indexOf(a.day)-order.indexOf(b.day)||mins(a.start)-mins(b.start));
-  return out}
-async function readTimetableImage(file){const box=$('#ocrBox');box.style.color='var(--text)';
-  try{box.textContent='Loading the text reader…';await loadTess();
-    const worker=await Tesseract.createWorker('eng',1,{workerPath:new URL('ocr/worker.min.js',location.href).href,corePath:new URL('ocr/core/',location.href).href,langPath:new URL('ocr/lang',location.href).href,workerBlobURL:false,logger:m=>{if(m.status==='recognizing text')box.textContent='Reading your timetable… '+Math.round(m.progress*100)+'%'}});
-    await worker.setParameters({tessedit_pageseg_mode:'11'});
-    const {data}=await worker.recognize(await prepImage(file),{},{blocks:true});await worker.terminate();
-    const words=data.words||(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines.flatMap(l=>l.words)));
-    const rows=wordsToTimetable(words);if(!rows.length)throw new Error('Found the days and times but no class names');
-    cfg.timetable=rows;save();renderTT();box.style.color='var(--mute)';box.innerHTML=`✅ Found <b style="color:var(--text)">${rows.length}</b> classes. Check them below and fix anything that's wrong.`;
-  }catch(err){box.style.color='var(--danger)';box.textContent='⚠ '+err.message+'. Try a clearer, straight-on picture, or add classes by hand.'}}
-$('#ttImgBtn').onclick=()=>$('#ttImg').click();
-$('#ttImg').onchange=e=>{const f=e.target.files[0];if(f)readTimetableImage(f);e.target.value=''};
-
-/* ---------- built-in study material ---------- */
-const LIB={
-maths:{color:'#1967d2',topics:{'Algebra':`<h3>Solving linear equations</h3><p>Do the same thing to both sides until the unknown is alone.</p><div class="s-q">3x + 7 = 22 → 3x = 15 → <b>x = 5</b></div><h3>Expanding & factorising</h3><ul><li>a(b + c) = ab + ac</li><li>(x + a)(x + b) = x² + (a+b)x + ab</li><li>Difference of two squares: a² − b² = (a − b)(a + b)</li></ul><h3>Quadratic formula</h3><div class="s-q">x = (−b ± √(b² − 4ac)) / 2a</div>`,
- 'Geometry':`<h3>Key formulas</h3><ul><li>Area of a circle: πr²; circumference: 2πr</li><li>Area of a triangle: ½ × base × height</li><li>Pythagoras: a² + b² = c²</li><li>Angles in a triangle sum to 180°, around a point 360°</li></ul><h3>Trigonometry (SOH CAH TOA)</h3><div class="s-q">sin θ = O/H · cos θ = A/H · tan θ = O/A</div>`,
- 'Practice':`<div class="s-q">1. Solve 5x − 4 = 2x + 11</div><div class="s-q">2. Factorise x² + 7x + 12</div><div class="s-q">3. A right triangle has legs 6 cm and 8 cm. Find the hypotenuse.</div><div class="s-q">4. Find the area of a circle with radius 4 cm (to 1 d.p.)</div><p><i>Answers: x = 5 · (x+3)(x+4) · 10 cm · 50.3 cm²</i></p>`}},
-english:{color:'#c5221f',topics:{'Language analysis':`<h3>PETAL paragraph</h3><ul><li><b>P</b>oint – answer the question</li><li><b>E</b>vidence – a short quotation</li><li><b>T</b>echnique – name the method</li><li><b>A</b>nalysis – explain effect on the reader</li><li><b>L</b>ink – back to the question</li></ul><h3>Techniques</h3><ul><li>Metaphor, simile, personification</li><li>Alliteration, sibilance, onomatopoeia</li><li>Pathetic fallacy, juxtaposition, foreshadowing</li></ul>`,
- 'Writing':`<h3>Persuasive writing (AFOREST)</h3><p>Anecdote, Facts, Opinions, Rhetorical questions, Emotive language, Statistics, Triples.</p><h3>Punctuation for effect</h3><ul><li>Semicolons join two related full sentences.</li><li>Colons introduce a list or an explanation.</li><li>Short sentences build tension.</li></ul>`}},
-science:{color:'#188038',topics:{'Overview':`<h3>Working scientifically</h3><ul><li>Independent variable: what you change</li><li>Dependent variable: what you measure</li><li>Control variables: what you keep the same</li></ul><h3>Cells</h3><p>Animal cells: nucleus, cytoplasm, cell membrane, mitochondria, ribosomes. Plant cells also have a cell wall, chloroplasts and a permanent vacuole.</p><h3>Energy</h3><div class="s-q">Kinetic energy = ½mv² · GPE = mgh · Power = energy ÷ time</div>`}},
-biology:{color:'#188038',topics:{'Cells & processes':`<h3>Photosynthesis</h3><div class="s-q">carbon dioxide + water → glucose + oxygen (light energy, chlorophyll)</div><h3>Respiration</h3><div class="s-q">glucose + oxygen → carbon dioxide + water (+ energy)</div><h3>Diffusion, osmosis, active transport</h3><ul><li>Diffusion: high → low concentration, passive</li><li>Osmosis: water across a partially permeable membrane</li><li>Active transport: low → high, needs energy</li></ul>`}},
-chemistry:{color:'#e37400',topics:{'Atoms & bonding':`<h3>Atomic structure</h3><ul><li>Proton: +1, mass 1 · Neutron: 0, mass 1 · Electron: −1, tiny mass</li><li>Atomic number = protons; mass number = protons + neutrons</li></ul><h3>Bonding</h3><ul><li>Ionic: metal + non-metal, electrons transferred</li><li>Covalent: non-metals share electrons</li><li>Metallic: sea of delocalised electrons</li></ul><h3>Moles</h3><div class="s-q">moles = mass ÷ Mr</div>`}},
-physics:{color:'#7b1fa2',topics:{'Forces & electricity':`<h3>Equations</h3><div class="s-q">F = ma · W = mg · speed = distance ÷ time</div><div class="s-q">V = IR · P = IV · Q = It</div><h3>Newton's laws</h3><ol><li>An object stays at rest or constant velocity unless a resultant force acts.</li><li>F = ma</li><li>Every action has an equal and opposite reaction.</li></ol>`}},
-history:{color:'#795548',topics:{'Source skills':`<h3>Analysing a source (NOP)</h3><ul><li><b>N</b>ature – what type of source is it?</li><li><b>O</b>rigin – who made it, when?</li><li><b>P</b>urpose – why was it made?</li></ul><h3>Essay structure</h3><p>Introduction with judgement → 2–3 factors with evidence → counter-argument → conclusion weighing which factor mattered most.</p>`,
- 'Key dates':`<ul><li>1066 – Battle of Hastings</li><li>1215 – Magna Carta</li><li>1914–1918 – First World War</li><li>1939–1945 – Second World War</li><li>1989 – Fall of the Berlin Wall</li></ul>`}},
-geography:{color:'#00897b',topics:{'Physical':`<h3>Plate tectonics</h3><ul><li>Constructive: plates move apart (e.g. Mid-Atlantic Ridge)</li><li>Destructive: oceanic plate subducts</li><li>Conservative: plates slide past (e.g. San Andreas)</li></ul><h3>Rivers</h3><p>Erosion processes: hydraulic action, abrasion, attrition, solution.</p>`}},
-computing:{color:'#3949ab',topics:{'Programming':`<h3>Three constructs</h3><ul><li>Sequence, selection (if), iteration (loops)</li></ul><div class="s-q"><code>for i in range(5):<br>&nbsp;&nbsp;print(i * 2)</code></div><h3>Binary</h3><p>Place values: 128 64 32 16 8 4 2 1. Example: 1011 0101 = 181.</p><h3>Algorithms</h3><ul><li>Linear search: check each item</li><li>Binary search: sorted list, halve each step</li><li>Bubble sort, merge sort</li></ul>`}},
-french:{color:'#1a73e8',topics:{'Grammar':`<h3>Present tense of être / avoir</h3><div class="s-q">je suis, tu es, il est, nous sommes, vous êtes, ils sont</div><div class="s-q">j'ai, tu as, il a, nous avons, vous avez, ils ont</div><h3>Passé composé</h3><p>avoir/être + past participle: <i>J'ai mangé · Je suis allé(e)</i></p>`}},
-spanish:{color:'#f9ab00',topics:{'Grammar':`<h3>Ser vs estar</h3><p>Ser: permanent traits. Estar: location, feelings, temporary states.</p><div class="s-q">soy, eres, es, somos, sois, son</div><div class="s-q">estoy, estás, está, estamos, estáis, están</div>`}}
-};
-function libFor(sub){const s=sub.toLowerCase();const k=Object.keys(LIB).find(k=>s.includes(k))||(/math/.test(s)?'maths':/bio/.test(s)?'biology':/chem/.test(s)?'chemistry':/phys/.test(s)?'physics':/comp|ict|cs/.test(s)?'computing':/eng|lit/.test(s)?'english':/hist/.test(s)?'history':/geo/.test(s)?'geography':/sci/.test(s)?'science':null);return k?LIB[k]:null}
-
-/* ---------- study mode ---------- */
-let prevTitle,clockT;
-function enterStudy(){closeGame();const{c,state}=currentClass();const sub=c.subject||'Study';const lib=libFor(sub);
-  $('#sSubject').textContent=sub;$('#sBanner').style.background=lib?.color||'#1967d2';
-  $('#sInfo').textContent=state==='now'?`${c.day} · ${c.start}–${c.end} · Current lesson`:state==='next'?`Next lesson at ${c.start}`:'Revision notes';
-  const own=cfg.materials.filter(m=>m.subject&&sub.toLowerCase().includes(m.subject.toLowerCase().trim())||m.subject&&m.subject.toLowerCase().trim().includes(sub.toLowerCase()));
-  const pages={};if(own.length)pages['Class notes']=own.map(m=>'<ul>'+m.notes.split('\n').filter(Boolean).map(l=>`<li>${linkify(l)}</li>`).join('')+'</ul>').join('');
-  Object.assign(pages,lib?lib.topics:{'Notes':`<p>No built-in notes for <b>${esc(sub)}</b> yet. Add your own in Timetable → Study material.</p>`});
-  const names=Object.keys(pages);
-  const show=n=>{$('#sTabs').innerHTML=names.map(x=>`<button class="${x===n?'on':''}">${esc(x)}</button>`).join('');$$('#sTabs button').forEach((b,i)=>b.onclick=()=>show(names[i]));
-    $('#sContent').innerHTML=`<div class="s-card"><h2>${esc(n)}</h2>${pages[n]}</div>`};show(names[0]);
-  document.title=sub+' – '+cfg.portal;$('#fav').href='https://www.google.com/s2/favicons?sz=64&domain=classroom.google.com';
-  $('#study').classList.add('on');const tick=()=>$('#sClock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});tick();clockT=setInterval(tick,10000);}
-function exitStudy(){$('#study').classList.remove('on');clearInterval(clockT);applyLook()}
-$('#studyBtn').onclick=enterStudy;$('#sBack').ondblclick=exitStudy;
-
-/* ---------- panic ---------- */
-function panic(){
-  if(cfg.panicAction==='study'){enterStudy();return}
-  closeGame();try{client?.end(true)}catch{}
-  if(cfg.wipe){Object.keys(localStorage).filter(k=>k.startsWith('hub.chat.')).forEach(k=>localStorage.removeItem(k))}
-  let url=cfg.panicUrl||'https://www.google.com';if(!/^https?:\/\//i.test(url))url='https://'+url;
-  document.body.innerHTML='';document.title='Google';
-  // replace() swaps this page's history entry for the safe page, so Back won't return here
-  try{if(window.top!==window.self){window.top.location.replace(url)}else location.replace(url)}catch{location.replace(url)}
-}
-$('#panicBtn').onclick=panic;
-function onKey(e){const t=e.target;if(capturing)return;
-  if(e.key===cfg.panicKey){e.preventDefault();panic()}
-  else if(e.key.toLowerCase()===String(cfg.studyKey).toLowerCase()&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!(t&&/INPUT|TEXTAREA/.test(t.tagName))){e.preventDefault();$('#study').classList.contains('on')?exitStudy():enterStudy()}}
-addEventListener('keydown',onKey,true);
-addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&!(document.activeElement?.tagName==='IFRAME'))panic()},150)});
-
-/* ---------- stealth launch (about:blank cloak) ---------- */
-$('#stealthBtn').onclick=()=>{const w=window.open('about:blank','_blank');if(!w)return toast('Allow pop-ups for this site');
-  w.document.write(`<!doctype html><title>${esc(cfg.title||'Google')}</title><link rel="icon" href="${cfg.icon?'https://www.google.com/s2/favicons?sz=64&domain='+encodeURIComponent(cfg.icon):'data:,'}"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style><iframe src="${location.href}" allow="fullscreen; autoplay; microphone"></iframe>`);
-  w.document.close();location.replace(cfg.panicUrl||'https://www.google.com');};
-
-/* ---------- settings ---------- */
-const FIELDS=['panicAction','panicUrl','panicKey','studyKey','title','icon','portal','brand','acc','acc2','bg','name','rooms','prefix','broker','nbUrl','extra'];
-let capturing=false;
-function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);$('#s_wipe').checked=cfg.wipe;$('#s_startStudy').checked=cfg.startStudy;$('#s_blurPanic').checked=cfg.blurPanic}
-['panicKey','studyKey'].forEach(f=>{const el=$('#s_'+f);el.onfocus=()=>{capturing=true;el.value='Press a key…'};el.onblur=()=>{capturing=false;if(el.value==='Press a key…')el.value=cfg[f]};
-  el.onkeydown=e=>{e.preventDefault();if(e.key==='Tab'||e.key==='Escape'){el.blur();return}el.value=e.key;el.blur()}});
-$$('[data-preset]').forEach(b=>b.onclick=()=>{const[t,i]=b.dataset.preset.split('|');$('#s_title').value=t;$('#s_icon').value=i});
-$('#saveBtn').onclick=()=>{const oldChat=[cfg.broker,cfg.prefix,cfg.rooms].join();FIELDS.forEach(f=>cfg[f]=$('#s_'+f).value);cfg.wipe=$('#s_wipe').checked;cfg.startStudy=$('#s_startStudy').checked;cfg.blurPanic=$('#s_blurPanic').checked;
-  cfg.name=cfg.name.trim()||DEF.name;save();applyLook();renderGames();renderRooms();if(oldChat!==[cfg.broker,cfg.prefix,cfg.rooms].join()){if(!roomsList().includes(room))room=roomsList()[0]||'general';switchRoom(room);connectChat()}toast('Saved')};
-$('#exportAll').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));a.download='hub-settings.json';a.click()};
-$('#importAll').onclick=()=>$('#importFile').click();
-$('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target.files[0].text())};save();location.reload()}catch{toast('Invalid file')}};
-$('#resetAll').onclick=()=>{if(confirm('Reset all settings, timetable and chat history?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
-
-/* ---------- boot ---------- */
-applyLook();renderGames();room=roomsList()[0]||'general';switchRoom(room);connectChat();
-if(cfg.startStudy)enterStudy();
-</script>
+<script src="js/config.js"></script>
+<script src="js/study.js"></script>
+<script src="js/app.js"></script>
+<script type="module" src="js/cloud.js"></script>
 </body>
 </html>

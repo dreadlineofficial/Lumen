@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function fs(id) { return /databases/$(database)/documents/friendships/$(id); }
+    function friends(other) {
+      let a = uid() + '_' + other;
+      let b = other + '_' + uid();
+      return (exists(fs(a)) && get(fs(a)).data.status == 'accepted')
+          || (exists(fs(b)) && get(fs(b)).data.status == 'accepted');
+    }
+    function okImage(v) { return v is string && v.size() < 900000 && (v == '' || v.matches('^(https://|data:image/).*')); }
+
+    // Profiles: anyone signed in can read; only you can write yours.
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid() == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 24
+        && request.resource.data.nameLower == request.resource.data.name.lower()
+        && request.resource.data.get('bio', '').size() <= 300
+        && okImage(request.resource.data.get('avatar', ''))
+        && request.resource.data.get('avatar', '').size() < 120000;
+      allow delete: if false;
+    }
+
+    // Online status + what you're doing: only you and your friends can read it.
+    match /presence/{userId} {
+      allow read: if signedIn() && (uid() == userId || friends(userId));
+      allow write: if signedIn() && uid() == userId;
+    }
+
+    // Friend requests. ID is the two user IDs sorted and joined with "_".
+    match /friendships/{id} {
+      allow read: if signedIn() && uid() in resource.data.users;
+      allow create: if signedIn()
+        && request.resource.data.from == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.users.size() == 2
+        && uid() in request.resource.data.users
+        && request.resource.data.users[0] < request.resource.data.users[1]
+        && id == request.resource.data.users[0] + '_' + request.resource.data.users[1];
+      // only the person who received the request can accept it
+      allow update: if signedIn() && uid() in resource.data.users && uid() != resource.data.from
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'accepted';
+      allow delete: if signedIn() && uid() in resource.data.users;
+    }
+
+    // Private chats: only the two friends in the chat.
+    match /dms/{pair}/messages/{msg} {
+      function members() { return pair.split('_'); }
+      function other() { return members()[0] == uid() ? members()[1] : members()[0]; }
+      allow read: if signedIn() && uid() in members();
+      allow create: if signedIn() && uid() in members() && members().size() == 2 && friends(other())
+        && request.resource.data.uid == uid()
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+        && okImage(request.resource.data.get('gif', ''))
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+
+    // Public rooms.
+    match /rooms/{room}/messages/{msg} {
+      allow read: if signedIn();
+      allow create: if signedIn() && room.size() <= 32
+        && request.resource.data.uid == uid()
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+        && okImage(request.resource.data.get('gif', ''))
+        && request.resource.data.at == request.time;
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
+    // Posts and comments.
+    match /posts/{post} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == uid()
+        && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+        && okImage(request.resource.data.get('image', ''))
+        && request.resource.data.at == request.time;
+      allow delete: if signedIn() && resource.data.uid == uid();
+
+      match /comments/{c} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.uid == uid()
+          && request.resource.data.text is string && request.resource.data.text.size() <= 500
+          && okImage(request.resource.data.get('gif', ''))
+          && request.resource.data.at == request.time;
+        // comment author or the post's author can delete
+        allow delete: if signedIn() && (resource.data.uid == uid()
+          || get(/databases/$(database)/documents/posts/$(post)).data.uid == uid());
+      }
+    }
+  }
+}
