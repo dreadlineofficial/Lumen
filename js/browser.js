@@ -12,9 +12,9 @@ const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch{return'
 /* turn whatever was typed into a destination */
 function resolve(input){let u=String(input||'').trim();if(!u||u==='lumen:newtab')return{internal:'newtab'};
   if(u.startsWith('lumen:search?q='))return{internal:'search',q:decodeURIComponent(u.slice(15))};
-  if(u.startsWith('lumen:youtube'))return{internal:'youtube',q:decodeURIComponent(u.split('?q=')[1]||'')};
+  if(u.startsWith('lumen:youtube')){const p=new URLSearchParams(u.split('?')[1]||'');return{internal:'youtube',q:p.get('q')||'',tab:p.get('tab')||'home'}}
   // YouTube's own site can't be framed: route home/search pages to Lumen's YouTube page
-  {const m=u.match(/^(https?:\/\/)?(www\.|m\.)?youtube\.com\/?(results\?search_query=([^&]*))?(\?.*)?$/i);if(m&&!L.ytId(u))return{internal:'youtube',q:decodeURIComponent((m[4]||'').replace(/\+/g,' '))}}
+  {const m=u.match(/^(https?:\/\/)?(www\.|m\.)?youtube\.com\/?(results\?search_query=([^&]*)|shorts\/?)?(\?.*)?$/i);if(m&&!L.ytId(u))return{internal:'youtube',q:decodeURIComponent((m[4]||'').replace(/\+/g,' ')),tab:/shorts/i.test(m[3]||'')?'shorts':'home'}}
   const looksUrl=/^https?:\/\//i.test(u)||(!/\s/.test(u)&&/^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/i.test(u));
   if(!looksUrl)return cfg.searchEngine==='lumen'?{internal:'search',q:u}:{url:'https://www.google.com/search?igu=1&q='+encodeURIComponent(u),show:'https://www.google.com/search?q='+encodeURIComponent(u),q:u,google:true};
   if(!/^https?:\/\//i.test(u))u='https://'+u;
@@ -35,15 +35,15 @@ function go(t,input,push){const r=resolve(input);const entry={...r,input};
   show(t)}
 function show(t){const e=t.hist[t.idx];$('#bwHint').style.display='none';
   if(e.internal){t.frame.removeAttribute('src');t.frame.src='about:blank';
-    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':'YouTube';t.fav=L.favUrl('youtube.com');ytPage(t,e.q)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
+    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':e.tab==='shorts'?'Shorts – YouTube':'YouTube';t.fav=L.favUrl('youtube.com');ytPage(t,e.q,e.tab)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
     if(t===active)L.setActivity(null)}
   else{t.frame.src=e.url;t.title=e.google?e.q+' – Google':e.yt?'YouTube':host(e.show);t.fav=L.favUrl(host(e.show)||'youtube.com');addRecent(e.show,t.title);
     if(e.yt)ytTitle(t,e.yt);
     // most big sites refuse to be framed; nudge after a moment for anything that isn't known-friendly
     if(!/youtube-nocookie|wikipedia|desmos|google\.com\/(webhp|search)|lumen|github\.io|scratch\.mit/i.test(e.url))setTimeout(()=>{if(active===t&&t.hist[t.idx]===e)$('#bwHint').style.display=''},2500);
-    if(t===active)L.setActivity(e.yt?{kind:'youtube',label:'a YouTube video'}:{kind:'web',label:e.google?'Google':host(e.show)})}
+    if(t===active)L.setActivity(e.yt?{kind:'youtube',label:'YouTube'}:{kind:'web',label:e.google?'Google':host(e.show)})}
   if(t===active)activate(t);else renderTabs()}
-async function ytTitle(t,id){try{const r=await fetch('https://noembed.com/embed?url='+encodeURIComponent('https://www.youtube.com/watch?v='+id));const j=await r.json();if(!j.title)return;t.title=j.title;renderTabs();if(t===active)L.setActivity({kind:'youtube',label:j.title})}catch{}}
+async function ytTitle(t,id){try{const r=await fetch('https://noembed.com/embed?url='+encodeURIComponent('https://www.youtube.com/watch?v='+id));const j=await r.json();if(!j.title)return;t.title=j.title;renderTabs()}catch{}}
 
 function renderTabs(){$('#bwTabs').innerHTML=tabs.map(t=>`<button class="bw-tab ${t===active?'on':''}" data-t="${t.id}">${t.fav?`<img src="${t.fav}" alt="">`:'<span>✦</span>'}<span class="t">${esc(t.title)}</span><span class="x" data-x="${t.id}">×</span></button>`).join('')+`<button class="bw-new" id="bwNew" title="New tab">＋</button>`;
   $$('#bwTabs [data-t]').forEach(b=>b.onclick=e=>{const t=tabs.find(x=>x.id==b.dataset.t);if(e.target.closest('[data-x]'))closeTab(t);else activate(t)});
@@ -90,22 +90,44 @@ async function searchPage(t,q){const c=calc(q);
 
 /* ---- YouTube inside Lumen (YouTube Data API, site-wide key in js/config.js) ---- */
 const YT='https://www.googleapis.com/youtube/v3/';
-function ytCard(v){return`<button class="yt-v" data-vid="${L.esc(v.id)}" data-title="${L.esc(v.title)}"><div class="yt-th" style="background-image:url('${L.esc(v.thumb)}')"></div><b>${v.title}</b><span>${v.channel}</span></button>`}
-async function ytPage(t,q){const key=(window.LUMEN_CONFIG||{}).youtubeKey;
+const dec=x=>{const ta=document.createElement('textarea');ta.innerHTML=x||'';return ta.value};
+const region=()=>(navigator.language.split('-')[1]||'US').toUpperCase();
+function ytCard(v){return`<button class="yt-v" data-vid="${L.esc(v.id)}"><div class="yt-th" style="background-image:url('${L.esc(v.thumb)}')"></div><b>${L.esc(v.title)}</b><span>${L.esc(v.channel)}</span></button>`}
+function shortCard(v,i){return`<button class="yt-s" data-si="${i}"><div class="yt-sth" style="background-image:url('${L.esc(v.thumb)}')"></div><b>${L.esc(v.title)}</b></button>`}
+async function ytFetch(path){const key=(window.LUMEN_CONFIG||{}).youtubeKey;const j=await (await fetch(`${YT}${path}&key=${encodeURIComponent(key)}`)).json();if(j.error)throw new Error(j.error.message);
+  return(j.items||[]).map(it=>({id:typeof it.id==='string'?it.id:it.id?.videoId,title:dec(it.snippet.title),channel:dec(it.snippet.channelTitle),thumb:(it.snippet.thumbnails?.high||it.snippet.thumbnails?.medium)?.url||''})).filter(v=>v.id)}
+async function ytPage(t,q,tab){const key=(window.LUMEN_CONFIG||{}).youtubeKey;tab=tab==='shorts'?'shorts':'home';
   t.page.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo">▶</span><b>YouTube</b><form data-yq style="flex:1"><input placeholder="Search YouTube" value="${L.esc(q)}" autocomplete="off"></form></div>
-    <form class="row yt-paste" data-yp><input placeholder="…or paste a YouTube link to play it here"><button>Play</button></form><div data-yr class="yt-grid"></div></div>`;
-  t.page.querySelector('[data-yq]').onsubmit=e=>{e.preventDefault();go(t,'lumen:youtube?q='+encodeURIComponent(e.target.querySelector('input').value.trim()),true)};
+    <div class="yt-tabs"><button data-tab="home" class="${tab==='home'?'on':''}">🏠 Home</button><button data-tab="shorts" class="${tab==='shorts'?'on':''}">⚡ Shorts</button>
+    <form class="row yt-paste" data-yp style="flex:1;margin:0"><input placeholder="Paste a YouTube link to play it here"><button>Play</button></form></div>
+    <div data-yr class="${tab==='shorts'?'yt-sgrid':'yt-grid'}"></div></div>`;
+  const nav=(tb,qq)=>go(t,`lumen:youtube?tab=${tb}&q=${encodeURIComponent(qq||'')}`,true);
+  t.page.querySelector('[data-yq]').onsubmit=e=>{e.preventDefault();nav(tab,e.target.querySelector('input').value.trim())};
+  t.page.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>nav(b.dataset.tab,q));
   t.page.querySelector('[data-yp]').onsubmit=e=>{e.preventDefault();const v=e.target.querySelector('input').value.trim();if(L.ytId(v))go(t,v,true);else toast('That isn’t a YouTube video link')};
   const res=t.page.querySelector('[data-yr]');
-  if(!key){res.innerHTML='<p class="muted" style="grid-column:1/-1">Browsing and searching YouTube here needs a free YouTube API key added once to <code>js/config.js</code> by whoever runs this site (see SETUP.md). Pasting a video link above works right now.</p>';return}
+  if(!key){res.innerHTML='<p class="muted" style="grid-column:1/-1">Browsing and searching YouTube here needs a free YouTube API key added once to <code>js/config.js</code> (see SETUP.md). Pasting a video link above works right now.</p>';return}
   res.innerHTML='<p class="muted">Loading…</p>';
-  try{const url=q?`${YT}search?part=snippet&type=video&maxResults=24&safeSearch=moderate&q=${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`:`${YT}videos?part=snippet&chart=mostPopular&maxResults=24&regionCode=${(navigator.language.split('-')[1]||'US')}&key=${encodeURIComponent(key)}`;
-    const j=await (await fetch(url)).json();if(j.error)throw new Error(j.error.message);
-    const dec=x=>{const ta=document.createElement('textarea');ta.innerHTML=x||'';return ta.value};
-    const vids=(j.items||[]).map(it=>({id:it.id.videoId||it.id,title:L.esc(dec(it.snippet.title)),channel:L.esc(dec(it.snippet.channelTitle)),thumb:it.snippet.thumbnails?.medium?.url||''})).filter(v=>typeof v.id==='string');
-    res.innerHTML=(q?'':'<div class="side-h" style="grid-column:1/-1;padding-left:0">Trending</div>')+(vids.map(ytCard).join('')||'<p class="muted">No videos found.</p>');
-    res.querySelectorAll('[data-vid]').forEach(b=>b.onclick=()=>{const tmp=document.createElement('textarea');tmp.innerHTML=b.dataset.title;go(t,'https://www.youtube.com/watch?v='+b.dataset.vid,true);t.title=tmp.value;renderTabs();if(t===active)L.setActivity({kind:'youtube',label:tmp.value})})}
-  catch(err){res.innerHTML=`<p class="muted">YouTube couldn’t load: ${L.esc(err.message)}</p>`}}
+  try{if(tab==='shorts'){
+      const list=await ytFetch(`search?part=snippet&type=video&videoDuration=short&maxResults=30&safeSearch=moderate&regionCode=${region()}&q=${encodeURIComponent(('#shorts '+(q||'')).trim())}`);
+      res.innerHTML=list.map(shortCard).join('')||'<p class="muted">No Shorts found.</p>';
+      res.querySelectorAll('[data-si]').forEach(b=>b.onclick=()=>shortsPlayer(t,list,+b.dataset.si))}
+    else{const vids=await ytFetch(q?`search?part=snippet&type=video&maxResults=24&safeSearch=moderate&regionCode=${region()}&q=${encodeURIComponent(q)}`:`videos?part=snippet&chart=mostPopular&maxResults=24&regionCode=${region()}`);
+      res.innerHTML=(q?'':'<div class="side-h" style="grid-column:1/-1;padding-left:0">Trending</div>')+(vids.map(ytCard).join('')||'<p class="muted">No videos found.</p>');
+      res.querySelectorAll('[data-vid]').forEach(b=>b.onclick=()=>{const v=vids.find(x=>x.id===b.dataset.vid);go(t,'https://www.youtube.com/watch?v='+v.id,true);t.title=v.title;renderTabs()})}}
+  catch(err){res.innerHTML=`<p class="muted" style="grid-column:1/-1">YouTube couldn’t load: ${L.esc(err.message)}</p>`}}
+/* vertical Shorts player: arrows, mouse wheel or swipe to move between Shorts */
+function shortsPlayer(t,list,i){const ov=document.createElement('div');ov.className='shorts-ov';t.page.scrollTop=0;t.page.style.overflow='hidden';t.page.appendChild(ov);
+  const show=()=>{const v=list[i];ov.innerHTML=`<button class="ib s-x" title="Close">✕</button><div class="s-stage"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&loop=1&playlist=${encodeURIComponent(v.id)}&enablejsapi=1" allow="autoplay; encrypted-media; fullscreen"></iframe><div class="s-cap"><b>${L.esc(v.title)}</b><span>${L.esc(v.channel)}</span></div></div>
+    <div class="s-nav"><button class="ib" data-d="-1" ${i?'':'disabled'} title="Previous (↑)">▲</button><button class="ib" data-d="1" ${i<list.length-1?'':'disabled'} title="Next (↓)">▼</button></div>`;
+    ov.querySelector('.s-x').onclick=close;ov.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>step(+b.dataset.d));
+    if(t===active)L.setActivity({kind:'youtube',label:'YouTube'})};
+  const step=d=>{const n=i+d;if(n<0||n>=list.length)return;i=n;show()};
+  let wheelT=0;const onWheel=e=>{e.preventDefault();if(Date.now()-wheelT<600)return;wheelT=Date.now();step(e.deltaY>0?1:-1)};
+  const onKey=e=>{if(!ov.isConnected)return;if(e.key==='ArrowDown'){e.preventDefault();step(1)}else if(e.key==='ArrowUp'){e.preventDefault();step(-1)}else if(e.key==='Escape')close()};
+  let ty=null;ov.addEventListener('touchstart',e=>ty=e.touches[0].clientY,{passive:true});ov.addEventListener('touchend',e=>{if(ty===null)return;const d=ty-e.changedTouches[0].clientY;if(Math.abs(d)>50)step(d>0?1:-1);ty=null});
+  function close(){ov.remove();t.page.style.overflow='';removeEventListener('keydown',onKey,true);if(t===active)L.setActivity(null)}
+  ov.addEventListener('wheel',onWheel,{passive:false});addEventListener('keydown',onKey,true);show()}
 
 /* ---- toolbar ---- */
 $('#bwForm').onsubmit=e=>{e.preventDefault();go(active,$('#bwIn').value,true);$('#bwIn').blur()};

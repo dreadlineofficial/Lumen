@@ -45,7 +45,7 @@ function nameHTML(u,{badges=true}={}){const c1=okColor(u.nameC1||u.color),c2=okC
   const b=badges&&u.badges?`<span class="ubadges">${esc(graphemes(u.badges).filter(x=>x.trim()).slice(0,5).join(''))}</span>`:'';
   return`<span class="uname n-${st} f-${u.nameFont||'sans'}" style="${style}">${esc(u.name||'Unknown')}</span>${b}`}
 function actText(uid){if(!cfg.seeOthers)return'';const p=presence.get(uid);if(!p?.act||status(uid)==='offline'||!status(uid))return'';const a=p.act;
-  return a.kind==='game'?`🎮 Playing <b>${esc(a.label)}</b>`:a.kind==='youtube'?`▶ Watching <b>${esc(a.label)}</b>`:a.kind==='web'?`🌐 On <b>${esc(a.label)}</b>`:''}
+  return a.kind==='game'?`🎮 Playing <b>${esc(a.label)}</b>`:a.kind==='youtube'?`▶ Watching <b>YouTube</b>`:a.kind==='web'?`🌐 On <b>${esc(a.label)}</b>`:''}
 
 /* ---------- auth ---------- */
 let signup=false;
