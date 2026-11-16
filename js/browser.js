@@ -12,8 +12,11 @@ const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch{return'
 /* turn whatever was typed into a destination */
 function resolve(input){let u=String(input||'').trim();if(!u||u==='lumen:newtab')return{internal:'newtab'};
   if(u.startsWith('lumen:search?q='))return{internal:'search',q:decodeURIComponent(u.slice(15))};
+  if(u.startsWith('lumen:youtube'))return{internal:'youtube',q:decodeURIComponent(u.split('?q=')[1]||'')};
+  // YouTube's own site can't be framed: route home/search pages to Lumen's YouTube page
+  {const m=u.match(/^(https?:\/\/)?(www\.|m\.)?youtube\.com\/?(results\?search_query=([^&]*))?(\?.*)?$/i);if(m&&!L.ytId(u))return{internal:'youtube',q:decodeURIComponent((m[4]||'').replace(/\+/g,' '))}}
   const looksUrl=/^https?:\/\//i.test(u)||(!/\s/.test(u)&&/^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/i.test(u));
-  if(!looksUrl)return{internal:'search',q:u};
+  if(!looksUrl)return cfg.searchEngine==='lumen'?{internal:'search',q:u}:{url:'https://www.google.com/search?igu=1&q='+encodeURIComponent(u),show:'https://www.google.com/search?q='+encodeURIComponent(u),q:u,google:true};
   if(!/^https?:\/\//i.test(u))u='https://'+u;
   const id=L.ytId(u);if(id)return{url:`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&enablejsapi=1`,show:u,yt:id};
   if(/^https?:\/\/(www\.)?google\.[a-z.]+\/?(\?.*)?$/i.test(u))return{url:'https://www.google.com/webhp?igu=1',show:u};
@@ -32,21 +35,21 @@ function go(t,input,push){const r=resolve(input);const entry={...r,input};
   show(t)}
 function show(t){const e=t.hist[t.idx];$('#bwHint').style.display='none';
   if(e.internal){t.frame.removeAttribute('src');t.frame.src='about:blank';
-    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
+    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':'YouTube';t.fav=L.favUrl('youtube.com');ytPage(t,e.q)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
     if(t===active)L.setActivity(null)}
-  else{t.frame.src=e.url;t.title=e.yt?'YouTube':host(e.show);t.fav=L.favUrl(host(e.show)||'youtube.com');addRecent(e.show,t.title);
+  else{t.frame.src=e.url;t.title=e.google?e.q+' – Google':e.yt?'YouTube':host(e.show);t.fav=L.favUrl(host(e.show)||'youtube.com');addRecent(e.show,t.title);
     if(e.yt)ytTitle(t,e.yt);
     // most big sites refuse to be framed; nudge after a moment for anything that isn't known-friendly
-    if(!/youtube-nocookie|wikipedia|desmos|google\.com\/webhp|lumen|github\.io|scratch\.mit/i.test(e.url))setTimeout(()=>{if(active===t&&t.hist[t.idx]===e)$('#bwHint').style.display=''},2500);
-    if(t===active)L.setActivity(e.yt?{kind:'youtube',label:'a YouTube video'}:{kind:'web',label:host(e.show)})}
+    if(!/youtube-nocookie|wikipedia|desmos|google\.com\/(webhp|search)|lumen|github\.io|scratch\.mit/i.test(e.url))setTimeout(()=>{if(active===t&&t.hist[t.idx]===e)$('#bwHint').style.display=''},2500);
+    if(t===active)L.setActivity(e.yt?{kind:'youtube',label:'a YouTube video'}:{kind:'web',label:e.google?'Google':host(e.show)})}
   if(t===active)activate(t);else renderTabs()}
-async function ytTitle(t,id){try{const r=await fetch('https://www.youtube.com/oembed?format=json&url='+encodeURIComponent('https://www.youtube.com/watch?v='+id));const j=await r.json();t.title=j.title;renderTabs();if(t===active)L.setActivity({kind:'youtube',label:j.title})}catch{}}
+async function ytTitle(t,id){try{const r=await fetch('https://noembed.com/embed?url='+encodeURIComponent('https://www.youtube.com/watch?v='+id));const j=await r.json();if(!j.title)return;t.title=j.title;renderTabs();if(t===active)L.setActivity({kind:'youtube',label:j.title})}catch{}}
 
 function renderTabs(){$('#bwTabs').innerHTML=tabs.map(t=>`<button class="bw-tab ${t===active?'on':''}" data-t="${t.id}">${t.fav?`<img src="${t.fav}" alt="">`:'<span>✦</span>'}<span class="t">${esc(t.title)}</span><span class="x" data-x="${t.id}">×</span></button>`).join('')+`<button class="bw-new" id="bwNew" title="New tab">＋</button>`;
   $$('#bwTabs [data-t]').forEach(b=>b.onclick=e=>{const t=tabs.find(x=>x.id==b.dataset.t);if(e.target.closest('[data-x]'))closeTab(t);else activate(t)});
   $('#bwNew').onclick=()=>newTab()}
 function syncBar(){const t=active;if(!t)return;const e=t.hist[t.idx]||{};
-  $('#bwIn').value=e.internal==='search'?e.q:e.internal?'':e.show||'';$('#bwLock').textContent=e.internal?'🔍':'🔒';
+  $('#bwIn').value=e.internal==='youtube'?(e.q?'youtube: '+e.q:'youtube.com'):e.internal==='search'||e.google?e.q:e.internal?'':e.show||'';$('#bwLock').textContent=e.internal||e.google?'🔍':'🔒';
   $('#bwBack').disabled=t.idx<=0;$('#bwFwd').disabled=t.idx>=t.hist.length-1;
   body.classList.toggle('internal',!!e.internal);
   const links=L.lines(cfg.webLinks);$('#bwStar').textContent=e.show&&links.some(l=>l.url===e.show)?'★':'☆'}
@@ -55,7 +58,7 @@ function syncBar(){const t=active;if(!t)return;const e=t.hist[t.idx]||{};
 function newTabPage(t){const hr=new Date().getHours();const greet=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
   const tiles=L.lines(cfg.webLinks);const rec=recent().slice(0,8);
   t.page.innerHTML=`<div class="np"><div class="clock" data-clock></div><div class="greet">${greet}. Where to?</div>
-    <form data-s><input placeholder="Search, or type an address" autocomplete="off"></form>
+    <form data-s><input placeholder="Search Google, or type an address" autocomplete="off"></form>
     <div class="tiles">${tiles.map((l,i)=>`<button class="tl" data-go="${esc(l.url)}"><img src="${L.favUrl(host(l.url))}" alt="">${esc(l.name)}</button>`).join('')}</div>
     ${rec.length?`<div class="recent"><div class="side-h" style="padding-left:4px">Recently visited · <a data-clear style="display:inline;color:var(--mute)">clear</a></div>${rec.map(r=>`<a data-go="${esc(r.url)}">${esc(r.title)} <span class="muted">· ${esc(host(r.url))}</span></a>`).join('')}</div>`:''}</div>`;
   const tick=()=>{const c=t.page.querySelector('[data-clock]');if(c)c.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})};tick();
@@ -69,7 +72,7 @@ async function searchPage(t,q){const c=calc(q);
   t.page.innerHTML=`<div class="sr"><h2 style="font-size:28px;margin:0 0 4px">${esc(q)}</h2>
     ${c!==null?`<div class="card ans"><span class="muted">Calculator</span><div style="font-size:34px;font-weight:600">${esc(q)} = ${+c.toFixed(10)}</div></div>`:''}
     <div data-ai></div><div data-sum></div><div data-res><p class="muted">Searching…</p></div>
-    <div class="ext"><span class="muted" style="align-self:center;font-size:13px">Search elsewhere (opens in a cloaked tab):</span>
+    <div class="ext"><span class="muted" style="align-self:center;font-size:13px">Search elsewhere (cloaked tab, not saved in history):</span>
       <button data-ext="https://duckduckgo.com/?q=">DuckDuckGo</button><button data-ext="https://www.google.com/search?q=">Google</button><button data-ext="https://www.youtube.com/results?search_query=">YouTube</button></div></div>`;
   t.page.querySelectorAll('[data-ext]').forEach(b=>b.onclick=()=>L.cloak(b.dataset.ext+encodeURIComponent(q),q));
   if(c===null)L.aiOverview?.(q,t.page.querySelector('[data-ai]'));
@@ -84,6 +87,25 @@ async function searchPage(t,q){const c=calc(q);
       return`<div class="res"><div class="u">wikipedia.org › ${esc(x.title)}</div><a data-go="${u}">${esc(x.title)}</a><p>${esc(x.snippet.replace(/<[^>]+>/g,''))}…</p></div>`}).join('')||'<p class="muted">No results.</p>';
     t.page.querySelectorAll('[data-go]').forEach(a=>a.onclick=()=>go(t,a.dataset.go,true))}
   catch{t.page.querySelector('[data-res]').innerHTML='<p class="muted">Search is unavailable right now.</p>'}}
+
+/* ---- YouTube inside Lumen (YouTube Data API, site-wide key in js/config.js) ---- */
+const YT='https://www.googleapis.com/youtube/v3/';
+function ytCard(v){return`<button class="yt-v" data-vid="${L.esc(v.id)}" data-title="${L.esc(v.title)}"><div class="yt-th" style="background-image:url('${L.esc(v.thumb)}')"></div><b>${v.title}</b><span>${v.channel}</span></button>`}
+async function ytPage(t,q){const key=(window.LUMEN_CONFIG||{}).youtubeKey;
+  t.page.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo">▶</span><b>YouTube</b><form data-yq style="flex:1"><input placeholder="Search YouTube" value="${L.esc(q)}" autocomplete="off"></form></div>
+    <form class="row yt-paste" data-yp><input placeholder="…or paste a YouTube link to play it here"><button>Play</button></form><div data-yr class="yt-grid"></div></div>`;
+  t.page.querySelector('[data-yq]').onsubmit=e=>{e.preventDefault();go(t,'lumen:youtube?q='+encodeURIComponent(e.target.querySelector('input').value.trim()),true)};
+  t.page.querySelector('[data-yp]').onsubmit=e=>{e.preventDefault();const v=e.target.querySelector('input').value.trim();if(L.ytId(v))go(t,v,true);else toast('That isn’t a YouTube video link')};
+  const res=t.page.querySelector('[data-yr]');
+  if(!key){res.innerHTML='<p class="muted" style="grid-column:1/-1">Browsing and searching YouTube here needs a free YouTube API key added once to <code>js/config.js</code> by whoever runs this site (see SETUP.md). Pasting a video link above works right now.</p>';return}
+  res.innerHTML='<p class="muted">Loading…</p>';
+  try{const url=q?`${YT}search?part=snippet&type=video&maxResults=24&safeSearch=moderate&q=${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`:`${YT}videos?part=snippet&chart=mostPopular&maxResults=24&regionCode=${(navigator.language.split('-')[1]||'US')}&key=${encodeURIComponent(key)}`;
+    const j=await (await fetch(url)).json();if(j.error)throw new Error(j.error.message);
+    const dec=x=>{const ta=document.createElement('textarea');ta.innerHTML=x||'';return ta.value};
+    const vids=(j.items||[]).map(it=>({id:it.id.videoId||it.id,title:L.esc(dec(it.snippet.title)),channel:L.esc(dec(it.snippet.channelTitle)),thumb:it.snippet.thumbnails?.medium?.url||''})).filter(v=>typeof v.id==='string');
+    res.innerHTML=(q?'':'<div class="side-h" style="grid-column:1/-1;padding-left:0">Trending</div>')+(vids.map(ytCard).join('')||'<p class="muted">No videos found.</p>');
+    res.querySelectorAll('[data-vid]').forEach(b=>b.onclick=()=>{const tmp=document.createElement('textarea');tmp.innerHTML=b.dataset.title;go(t,'https://www.youtube.com/watch?v='+b.dataset.vid,true);t.title=tmp.value;renderTabs();if(t===active)L.setActivity({kind:'youtube',label:tmp.value})})}
+  catch(err){res.innerHTML=`<p class="muted">YouTube couldn’t load: ${L.esc(err.message)}</p>`}}
 
 /* ---- toolbar ---- */
 $('#bwForm').onsubmit=e=>{e.preventDefault();go(active,$('#bwIn').value,true);$('#bwIn').blur()};

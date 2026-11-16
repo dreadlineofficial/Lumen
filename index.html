@@ -7,8 +7,8 @@
 <title>Lumen</title>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261116e">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css?v=20261116g">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -41,33 +41,45 @@
         <div class="bw-bar">
           <button class="ib" id="bwBack" title="Back">‹</button><button class="ib" id="bwFwd" title="Forward">›</button><button class="ib" id="bwReload" title="Reload">↻</button><button class="ib" id="bwHome" title="Home">⌂</button>
           <form class="bw-url" id="bwForm"><span id="bwLock">🔍</span><input id="bwIn" placeholder="Search or type an address" autocomplete="off" spellcheck="false"></form>
-          <button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open in a cloaked tab">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
+          <button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open in a cloaked tab: it opens as about:blank, so this page's address isn't saved in your browser history">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
         </div>
-        <div class="bw-hint" id="bwHint" style="display:none">Page blank or “refused to connect”? This site blocks being shown inside other sites. <a href="#" id="bwHintCloak">Open it in a cloaked tab</a> · <a href="#" id="bwHintX">dismiss</a></div>
+        <div class="bw-hint" id="bwHint" style="display:none">Page blank or “refused to connect”? This site blocks being shown inside other sites. <a href="#" id="bwHintCloak">Open it in a cloaked tab</a> (cloaked tabs aren't saved in your history) · <a href="#" id="bwHintX">dismiss</a></div>
         <div class="bw-body" id="bwBody"></div>
       </div>
     </section>
 
-    <section class="view" id="v-chat">
-      <h1>Talk <span class="serif iri">freely.</span></h1><p class="sub" id="chatSub">Public rooms and private chats with friends.</p>
-      <div class="card chat">
-        <div class="rooms" id="roomList"></div>
-        <div class="chat-main">
-          <div class="chat-head"><b id="roomName">#general</b><span class="status" id="status"><i></i>Offline</span></div>
-          <div id="msgs"></div>
-          <form class="chat-in" id="chatForm"><button type="button" id="chatGif" title="GIF">GIF</button><input id="chatInput" placeholder="Message…" maxlength="1000" autocomplete="off"><button class="btn-acc">Send</button></form>
+    <section class="view dc-view" id="v-chat">
+      <div class="dc card">
+        <div class="dc-side"><div class="dc-title">Rooms</div><div id="roomList"></div></div>
+        <div class="pane" id="roomPane">
+          <div class="pane-head"><b class="pt">#general</b><span class="status"><i></i>Offline</span></div>
+          <div class="msgs"></div>
+          <form class="composer-bar" data-pane-form>
+            <button type="button" class="ib" data-emoji="#roomIn" title="Emoji">😊</button><button type="button" class="ib gif-b" data-gifbtn title="GIF">GIF</button>
+            <input id="roomIn" data-rich placeholder="Message…" maxlength="1000" autocomplete="off">
+            <button class="btn-acc">Send</button></form>
         </div>
+        <aside class="dc-prof" id="chatSide"></aside>
       </div>
     </section>
 
-    <section class="view" id="v-friends">
-      <h1>Your <span class="serif iri">people.</span></h1><p class="sub">Add friends by name to chat privately and see what they're up to (if they share it).</p>
-      <div class="two">
-        <div>
-          <div class="card" style="margin-bottom:20px"><h2>Find people</h2><form class="row" id="findForm" style="margin-top:10px"><input id="findIn" placeholder="Search by name"><button class="btn-acc">Search</button></form><div class="list" id="findList" style="margin-top:12px"></div></div>
-          <div class="card"><h2>Requests</h2><div class="list" id="reqList" style="margin-top:12px"></div></div>
+    <section class="view dc-view" id="v-friends">
+      <div class="dc card">
+        <div class="dc-side">
+          <form class="row" id="findForm"><input id="findIn" placeholder="Find people"><button class="ib" title="Search">🔍</button></form>
+          <div class="list" id="findList"></div>
+          <div class="dc-title">Requests</div><div class="list" id="reqList"></div>
+          <div class="dc-title">Friends</div><div class="list" id="friendList"></div>
         </div>
-        <div class="card"><h2>Friends</h2><div class="list" id="friendList" style="margin-top:12px"></div></div>
+        <div class="pane" id="dmPane">
+          <div class="pane-head"><b class="pt">Direct messages</b><span class="status"><i></i></span></div>
+          <div class="msgs"><div class="sysmsg">Pick a friend on the left to start chatting.</div></div>
+          <form class="composer-bar" data-pane-form>
+            <button type="button" class="ib" data-emoji="#dmIn" title="Emoji">😊</button><button type="button" class="ib gif-b" data-gifbtn title="GIF">GIF</button>
+            <input id="dmIn" data-rich placeholder="Message…" maxlength="1000" autocomplete="off">
+            <button class="btn-acc">Send</button></form>
+        </div>
+        <aside class="dc-prof" id="frSide"></aside>
       </div>
     </section>
 
@@ -75,7 +87,8 @@
       <h1>What's <span class="serif iri">new.</span></h1><p class="sub">Post anything. Everyone signed in can see posts and comment.</p>
       <div style="max-width:720px">
         <div class="card composer" style="margin-bottom:22px">
-          <textarea id="postText" maxlength="2000" placeholder="Say something…"></textarea>
+          <textarea id="postText" data-rich maxlength="2000" placeholder="Say something…"></textarea>
+          <div class="fmt-bar"><button type="button" data-wrap="**" data-for="#postText" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" data-wrap="*" data-for="#postText" title="Italic (Ctrl+I)"><i>I</i></button><button type="button" data-wrap="__" data-for="#postText" title="Underline (Ctrl+U)"><u>U</u></button><button type="button" data-wrap="~~" data-for="#postText" title="Strikethrough (Ctrl+Shift+X)"><s>S</s></button><button type="button" data-wrap="`" data-for="#postText" title="Code (Ctrl+E)">&lt;/&gt;</button><button type="button" data-wrap="||" data-for="#postText" title="Spoiler (Ctrl+Shift+S)">▒</button><button type="button" data-emoji="#postText" title="Emoji">😊</button></div>
           <img id="postThumb" class="thumb" style="display:none">
           <div class="row" style="margin-top:10px"><button id="postImgBtn">🖼 Image</button><input type="file" id="postImg" accept="image/*" hidden><button id="postImgClear" style="display:none">Remove image</button><span class="spacer" style="flex:1"></span><button class="btn-acc" id="postBtn">Post</button></div>
         </div>
@@ -106,6 +119,14 @@
             <div class="swatches" id="pSwatches"></div>
             <label>Profile picture</label><div class="row" style="flex-wrap:wrap"><button id="pPicBtn">Upload picture</button><input type="file" id="pPicIn" accept="image/*" hidden><button id="pPicDel">Remove</button></div>
             <label>Profile colour</label><input type="color" id="pColor" style="height:42px;padding:4px">
+          </div>
+          <div class="card"><h2>Name & style</h2>
+            <label>Name style</label><select id="pNameStyle"><option value="solid">Solid colour</option><option value="gradient">Gradient</option><option value="animated">Animated gradient</option><option value="glow">Glowing</option></select>
+            <div class="row"><div style="flex:1"><label>Name colour 1</label><input type="color" id="pN1" style="height:42px;padding:4px"></div><div style="flex:1"><label>Name colour 2</label><input type="color" id="pN2" style="height:42px;padding:4px"></div></div>
+            <label>Name font</label><select id="pNameFont"><option value="sans">Clean</option><option value="serif">Elegant italic</option><option value="mono">Code</option><option value="round">Rounded</option><option value="display">Bold display</option></select>
+            <label>Badges (up to 5 emoji, shown next to your name)</label><input id="pBadges" maxlength="40" placeholder="🔥🎮">
+            <label>Picture ring</label><div class="row"><select id="pRing" style="flex:1"><option value="none">None</option><option value="solid">Profile colour</option><option value="gradient">Name gradient</option><option value="rainbow">Rainbow</option></select></div>
+            <label>Card style</label><select id="pCardStyle"><option value="glass">Glass</option><option value="tint">Tinted with profile colour</option><option value="gradient">Name gradient</option><option value="dark">Midnight</option></select>
           </div>
           <div class="card"><h2>About</h2>
             <div class="row"><div style="flex:2"><label>Display name</label><input id="pName" maxlength="24"></div><div style="flex:1"><label>Pronouns</label><input id="pPron" maxlength="20" placeholder="optional"></div></div>
@@ -162,7 +183,7 @@
           <label>Tab icon (site to copy icon from)</label><input id="s_icon" placeholder="classroom.google.com">
           <div class="row" style="margin-top:8px;flex-wrap:wrap"><button data-preset="Google Docs|docs.google.com">Docs</button><button data-preset="Classes|classroom.google.com">Classroom</button><button data-preset="Google|google.com">Google</button><button data-preset="Lumen|">None</button></div>
           <label>Stealth launch</label><button id="stealthBtn" style="width:100%">Open Lumen in an about:blank tab</button>
-          <p class="muted" style="font-size:12px;margin:8px 0 0">The address never shows in the address bar or history, and panic can close the tab.</p>
+          <p class="muted" style="font-size:12px;margin:8px 0 0">Cloaked tabs open as about:blank, so the address never shows in the address bar and isn't saved in your browser history. Panic can also close the tab.</p>
         </div>
         <div class="card"><h2>🎨 Appearance</h2>
           <label>Hub name</label><input id="s_brand" placeholder="Lumen">
@@ -175,8 +196,9 @@
           <label>Web shortcuts (one per line: <code>Name | URL</code>)</label><textarea id="s_webLinks" rows="4"></textarea>
           <label>Chat rooms (comma separated)</label><input id="s_rooms">
         </div>
-        <div class="card"><h2>✦ AI overview</h2>
-          <label class="chk"><input type="checkbox" id="s_aiOn"> Show AI overviews on searches</label>
+        <div class="card"><h2>🔎 Search</h2>
+          <label>Search in the Lumen browser with</label><select id="s_searchEngine"><option value="google">Google (with Google's AI overviews, no setup)</option><option value="lumen">Lumen search (Wikipedia + optional Claude overview)</option></select>
+          <label class="chk"><input type="checkbox" id="s_aiOn"> Claude AI overview on Lumen search (needs your own key)</label>
           <label>Your Anthropic API key</label><input id="s_aiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
           <p class="muted" style="font-size:12px;margin:8px 0 0">Get one at console.anthropic.com → API keys. It's saved only in this browser and sent only to Anthropic. Each search uses Claude with web search, which costs a little on your Anthropic account. Don't share exported settings files, because they include the key.</p>
         </div>
@@ -210,7 +232,7 @@
   </main>
 </div>
 
-<div id="viewer"><div id="viewBar"><span class="vt" id="viewTitle"></span><button id="vReload">↻</button><button id="vCloak">Open cloaked</button><button id="fsBtn">⛶</button><button id="closeView">✕ Close</button></div></div>
+<div id="viewer"><div id="viewBar"><span class="vt" id="viewTitle"></span><button id="vReload">↻</button><button id="vCloak" title="Opens as about:blank, so it isn't saved in your browser history">Open cloaked</button><button id="fsBtn">⛶</button><button id="closeView">✕ Close</button></div></div>
 
 <!-- account modal -->
 <div class="modal" id="authModal"><div class="card">
@@ -249,13 +271,13 @@
   <div class="row" style="margin-top:14px"><button data-close>Cancel</button></div>
 </div></div>
 
-<!-- gif picker -->
-<div class="modal" id="gifModal"><div class="card">
-  <h2>Add a GIF</h2>
-  <form class="row" id="gifForm" style="margin-top:10px"><input id="gifQ" placeholder="Search GIFs"><button class="btn-acc">Search</button></form>
+ <!-- gif picker -->
+<div class="modal" id="gifModal"><div class="card gif-card">
+  <div class="row"><h2 style="margin:0;flex:1">GIFs</h2><button data-close class="ib">✕</button></div>
+  <form class="row" id="gifForm" style="margin-top:10px"><input id="gifQ" placeholder="Search GIFs" autocomplete="off"><button class="btn-acc">Search</button></form>
+  <div class="gif-cats" id="gifCats"></div>
   <div class="gifgrid" id="gifGrid"></div>
-  <label>…or paste a GIF link</label><form class="row" id="gifUrlForm"><input id="gifUrl" placeholder="https://media.giphy.com/….gif"><button>Use</button></form>
-  <div class="row" style="margin-top:14px"><button data-close>Cancel</button></div>
+  <div class="gif-foot"><form class="row" id="gifUrlForm" style="flex:1"><input id="gifUrl" placeholder="…or paste a GIF link"><button>Use</button></form><span class="muted" style="font-size:11px">Powered by GIPHY</span></div>
 </div></div>
 
 <!-- STUDY MODE -->
@@ -270,11 +292,12 @@
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261116e"></script>
-<script src="js/study.js?v=20261116e"></script>
-<script src="js/app.js?v=20261116e"></script>
-<script src="js/browser.js?v=20261116e"></script>
-<script type="module" src="js/ai.js?v=20261116e"></script>
-<script type="module" src="js/cloud.js?v=20261116e"></script>
+<script src="js/config.js?v=20261116g"></script>
+<script src="js/study.js?v=20261116g"></script>
+<script src="js/app.js?v=20261116g"></script>
+<script src="js/rich.js?v=20261116g"></script>
+<script src="js/browser.js?v=20261116g"></script>
+<script type="module" src="js/ai.js?v=20261116g"></script>
+<script type="module" src="js/cloud.js?v=20261116g"></script>
 </body>
 </html>

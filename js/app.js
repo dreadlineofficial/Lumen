@@ -5,8 +5,8 @@ const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`'
  navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
  histDisguise:true,histTitle:'Google Classroom',wipe:false,blurPanic:false,grade:'mid',
  title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#06070b',
- rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',games:[],aiOn:true,aiKey:'',
- webLinks:'YouTube | https://www.youtube.com\nWikipedia | https://en.m.wikipedia.org\nDesmos | https://www.desmos.com/calculator\nCoolmath | https://www.coolmathgames.com',
+ rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',games:[],aiOn:false,aiKey:'',searchEngine:'google',
+ webLinks:'YouTube | lumen:youtube\nWikipedia | https://en.m.wikipedia.org\nDesmos | https://www.desmos.com/calculator\nCoolmath | https://www.coolmathgames.com',
  jumpLinks:'Google | https://www.google.com\nGoogle Classroom | https://classroom.google.com\nGoogle Docs | https://docs.google.com',
  share:true,shareGame:true,shareYt:true,shareWeb:false,seeOthers:true,timetable:[],materials:[]};
 let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cfg={...DEF}}
@@ -74,7 +74,7 @@ $('#vCloak').onclick=()=>{if(view)cloak(view.url,view.title)};
 
 /* games */
 const BUILTIN=[{name:'Nightbound',url:()=>cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'},
-  {name:'OFFAL',url:()=>'games/offal.html',desc:'Horror · single player',art:'radial-gradient(circle at 70% 30%,#3d2b0f,#140d05 60%,#06070b)',fg:'#e8c07a'}];
+  {name:'OFFAL',url:()=>'games/offal.html',desc:'Horror · demo',art:"url('games/offal-poster.webp') center/cover",fg:'transparent',poster:true}];
 // uploaded game files live in IndexedDB (too big for localStorage)
 const gdb=()=>new Promise((ok,no)=>{const r=indexedDB.open('lumen-games',1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
 async function gfile(op,id,val){const db=await gdb();return new Promise((ok,no)=>{const tx=db.transaction('files',op==='get'?'readonly':'readwrite'),st=tx.objectStore('files');
@@ -84,7 +84,7 @@ async function playCustom(g){if(g.file){try{const f=await gfile('get',g.id);if(!
     blobUrl=URL.createObjectURL(new Blob([f],{type:'text/html'}));openView(blobUrl,g.name,{kind:'game',label:g.name})}catch{toast('Could not open the game file')}}
   else openView(fixUrl(g.url),g.name,{kind:'game',label:g.name})}
 function renderGames(){
-  const b=BUILTIN.map((g,i)=>`<div class="card game-card" data-b="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`);
+  const b=BUILTIN.map((g,i)=>`<div class="card game-card" data-b="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${g.poster?'':esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`);
   const c=(cfg.games||[]).map(g=>{const col=/^#[0-9a-f]{6}$/i.test(g.color)?g.color:'#7c5cff';return`<div class="card game-card" data-c="${esc(g.id)}"><button class="g-del" data-del="${esc(g.id)}" title="Remove">✕</button><div class="game-art" style="background:radial-gradient(circle at 30% 20%,${col},#0b0b12 75%);color:#fff"><span style="font-size:52px;font-style:normal">${esc(g.emoji||'🎮')}</span></div><div class="meta"><b>${esc(g.name)}</b><span>${g.file?'Your file · this device':'Custom link'}</span></div></div>`});
   $('#gameGrid').innerHTML=b.join('')+c.join('')+`<div class="card game-card add-game" id="addGame"><div class="game-art"><span style="font-size:46px;font-style:normal">＋</span></div><div class="meta"><b>Add a game</b><span>A link or an HTML file</span></div></div>`;
   $$('#gameGrid [data-b]').forEach(e=>e.onclick=()=>{const g=BUILTIN[e.dataset.b];openView(g.url(),g.name,{kind:'game',label:g.name})});
@@ -100,8 +100,13 @@ $('#gSave').onclick=async()=>{const name=$('#gName').value.trim();if(!name)retur
   cfg.games.push(g);save();closeModal('gameModal');renderGames();toast(name+' added')};
 
 /* about:blank cloak */
-function cloak(url,title){const w=window.open('about:blank','_blank');if(!w){toast('Allow pop-ups for this site');return null}
-  w.document.write(`<!doctype html><title>${esc(title||cfg.title||'Google')}</title><link rel="icon" href="${cfg.icon?favUrl(cfg.icon):'data:,'}"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style><iframe src="${esc(url)}" allow="fullscreen; autoplay; microphone; encrypted-media"></iframe>`);w.document.close();return w}
+const NOFRAME=/(^|\.)(youtube\.com|instagram\.com|tiktok\.com|discord\.com|reddit\.com|x\.com|twitter\.com|facebook\.com|netflix\.com|twitch\.tv|spotify\.com|roblox\.com|github\.com|chatgpt\.com|claude\.ai|duckduckgo\.com|bing\.com)$/i;
+function cloak(url,title){const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+  let host='';try{host=new URL(url).hostname}catch{}
+  if(/^(www\.)?google\.[a-z.]+$/i.test(host)&&!/igu=1/.test(url))url+=(url.includes('?')?'&':'?')+'igu=1';
+  else if(!id&&NOFRAME.test(host)){const n=window.open(url,'_blank','noopener');toast(n===null?'This site can’t load inside another page, so it opened in a normal tab (that tab is saved in history)':'Allow pop-ups for this site');return null}
+  const w=window.open('about:blank','_blank');if(!w){toast('Allow pop-ups for this site');return null}
+  w.document.write(`<!doctype html><title>${esc(title||cfg.title||'Google')}</title><link rel="icon" href="${cfg.icon?favUrl(cfg.icon):'data:,'}"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style><iframe src="${esc(url)}" allow="fullscreen; autoplay; microphone; encrypted-media"></iframe>`);w.document.close();toast('Opened in a cloaked tab, so it won\'t show in your history');return w}
 $('#stealthBtn').onclick=()=>{if(cloak(location.href.split('#')[0],cfg.title))location.replace(fixUrl(cfg.panicUrl||'https://www.google.com'))};
 
 /* ---------- timetable ---------- */
@@ -185,9 +190,13 @@ $('#jumpForm').onsubmit=e=>{e.preventDefault();const v=$('#jumpIn').value.trim()
 let capturing=false;
 const typing=t=>t&&(/INPUT|TEXTAREA|SELECT/.test(t.tagName)||t.isContentEditable);
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
-function onKey(e){if(capturing)return;const t=e.target;
+function onKey(e){if(capturing)return;const t=e.target;if(e.key!==cfg.panicKey&&!['Shift','Control','Alt','Meta'].includes(e.key))onKey.lastTap=0;
   if(coverOn&&[cfg.panicKey,cfg.studyKey,cfg.swapKey].some(k=>same(k,e.key))){e.preventDefault();e.stopPropagation();hideCover();return}
-  if(e.key===cfg.panicKey){e.preventDefault();e.stopPropagation();panic();return}
+  if(e.key===cfg.panicKey){
+    if(typing(t)&&e.key.length===1&&!t.readOnly){const now=Date.now();
+      if(now-(onKey.lastTap||0)>450){onKey.lastTap=now;return}
+      onKey.lastTap=0;try{const v=t.value,p=t.selectionStart;if(v[p-1]===e.key){t.value=v.slice(0,p-1)+v.slice(p)}}catch{}}
+    e.preventDefault();e.stopPropagation();panic();return}
   if(typing(t)||e.ctrlKey||e.metaKey||e.altKey)return;
   if(same(e.key,cfg.studyKey)){e.preventDefault();e.stopPropagation();studyOn()?exitStudy():enterStudy()}
   else if(same(e.key,cfg.swapKey)){e.preventDefault();e.stopPropagation();if(studyOn())exitStudy();else{const sc=scheduledCover();sc?showCover(sc.url,{fromSwap:true}):enterStudy({keep:true})}}}
@@ -195,7 +204,7 @@ addEventListener('keydown',onKey,true);
 addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&document.activeElement?.tagName!=='IFRAME')panic()},150)});
 
 /* ---------- settings ---------- */
-const FIELDS=['startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','aiKey','jumpLinks','rooms'];
+const FIELDS=['searchEngine','startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','aiKey','jumpLinks','rooms'];
 const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','aiOn'];
 function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
   $('#navToggles').innerHTML=$$('nav .nav-btn').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
@@ -214,7 +223,7 @@ $('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target
 $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this device?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
 
 /* shared with cloud.js */
-window.Lumen={cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
+window.Lumen={NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
 
 /* ---------- boot ---------- */
 applyLook();renderGames();

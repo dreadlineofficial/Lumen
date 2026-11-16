@@ -49,10 +49,22 @@ Accounts, profiles, friends, private chats, rooms, activity sharing and posts al
    It's fine for this to be public: the Firebase web key only identifies your project, and the rules from step 3 protect the data.
 5. Commit the change (on GitHub you can edit the file in the browser with the ✏ pencil icon).
 
-## 5. (Optional) GIF search
-Pasting GIF links always works. To search GIFs inside Lumen:
-1. Go to <https://developers.giphy.com>, sign up, then **Create an App → API**.
-2. Copy the API key into `giphyKey: "…"` in `js/config.js` and commit.
+## 5. (Optional) GIF library and YouTube inside Lumen
+These keys are set **once for the whole site**. Users never need their own.
+
+**GIFs (GIPHY):**
+1. Go to <https://developers.giphy.com>, sign up, and click **Create an App**.
+2. Choose **API** (not SDK), give it a name, and create it.
+3. Copy the key into `giphyKey: "…"` in `js/config.js`.
+
+**YouTube (browse and search videos inside Lumen):**
+1. Go to <https://console.cloud.google.com>. You can pick the project Firebase created (`lumen-…`).
+2. Open **APIs & Services → Library**, search for **YouTube Data API v3**, and click **Enable**.
+3. Go to **APIs & Services → Credentials → Create credentials → API key**.
+4. Click the new key. Under **Application restrictions** choose **Websites** and add `https://dreadlineofficial.github.io/*`. Under **API restrictions** choose **YouTube Data API v3**. Save.
+5. Copy the key into `youtubeKey: "…"` in `js/config.js`.
+
+The free YouTube quota allows about 100 searches a day (browsing trending videos costs far less). Pasting a video link always works, even without a key.
 
 ## 6. Put it online
 In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch → `main` / `(root)` → Save**. A minute later the site is live at `https://dreadlineofficial.github.io/Lumen/`.
