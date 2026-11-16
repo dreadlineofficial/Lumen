@@ -38,12 +38,12 @@ function statusText(uid){const s=status(uid);if(s==='online')return'Online';if(s
 function ringBg(u){const c1=okColor(u.nameC1||u.color),c2=okColor(u.nameC2,'#9ff0e6');
   return u.ring==='solid'?okColor(u.color):u.ring==='gradient'?`linear-gradient(135deg,${c1},${c2})`:u.ring==='rainbow'?'conic-gradient(#ff5c7a,#ffc59e,#ffd200,#38ef7d,#22d3ee,#9b6bff,#ff5c7a)':''}
 function pic(u,size=36,uid){const a=safeImg(u?.avatar),st=uid?status(uid):null,ring=ringBg(u||{});
-  return`<div class="pic${st?' st-'+st:''}${ring?' ring':''}" style="width:${size}px;height:${size}px;font-size:${Math.round(size*.4)}px;${ring?`--ring:${ring};`:''}">${a?`<img src="${a}" alt="">`:`<span>${esc((u?.name||'?')[0].toUpperCase())}</span>`}</div>`}
+  return`<div class="pic${st?' st-'+st:''}${ring?' ring':''}" style="width:${size}px;height:${size}px;font-size:${Math.round(size*.4)}px;--psz:${size}px;${ring?`--ring:${ring};`:''}">${a?`<img src="${a}" alt="">`:`<span>${esc((u?.name||'?')[0].toUpperCase())}</span>`}${L.cos?.deco(u?.deco)||''}</div>`}
 const graphemes=s=>{try{return[...new Intl.Segmenter().segment(String(s||''))].map(x=>x.segment)}catch{return[...String(s||'')]}};
 function nameHTML(u,{badges=true}={}){const c1=okColor(u.nameC1||u.color),c2=okColor(u.nameC2,'#9ff0e6'),st=u.nameStyle||'solid';
   const style=st==='gradient'||st==='animated'?`background-image:linear-gradient(90deg,${c1},${c2},${c1});`:st==='glow'?`color:${c1};text-shadow:0 0 12px ${c1}aa;`:`color:${c1};`;
   const b=badges&&u.badges?`<span class="ubadges">${esc(graphemes(u.badges).filter(x=>x.trim()).slice(0,5).join(''))}</span>`:'';
-  return`<span class="uname n-${st} f-${u.nameFont||'sans'}" style="${style}">${esc(u.name||'Unknown')}</span>${b}`}
+  return`<span class="uname n-${st} f-${u.nameFont||'sans'}${L.cos?.nfxCls(u.nfx)||''}" style="${style}">${esc(u.name||'Unknown')}</span>${b}`}
 function actText(uid){if(!cfg.seeOthers)return'';const p=presence.get(uid);if(!p?.act||status(uid)==='offline'||!status(uid))return'';const a=p.act;
   return a.kind==='game'?`🎮 Playing <b>${esc(a.label)}</b>`:a.kind==='youtube'?`▶ Watching <b>YouTube</b>`:a.kind==='web'?`🌐 On <b>${esc(a.label)}</b>`:''}
 
@@ -65,11 +65,12 @@ function ensureProfile(u,name){if(!profileJobs.has(u.uid))profileJobs.set(u.uid,
 async function makeProfile(u,name){const r=D('users',u.uid);const s=await F.getDoc(r);if(!s.exists()){name=String(name||'').trim().slice(0,24);if(name.length<2)name='Player'+Math.floor(Math.random()*900+100);await F.setDoc(r,{name,nameLower:name.toLowerCase(),bio:'',avatar:'',createdAt:F.serverTimestamp()})}}
 $('#meChip').onclick=()=>me?L.go('profile'):(authMode(false),openModal('authModal'));
 
-function renderMe(){if(!myProfile)return;$('#mePic').outerHTML=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic');$('#meName').innerHTML=nameHTML(myProfile,{badges:false});$('#meSt').textContent=statusText(me.uid)}
+function renderMe(){if(!myProfile)return;$('#meChip').className='me-chip'+(L.cos?.plateCls(myProfile.plate)||'');$('#mePic').outerHTML=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic');$('#meName').innerHTML=nameHTML(myProfile,{badges:false});$('#meSt').textContent=statusText(me.uid)}
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
-  if(!u){myProfile=null;$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
+  if(!u){myProfile=null;L.onProfile?.(null);$('#meChip').className='me-chip';$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
-  unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();if(!sideUid.chat)showSide('chat',u.uid)}));
+  unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();
+    if((myProfile.theme||'')!==(cfg.theme||'')){cfg.theme=myProfile.theme||'';save();L.cos?.applyTheme(cfg.theme)}L.onProfile?.(myProfile);if(!sideUid.chat)showSide('chat',u.uid)}));
   startPresence();listenFriends();listenFeed();renderRooms();openConvo(panes.room,panes.room.convo||{type:'room',id:rooms()[0]||'general'})});
 function renderSignedOut(){const b=`<div class="banner">Sign in (bottom-left) to use this.</div>`;$('#friendList').innerHTML=b;$('#reqList').innerHTML='';$('#feed').innerHTML=b;
   Object.values(panes).forEach(p=>{p.unsub?.();p.convo=null;p.msgs.innerHTML=b;p.status.className='status';p.status.innerHTML=''});$('#roomList').innerHTML='';$('#chatSide').innerHTML='';$('#frSide').innerHTML='';$('#reqBadge').style.display='none'}
@@ -80,7 +81,7 @@ function banStyle(u){const img=safeImg(u.banner);if(img)return`background-image:
 function cardBg(u){const c=okColor(u.color),c1=okColor(u.nameC1||u.color),c2=okColor(u.nameC2,'#9ff0e6');
   return u.cardStyle==='tint'?`background:linear-gradient(180deg,${c}33,${c}11 60%,rgba(20,20,28,.85))`:u.cardStyle==='gradient'?`background:linear-gradient(160deg,${c1}55,${c2}33 55%,rgba(20,20,28,.9))`:u.cardStyle==='dark'?'background:#0b0c12':''}
 function card(u,{uid,buttons='',compact=false}={}){const links=String(u.links||'').split('\n').map(l=>l.trim()).filter(l=>/^https?:\/\/\S+$/i.test(l)).slice(0,3);const act=uid?actText(uid):'',st=uid?statusText(uid):'';
-  return`<div class="pcard${compact?' compact':''}" style="--pc:${okColor(u.color)};${cardBg(u)}"><div class="ban" style="${banStyle(u)}"></div><div class="body">${pic(u,compact?80:92,uid)}
+  return`<div class="pcard${compact?' compact':''}" style="--pc:${okColor(u.color)};${cardBg(u)}">${L.cos?.fxLayer(u.fx)||''}<div class="ban" style="${banStyle(u)}"></div><div class="body">${pic(u,compact?80:92,uid)}
    <h3>${nameHTML(u)}${u.pronouns?`<span class="pron">${esc(u.pronouns)}</span>`:''}</h3>
    ${u.status||u.emoji?`<div class="stat">${esc(u.emoji||'')} ${esc(u.status||'')}</div>`:''}
    ${st?`<div class="st-line st-${status(uid)}"><i></i>${esc(st)}</div>`:''}
@@ -155,7 +156,7 @@ function listenFriends(){unsubs.push(F.onSnapshot(F.query(C('friendships'),F.whe
   const t=setInterval(soon,30000);unsubs.push(()=>clearInterval(t))}
 const rank=uid=>({online:0,idle:1,offline:2}[status(uid)]??3);
 async function personRow(uid,{buttons='',sub='',click=''}={}){const u=await getUser(uid);
-  return`<div class="person${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
+  return`<div class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
 async function renderFriends(){if(!me)return;
   const acc=friendIds().sort((a,b)=>rank(a)-rank(b)),inc=friendships.filter(f=>f.status==='pending'&&f.from!==me.uid),out=friendships.filter(f=>f.status==='pending'&&f.from===me.uid);
   const other=f=>f.users.find(x=>x!==me.uid);const online=acc.filter(u=>status(u)!=='offline').length;
@@ -183,7 +184,7 @@ const rooms=()=>cfg.rooms.split(',').map(s=>s.trim().toLowerCase().replace(/[^\w
 function mkPane(sel){const el=$(sel);return{el,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
 const panes={room:mkPane('#roomPane'),dm:mkPane('#dmPane')};
 async function renderRooms(){if(!me)return;const on=friendIds().filter(u=>status(u)!=='offline').sort((a,b)=>rank(a)-rank(b));
-  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button class="room" data-user="${uid}">${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
+  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
   $('#roomList').innerHTML=rooms().map(r=>`<button class="room ${panes.room.convo?.id===r?'on':''}" data-room="${r}"><span class="hash">#</span>${r}</button>`).join('')+
     `<div class="dc-title" style="margin-top:16px">Friends online — ${on.length}</div>`+(fr.join('')||'<p class="muted" style="font-size:12px;padding:0 10px">Nobody online right now.</p>');
   $$('#roomList [data-room]').forEach(b=>b.onclick=()=>openConvo(panes.room,{type:'room',id:b.dataset.room}));
@@ -267,3 +268,7 @@ function toggleCmts(id){const box=$('#c-'+id);if(openCmts.has(id)){openCmts.get(
     const send=(text,gif)=>F.addDoc(C('posts',id,'comments'),{uid:me.uid,text:(text||'').slice(0,500),gif:gif||'',at:F.serverTimestamp()}).catch(e=>toast('Not sent: '+e.message));
     box.querySelector('form').onsubmit=e=>{e.preventDefault();const i=e.target.querySelector('input');if(i.value.trim()){send(i.value.trim());i.value=''}};
     box.querySelector('[data-gif]').onclick=async()=>{const g=await pickGif();if(g)send('',g)}},e=>box.innerHTML=`<span class="muted">${esc(e.message)}</span>`))}
+
+/* shared with shop.js */
+L.cloud={F,D,me:()=>me,profile:()=>myProfile,card,pic,nameHTML};
+L.onCloudReady?.();
