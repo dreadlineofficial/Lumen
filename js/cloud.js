@@ -71,6 +71,7 @@ F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
   unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();
     if((myProfile.theme||'')!==(cfg.theme||'')){cfg.theme=myProfile.theme||'';save();L.cos?.applyTheme(cfg.theme)}L.onProfile?.(myProfile);if(!sideUid.chat)showSide('chat',u.uid)}));
+  if(!panes.dm.convo)panes.dm.msgs.innerHTML='<div class="sysmsg">Pick a friend on the left to start chatting.</div>';
   startPresence();listenFriends();listenServer();listenFeed();listenMyPosts();startAdmin();renderRooms();openConvo(panes.room,panes.room.convo||{type:'room',id:rooms()[0]||'general'})});
 function renderSignedOut(){$('#navAdmin').style.display='none';document.body.classList.remove('is-banned');const b=`<div class="banner">Sign in (bottom-left) to use this.</div>`;$('#friendList').innerHTML=b;$('#reqList').innerHTML='';$('#feed').innerHTML=b;
   Object.values(panes).forEach(p=>{p.unsub?.();p.convo=null;p.msgs.innerHTML=b;p.status.className='status';p.status.innerHTML=''});$('#roomList').innerHTML='';$('#chatSide').innerHTML='';$('#frSide').innerHTML='';$('#reqBadge').style.display='none'}

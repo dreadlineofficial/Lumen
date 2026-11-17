@@ -80,6 +80,9 @@ People see a "Google hasn't verified this app" screen until you submit the app f
 In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch → `main` / `(root)` → Save**. A minute later the site is live at `https://dreadlineofficial.github.io/Lumen/`.
 
 ## Using it
+- **Learning Portal first:** Lumen always opens on the Learning Portal. Each person should add their classes and their own notes on the **Timetable** page so the portal shows the right subject at the right time.
+- **User's guide:** everything is explained at the top of **Settings**.
+- **Return-key extension:** optional; installing it from Settings lets your keys bring you back to Lumen from any website.
 - Click **Sign in** at the bottom-left to create an account. Click your name to change your picture, description and privacy settings.
 - **Friends:** search by name, send a request, and accept requests on the Friends page. Click a friend there to open your private chat; their profile shows on the right. A green dot means online, yellow means idle (Lumen open in a background tab), and grey shows when they were last seen.
 - **Activity:** in your profile you choose what friends can see (the game you're playing, the YouTube video you're watching, the site you have open) and whether you see theirs. Study mode and panic always hide your activity.

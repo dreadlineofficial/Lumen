@@ -9,8 +9,8 @@
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261117g">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261117g">
+<link rel="stylesheet" href="css/app.css?v=20261118a">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261118a">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -111,7 +111,7 @@
     </section>
 
     <section class="view" id="v-timetable">
-      <h1>Your <span class="serif iri">timetable.</span></h1><p class="sub">Add your classes. Study mode opens notes for whatever class is on right now, at your grade level.</p>
+      <h1>Your <span class="serif iri">timetable.</span></h1><div class="banner" style="max-width:820px">📘 <b>Set this up first.</b> Lumen opens on your Learning Portal, and the portal shows notes for the class you have right now. Add each lesson below, then add your own notes for each subject so the portal looks real.</div><p class="sub">Add your classes. Study mode opens notes for whatever class is on right now, at your grade level.</p>
       <div class="card" style="margin-bottom:16px">
         <div class="row" style="flex-wrap:wrap"><button id="ttAdd" class="btn-acc">+ Add class</button><button id="ttSample">Load example</button><button id="ttUploadBtn">⬆ Import CSV</button><input type="file" id="ttFile" accept=".csv,.txt,.tsv" hidden><button id="ttExport">⬇ Export CSV</button></div>
         <div id="nowBox" style="margin-top:14px;color:var(--mute)"></div>
@@ -170,6 +170,46 @@
 
     <section class="view" id="v-settings">
       <h1>Make it <span class="serif iri">yours.</span></h1><p class="sub">Saved in this browser. Your profile and privacy are under your account (bottom-left).</p>
+      <div class="card guide" id="guide"><h2>📖 User's guide</h2><p class="muted" style="margin:4px 0 14px;font-size:14px">Everything Lumen does and how to use it. Tap a topic to open it.</p>
+        <details open><summary>🚀 Getting started</summary><ol>
+          <li><b>Lumen opens on your Learning Portal</b>, a plain school-style page. Press your <b>Study key</b> (<kbd class="k-study">v</kbd>) to go into Lumen, and press it again to go back to the portal.</li>
+          <li><b>Set up your Learning Portal first.</b> Go to <b>Timetable</b>, press <b>+ Add class</b> for each lesson (day, start, end, subject), and add your own notes for each subject underneath. The portal then shows the notes for whatever class you have right now.</li>
+          <li>Pick your IB programme in <b>Settings → Learning Portal</b> so the built-in notes match your level.</li>
+          <li><b>Make an account</b> (bottom-left, <i>Sign in</i>) to chat, add friends, post and use the Shop.</li></ol></details>
+        <details><summary>⌨️ Your three keys</summary><ul>
+          <li><b>Study</b> (<kbd class="k-study">v</kbd>): switches between Lumen and the Learning Portal. Closes any game or page you had open.</li>
+          <li><b>Swap</b> (<kbd class="k-swap">b</kbd>): flips to the Learning Portal but keeps your game running (muted). Press again to carry on exactly where you were.</li>
+          <li><b>Panic</b> (<kbd class="k-panic">`</kbd>): instantly leaves for your safe page (Google by default), or does whatever you chose in <i>Panic button</i>.</li>
+          <li><b>While typing</b> in a chat box or post, a single press types the letter. <b>Double-tap</b> the key quickly to trigger it.</li>
+          <li><b>Hot corner:</b> flick the mouse into the very top-left corner of the screen to jump to the Learning Portal. This works even inside websites in the Web tab, where browsers send key presses to the website.</li>
+          <li>Change any key in <b>Settings → Keys &amp; modes</b>: click the box and press the new key.</li></ul></details>
+        <details><summary>⚡ Panic, disguise and history</summary><ul>
+          <li><b>Safe page:</b> where Panic sends you. <i>Disguise this visit in history</i> renames Lumen's history entry (for example to "Google Classroom") before leaving.</li>
+          <li><b>Close the tab:</b> browsers only let a site close tabs it opened itself. Use <b>Stealth launch</b> (Disguise card) once, and Panic can then close the tab.</li>
+          <li><b>Tab title and icon:</b> make the tab look like Docs, Classroom or Google.</li>
+          <li><b>Lumen's Web tab</b> doesn't add the pages you visit to your browser history (only Lumen itself appears). Your network, school filter or a signed-in Google account can still keep their own records.</li></ul></details>
+        <details><summary>⏰ Timed cover pages and the Return-key extension</summary><ul>
+          <li>Pick times (for example a lesson) and a page. During those times, Panic and Swap show that page instead.</li>
+          <li><b>Essay</b>, <b>worksheet</b>, Google, Wikipedia and Desmos show inside Lumen; press Panic again to come back.</li>
+          <li><b>Any other site</b> (ManageBac, YouTube, Classroom…) can't be shown inside another site, so it opens for real in your tab. Come back with your browser's <b>Back</b> button, or install the <b>Return-key extension</b> (Settings) so your keys and hot corner bring you back from any site.</li></ul></details>
+        <details><summary>🎮 Games and 🌐 the Web tab</summary><ul>
+          <li><b>Games:</b> click a card to play. <b>Add a game</b> takes a link or an HTML file from your device (files stay in this browser only).</li>
+          <li><b>Web:</b> a browser inside Lumen with tabs. Searches use Google. YouTube has its own page with Home, Shorts and search; videos play inside Lumen.</li>
+          <li>Many big sites refuse to load inside other sites. If a page stays blank, press <b>⧉ Open cloaked</b>.</li></ul></details>
+        <details><summary>💬 Chat, friends and posts</summary><ul>
+          <li><b>Chat:</b> public channels everyone can read. <b>Friends:</b> search people, send requests, and chat privately. Only you two can read private chats.</li>
+          <li>Green dot = online, yellow = idle (Lumen in a background tab), grey = offline.</li>
+          <li><b>Formatting:</b> <code>**bold**</code> (Ctrl+B), <code>*italic*</code> (Ctrl+I), <code>__underline__</code> (Ctrl+U), <code>~~strike~~</code>, <code>`code`</code> (Ctrl+E), <code>||spoiler||</code>. Start a line with <code>#</code> for a big heading (<code>##</code>, <code>###</code> smaller). 😊 adds emoji and <b>GIF</b> adds GIFs.</li>
+          <li><b>Posts:</b> share text and an image. People can like ❤️ and comment.</li></ul></details>
+        <details><summary>✦ Glow, the Shop and your profile</summary><ul>
+          <li>Claim <b>500 Glow</b> the first time and <b>150 Glow</b> every day in the <b>Shop</b>.</li>
+          <li><b>Earn from posts:</b> every view from someone else = 50 Glow (up to 2 per person per day), every comment from someone else = 150 Glow. Collect it in <b>Posts → My analytics</b>.</li>
+          <li>Spend it on profile effects, avatar decorations, nameplates, name effects and themes. Bought items appear in <b>Owned</b>; equip or unequip any time.</li>
+          <li><b>Profile:</b> banner, picture, name style, status, about me, links, and what friends can see you doing.</li></ul></details>
+        <details><summary>🧩 Make it yours</summary><ul>
+          <li><b>Layout:</b> menu on the left, right or top, icons only, compact spacing, text size, roundness, blur and background animation.</li>
+          <li><b>Export settings</b> saves everything (including your timetable) to a file; <b>Import</b> restores it on another computer.</li></ul></details>
+      </div>
       <div class="set-grid">
         <div class="card"><h2>⚡ Panic button</h2>
           <label>When panic is pressed</label>
@@ -190,14 +230,15 @@
           <label class="chk"><input type="checkbox" id="s_hotCorner"> Hot corner: move the mouse to the top-left corner to switch to study mode</label>
           <p class="muted" style="font-size:12px;margin:8px 0 0">Your keys work everywhere in Lumen. While typing, double-tap them. Inside a website opened in the Web tab, the browser sends key presses to that site, so use the hot corner there.</p>
         </div>
-        <div class="card"><h2>🎓 Study material</h2>
+        <div class="card"><h2>🎓 Learning Portal</h2>
           <label>Your IB programme</label>
           <select id="s_grade">
             <option value="lower">IB MYP 1–3 (Grades 6–8)</option>
             <option value="mid">IB MYP 4–5 (Grades 9–10)</option>
             <option value="upper">IB Diploma Programme (Grades 11–12)</option>
           </select>
-          <label>Study portal name</label><input id="s_portal" placeholder="Learning Portal">
+          <p class="muted" style="font-size:12.5px;margin:12px 0 0">Lumen always opens on your <b>Learning Portal</b>, which shows notes for the class you have right now. Fill it in: add your classes on the <b>Timetable</b> page, then add your own notes for each subject underneath.</p>
+          <button type="button" data-go="timetable" style="margin-top:10px">📅 Set up my Learning Portal</button>
         </div>
         <div class="card"><h2>🕶 Disguise</h2>
           <label>Tab title</label><input id="s_title" placeholder="Lumen">
@@ -218,10 +259,7 @@
           <label>Chat rooms (comma separated)</label><input id="s_rooms">
         </div>
         <div class="card"><h2>🔎 Search</h2>
-          <label>Search in the Lumen browser with</label><select id="s_searchEngine"><option value="google">Google (with Google's AI overviews, no setup)</option><option value="lumen">Lumen search (Wikipedia + optional Claude overview)</option></select>
-          <label class="chk"><input type="checkbox" id="s_aiOn"> Claude AI overview on Lumen search (needs your own key)</label>
-          <label>Your Anthropic API key</label><input id="s_aiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
-          <p class="muted" style="font-size:12px;margin:8px 0 0">Get one at console.anthropic.com → API keys. It's saved only in this browser and sent only to Anthropic. Each search uses Claude with web search, which costs a little on your Anthropic account. Don't share exported settings files, because they include the key.</p>
+          <label>Search in the Lumen browser with</label><select id="s_searchEngine"><option value="google">Google (includes Google's AI overviews)</option><option value="lumen">Lumen search (Wikipedia + calculator)</option></select>
         </div>
         <div class="card"><h2>🔑 Return-key extension</h2>
           <p class="muted" style="font-size:13px;margin:4px 0 10px">When you open a real site from Lumen (ManageBac, YouTube…), Lumen isn't running in that tab, and websites can't see key presses on other sites. This small Chrome extension listens for your Panic, Study and Swap keys (and the hot corner) on every site and takes you straight back to Lumen. It does nothing else.</p>
@@ -230,16 +268,8 @@
           <ol class="muted" style="font-size:12.5px;margin:12px 0 0;padding-left:18px;line-height:1.6"><li>Unzip the download.</li><li>Open <code>chrome://extensions</code> and switch on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and pick the <b>lumen-return-key</b> folder.</li><li>Reload Lumen once so it learns your keys.</li></ol>
           <p class="muted" style="font-size:12px;margin:8px 0 0">Works in Chrome, Edge, Brave and other Chromium browsers. School-managed browsers may block extensions; your browser's Back button always works.</p>
         </div>
-        <div class="card"><h2>🚪 Startup screen</h2>
-          <label>When Lumen opens, show</label>
-          <select id="s_startMode"><option value="study">Study mode</option><option value="cover">A web page I choose</option><option value="lumen">Lumen straight away</option></select>
-          <label>Page to show on startup</label><input id="s_startUrl" list="decoyList" placeholder="lumen:doc">
-          <datalist id="decoyList"><option value="lumen:doc">Built-in essay document (always works)</option><option value="lumen:worksheet">Built-in maths worksheet (always works)</option><option value="lumen:study">Study mode</option><option value="https://www.google.com/webhp?igu=1">Google</option><option value="https://en.m.wikipedia.org">Wikipedia</option><option value="https://www.desmos.com/calculator">Desmos calculator</option></datalist>
-          <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px"><button type="button" data-decoy="lumen:doc">📄 Essay</button><button type="button" data-decoy="lumen:worksheet">🧮 Worksheet</button><button type="button" data-decoy="https://www.google.com/webhp?igu=1">🔎 Google</button><button type="button" data-decoy="https://en.m.wikipedia.org">📚 Wikipedia</button></div>
-          <p class="muted" style="font-size:12px;margin:8px 0 0">Built-in pages, Google, Wikipedia and Desmos show inside Lumen. Any other link (YouTube, Classroom, Docs…) blocks being shown inside other sites, so Lumen opens the real page in this tab instead: press your browser's <b>Back</b> button (or Alt+←) to come straight back to Lumen. That page does appear in your history.</p>
-          <p class="muted" style="font-size:12px;margin:8px 0 0">Press your Panic, Study or Swap key (or triple-click the top-left corner) to get into Lumen.</p>
-        </div>
-        <div class="card" style="grid-column:1/-1"><h2>⏰ Timed cover pages</h2>
+
+          <div class="card" style="grid-column:1/-1"><h2>⏰ Timed cover pages</h2>
           <p class="muted" style="font-size:13px;margin:4px 0 10px">During these times, Panic and Swap show your chosen page inside Lumen instead. Press Panic again to come straight back. Tip: for Google Docs or Slides, use <i>File → Share → Publish to web</i> links; normal Google links refuse to load inside other sites.</p>
           <table><thead><tr><th>Day</th><th>From</th><th>To</th><th>Page to show</th><th></th><th></th></tr></thead><tbody id="schedBody"></tbody></table>
           <button id="schedAdd" style="margin-top:10px">+ Add time</button>
@@ -263,6 +293,7 @@
   </main>
 </div>
 
+<div class="mob-fab" id="mobFab"><button id="fabStudy" title="Learning Portal">📘</button><button id="fabPanic" class="btn-danger" title="Panic">⚡</button></div>
 <div id="viewer"><div id="viewBar"><span class="vt" id="viewTitle"></span><button id="vReload">↻</button><button id="vCloak" title="Opens as about:blank, so it isn't saved in your browser history">Open cloaked</button><button id="fsBtn">⛶</button><button id="closeView">✕ Close</button></div></div>
 
 <!-- account modal -->
@@ -330,14 +361,13 @@
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261117g"></script>
-<script src="js/study.js?v=20261117g"></script>
-<script src="js/app.js?v=20261117g"></script>
-<script src="js/cosmetics.js?v=20261117g"></script>
-<script src="js/rich.js?v=20261117g"></script>
-<script src="js/browser.js?v=20261117g"></script>
-<script type="module" src="js/ai.js?v=20261117g"></script>
-<script type="module" src="js/cloud.js?v=20261117g"></script>
-<script type="module" src="js/shop.js?v=20261117g"></script>
+<script src="js/config.js?v=20261118a"></script>
+<script src="js/study.js?v=20261118a"></script>
+<script src="js/app.js?v=20261118a"></script>
+<script src="js/cosmetics.js?v=20261118a"></script>
+<script src="js/rich.js?v=20261118a"></script>
+<script src="js/browser.js?v=20261118a"></script>
+<script type="module" src="js/cloud.js?v=20261118a"></script>
+<script type="module" src="js/shop.js?v=20261118a"></script>
 </body>
 </html>

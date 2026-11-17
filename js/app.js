@@ -6,7 +6,7 @@ const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`'
  navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
  histDisguise:true,histTitle:'Google Classroom',wipe:false,blurPanic:false,grade:'mid',
  title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#06070b',
- rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',games:[],aiOn:false,aiKey:'',searchEngine:'google',
+ rooms:'general,games,random',nbUrl:'nightbound/index.html',extra:'',games:[],searchEngine:'google',
  webLinks:'YouTube | lumen:youtube\nWikipedia | https://en.m.wikipedia.org\nDesmos | https://www.desmos.com/calculator\nCoolmath | https://www.coolmathgames.com',
  jumpLinks:'Google | https://www.google.com\nGoogle Classroom | https://classroom.google.com\nGoogle Docs | https://docs.google.com',
  share:true,shareGame:true,shareYt:true,shareWeb:false,seeOthers:true,timetable:[],materials:[]};
@@ -14,6 +14,7 @@ let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cf
 if(cfg.studyKey==='\\')cfg.studyKey='v';
 if('startStudy' in cfg){if(cfg.startStudy===false&&cfg.startMode==='study')cfg.startMode='lumen';delete cfg.startStudy}
 if(cfg.nbUrl==='../index.html')cfg.nbUrl=DEF.nbUrl;
+cfg.portal='Learning Portal';delete cfg.aiKey;delete cfg.aiOn;delete cfg.startMode;delete cfg.startUrl;
 if(cfg.extra){String(cfg.extra).split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&p[1].trim()).forEach(p=>cfg.games.push({id:'g'+Date.now()+Math.random().toString(36).slice(2,6),name:p[0].trim(),url:p[1].trim(),emoji:'🎮',color:'#7c5cff'}));cfg.extra=''}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200)};
@@ -143,10 +144,10 @@ function enterStudy({keep=false}={}){if(!keep)closeView();else{setFrameMuted(cfg
   const pages={};if(own.length)pages['Class notes']=own.map(m=>'<ul>'+m.notes.split('\n').filter(Boolean).map(l=>`<li>${linkify(l)}</li>`).join('')+'</ul>').join('');
   Object.assign(pages,lvl||{'Notes':`<p>No built-in notes for <b>${esc(sub)}</b> yet. Add your own on the Timetable page.</p>`});
   const names=Object.keys(pages);const show=n=>{$('#sTabs').innerHTML=names.map(x=>`<button class="${x===n?'on':''}">${esc(x)}</button>`).join('');$$('#sTabs button').forEach((b,i)=>b.onclick=()=>show(names[i]));$('#sContent').innerHTML=`<div class="s-card"><h2>${esc(n)}</h2>${pages[n]}</div>`};show(names[0]);
-  document.title=sub+' – '+cfg.portal;$('#fav').href=favUrl('classroom.google.com');$('#study').classList.add('on');$('#study').scrollTop=0;
+  document.title=sub+' – '+cfg.portal;$('#fav').href=favUrl('classroom.google.com');$('#study').classList.add('on');document.body.classList.add('in-portal');$('#study').scrollTop=0;
   const tick=()=>$('#sClock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});tick();clearInterval(clockT);clockT=setInterval(tick,10000);
   if(!keep)setActivity(null);else window.Lumen?.onActivity?.(null)}
-function exitStudy(){const wasOn=studyOn();$('#study').classList.remove('on');if(wasOn)setTimeout(showNews,400);clearInterval(clockT);applyLook();if(swapped){setFrameMuted(false);window.Lumen?.browser?.pause(false);swapped=false;window.Lumen?.onActivity?.(activity)}}
+function exitStudy(){const wasOn=studyOn();$('#study').classList.remove('on');document.body.classList.remove('in-portal');if(wasOn)setTimeout(showNews,400);clearInterval(clockT);applyLook();if(swapped){setFrameMuted(false);window.Lumen?.browser?.pause(false);swapped=false;window.Lumen?.onActivity?.(activity)}}
 const studyOn=()=>$('#study').classList.contains('on');
 $('#studyBtn').onclick=()=>enterStudy();$('#sBack').ondblclick=exitStudy;
 
@@ -207,6 +208,7 @@ function panic(){if(coverOn){hideCover();return}const sc=scheduledCover();if(sc)
   setTimeout(()=>{if(cfg.panicAction==='close'&&window.LumenApp){LumenApp.close();leaveTo(cfg.panicUrl)}else if(cfg.panicAction==='close'){try{(window.top!==window.self?window.top:window).close()}catch{}setTimeout(()=>leaveTo(cfg.panicUrl),120)}else leaveTo(cfg.panicUrl)},cfg.histDisguise?180:0)}
 function switchTo(url){cleanup();disguiseHistory();setTimeout(()=>leaveTo(url),cfg.histDisguise?150:0)}
 $('#panicBtn').onclick=panic;
+$('#fabPanic').onclick=panic;$('#fabStudy').onclick=()=>studyOn()?exitStudy():enterStudy();
 function renderJump(){$('#jumpList').innerHTML=lines(cfg.jumpLinks).map((l,i)=>{let h='';try{h=new URL(l.url).hostname}catch{}return`<button class="person" data-j="${i}" style="text-align:left"><img src="${favUrl(h)}" width="20" height="20" alt=""><div class="info"><b>${esc(l.name)}</b><span>${esc(h)}</span></div></button>`}).join('')||'<p class="muted">Add pages in Settings → “Switch to” pages.</p>';
   $$('#jumpList [data-j]').forEach(b=>b.onclick=()=>switchTo(lines(cfg.jumpLinks)[b.dataset.j].url))}
 $('#jumpBtn').onclick=()=>{renderJump();openModal('jumpModal');setTimeout(()=>$('#jumpIn').focus(),50)};
@@ -242,9 +244,9 @@ addEventListener('mousemove',e=>{const inC=e.clientX<=3&&e.clientY<=3,moved=e.mo
 addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&document.activeElement?.tagName!=='IFRAME')panic()},150)});
 
 /* ---------- settings ---------- */
-const FIELDS=['searchEngine','startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','aiKey','jumpLinks','rooms'];
-const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','aiOn','hotCorner'];
-function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
+const FIELDS=['searchEngine','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','jumpLinks','rooms'];
+const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','hotCorner'];
+function fillSettings(){guideKeys();FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
   $('#navToggles').innerHTML=$$('nav .nav-btn').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
 // layout controls preview live
 ['navPos','navStyle','density','fontScale','radius','blur'].forEach(f=>$('#s_'+f).addEventListener('input',()=>{cfg[f]=$('#s_'+f).value;$('#fsVal').textContent=cfg.fontScale+'%';applyLayout()}));
@@ -260,25 +262,25 @@ $('#importAll').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target.files[0].text())};save();location.reload()}catch{toast('Invalid file')}};
 $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this device?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
 
-$$('[data-decoy]').forEach(b=>b.onclick=()=>{$('#s_startUrl').value=b.dataset.decoy});
 try{if(localStorage.getItem('hub.bwnote'))$('#bwNote').style.display='none'}catch{}
 $('#bwNoteX').onclick=e=>{e.preventDefault();$('#bwNote').style.display='none';try{localStorage.setItem('hub.bwnote','1')}catch{}};
 
 function extStatus(){const el=document.getElementById('extStatus');if(!el)return;const on=document.documentElement.dataset.lumenExt==='1';el.innerHTML=on?'<span style="color:#7ee2a8">● Installed and working</span>':'<span class="muted">○ Not installed in this browser</span>'}
 setTimeout(extStatus,1800);document.addEventListener('click',e=>{if(e.target.closest?.('[data-v=settings]'))setTimeout(extStatus,50)});
 
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){e.preventDefault();closeModal('newsModal');go(g.dataset.go)}});
+function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
+
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-17',items:[
-  ['❤️','Likes on posts','Tap the heart on any post.'],
-  ['📊','Post analytics','Posts → My analytics shows views, likes and comments. Every view from someone else earns ✦ 50 Glow (up to 2 per person per day) and every comment earns ✦ 150. Press Collect to cash in.'],
-  ['🧸','Better buddies','Ted now drinks from a real bottle and keeps his paws to himself, and every buddy has more detail and new tricks.'],
-  ['🩸','Horror profile effects','Blood drips, blood rain, watching eyes, cursed static, handprints and claw marks in the Shop. All effects got an upgrade too.'],
-  ['#','Big headings','Start a line with # in chat or posts to make it big and bold (## and ### are smaller).'],
-  ['⌨️','Keys work everywhere','Double-tap your Study, Swap or Panic key while typing. Flick the mouse to the top-left corner to switch to study mode from anywhere, even inside a website.'],
-  ['📄','Cover pages that always work','Built-in essay and worksheet pages. Sites that refuse to load inside Lumen now show a document instead of an error.'],
+const NEWS={id:'2026-11-18',items:[
+  ['📘','Set up your Learning Portal','Lumen always opens on your Learning Portal. Add your classes and your own notes on the Timetable page so it shows the right subject at the right time.','timetable'],
+  ['📖','User\'s guide','Everything Lumen does, explained step by step, at the top of Settings.','settings'],
+  ['🔑','Return-key extension','Install it from Settings and your keys bring you back to Lumen from any website.','settings'],
+  ['❤️','Likes, views and analytics','Earn ✦ Glow when people view and comment on your posts. Collect it in Posts → My analytics.'],
+  ['🩸','New profile effects','Horror effects and upgraded classics in the Shop.'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
-  $('#newsList').innerHTML=NEWS.items.map(([i,t,d])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('');
+  $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');
   openModal('newsModal');cfg.seenNews=NEWS.id;save()}
 
 /* shared with cloud.js */
@@ -287,5 +289,6 @@ window.Lumen={IN_APP,showCover,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openMo
 /* ---------- boot ---------- */
 applyLook();renderGames();
 if(IN_APP){document.body.classList.add('in-app');$('#stealthBtn').closest('.card')?.querySelector('#stealthBtn')?.remove()}
+// Lumen always opens on the Learning Portal (except when coming back from a page it opened)
 let backFromReal=false;try{backFromReal=sessionStorage.getItem('hub.realcover')==='1';sessionStorage.removeItem('hub.realcover')}catch{}
-if(backFromReal){}else if(cfg.startMode==='study')enterStudy();else if(cfg.startMode==='cover')showCover(cfg.startUrl);
+if(!backFromReal)enterStudy();

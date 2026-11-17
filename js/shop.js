@@ -1,9 +1,9 @@
 /* Lumen Shop: earn ✦ Glow daily, buy and equip cosmetics. Every purchase is checked by firestore.rules. */
 const L=window.Lumen,{esc,toast}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const TABS=[['buddy','🧸 Buddies'],['fx','✨ Profile effects'],['deco','💫 Decorations'],['plate','🎴 Nameplates'],['nfx','🔤 Name effects'],['theme','🎨 Themes'],['owned','🎒 Owned']];
+const TABS=[['fx','✨ Profile effects'],['deco','💫 Decorations'],['plate','🎴 Nameplates'],['nfx','🔤 Name effects'],['theme','🎨 Themes'],['owned','🎒 Owned']];
 const SLOT={buddy:'buddy',fx:'fx',deco:'deco',plate:'plate',nfx:'nfx',theme:'theme'};
-let tab='buddy',prof=null,busy=false;
+let tab='fx',prof=null,busy=false;
 const owned=()=>prof?.owned||[];
 const coins=()=>+prof?.coins||0;
 const nextClaim=()=>{const t=prof?.lastClaim?.toMillis?.();return t?t+20*3600e3:0};
@@ -21,7 +21,7 @@ function render(){const grid=$('#shopGrid');if(!grid)return;
   const nc=nextClaim(),ready=!nc||Date.now()>=nc;const cb=$('#claimBtn');
   cb.disabled=!prof||!ready;cb.textContent=!prof?'Sign in to earn Glow':!prof.lastClaim?'🎁 Claim 500 welcome Glow':ready?'🎁 Claim daily +150':`Next reward in ${Math.ceil((nc-Date.now())/36e5)}h`;
   $$('#shopTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
-  const items=L.cos.CATALOG.filter(i=>tab==='owned'?owned().includes(i.id):i.type===tab);
+  const items=L.cos.CATALOG.filter(i=>(i.type!=='buddy'||L.cos.BUDDIES_ON)&&(tab==='owned'?owned().includes(i.id):i.type===tab));
   grid.innerHTML=items.map(it=>{const own=owned().includes(it.id),eq=prof&&prof[SLOT[it.type]]===it.id;
     const btn=!prof?`<button disabled>Sign in</button>`:eq?`<button data-unequip="${it.id}">Unequip</button>`:own?`<button class="btn-acc" data-equip="${it.id}">Equip</button>`:`<button class="${coins()>=it.price?'btn-acc':''}" data-buy="${it.id}" ${coins()>=it.price?'':'disabled'}>Buy</button>`;
     return`<div class="card sitem${eq?' equipped':''}"><div class="prev">${eq?'<span class="tag">Equipped</span>':own?'<span class="tag">Owned</span>':''}${preview(it)}</div>
