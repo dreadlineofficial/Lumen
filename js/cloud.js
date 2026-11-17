@@ -71,8 +71,8 @@ F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
   unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();
     if((myProfile.theme||'')!==(cfg.theme||'')){cfg.theme=myProfile.theme||'';save();L.cos?.applyTheme(cfg.theme)}L.onProfile?.(myProfile);if(!sideUid.chat)showSide('chat',u.uid)}));
-  startPresence();listenFriends();listenFeed();renderRooms();openConvo(panes.room,panes.room.convo||{type:'room',id:rooms()[0]||'general'})});
-function renderSignedOut(){const b=`<div class="banner">Sign in (bottom-left) to use this.</div>`;$('#friendList').innerHTML=b;$('#reqList').innerHTML='';$('#feed').innerHTML=b;
+  startPresence();listenFriends();listenServer();listenFeed();listenMyPosts();startAdmin();renderRooms();openConvo(panes.room,panes.room.convo||{type:'room',id:rooms()[0]||'general'})});
+function renderSignedOut(){$('#navAdmin').style.display='none';document.body.classList.remove('is-banned');const b=`<div class="banner">Sign in (bottom-left) to use this.</div>`;$('#friendList').innerHTML=b;$('#reqList').innerHTML='';$('#feed').innerHTML=b;
   Object.values(panes).forEach(p=>{p.unsub?.();p.convo=null;p.msgs.innerHTML=b;p.status.className='status';p.status.innerHTML=''});$('#roomList').innerHTML='';$('#chatSide').innerHTML='';$('#frSide').innerHTML='';$('#reqBadge').style.display='none'}
 
 /* ---------- profile card ---------- */
@@ -161,7 +161,8 @@ async function renderFriends(){if(!me)return;
   const acc=friendIds().sort((a,b)=>rank(a)-rank(b)),inc=friendships.filter(f=>f.status==='pending'&&f.from!==me.uid),out=friendships.filter(f=>f.status==='pending'&&f.from===me.uid);
   const other=f=>f.users.find(x=>x!==me.uid);const online=acc.filter(u=>status(u)!=='offline').length;
   const rows=await Promise.all(acc.map(uid=>personRow(uid,{sub:actText(uid)||esc(statusText(uid)),click:'dm'})));
-  $('#friendList').innerHTML=(acc.length?`<div class="fr-count"><span class="st-dot st-online"></span>${online} online · ${acc.length} friends</div>`:'')+(rows.join('')||'<p class="muted">No friends yet. Search for people above.</p>');
+  const adminRow=inbox.includes(ADMIN_UID)&&!acc.includes(ADMIN_UID)?(await personRow(ADMIN_UID,{sub:'<b>Lumen admin</b> · messaged you',click:'dm'})).replace('class="person','class="person admin-row'):'';
+  $('#friendList').innerHTML=adminRow+(acc.length?`<div class="fr-count"><span class="st-dot st-online"></span>${online} online · ${acc.length} friends</div>`:'')+(rows.join('')||'<p class="muted">No friends yet. Search for people above.</p>');
   $('#reqList').innerHTML=(await Promise.all([...inc.map(f=>personRow(other(f),{buttons:`<button class="ib" data-accept="${f.id}" title="Accept">✓</button><button class="ib" data-unfriend="${f.id}" title="Decline">✕</button>`,sub:'Wants to be friends'})),...out.map(f=>personRow(other(f),{buttons:`<button class="ib" data-unfriend="${f.id}" title="Cancel">✕</button>`,sub:'Request sent'}))])).join('')||'<p class="muted" style="font-size:13px">No requests.</p>';
   $('#reqBadge').style.display=inc.length?'':'none';$('#reqBadge').textContent=inc.length;bindPeople($('#v-friends'))}
 function bindPeople(root){
@@ -180,7 +181,7 @@ $('#findForm').onsubmit=async e=>{e.preventDefault();if(!me)return openModal('au
   $('#findList [data-clearfind]').onclick=e=>{e.preventDefault();$('#findList').innerHTML='';$('#findIn').value=''}};
 
 /* ---------- message panes (rooms + DMs) ---------- */
-const rooms=()=>cfg.rooms.split(',').map(s=>s.trim().toLowerCase().replace(/[^\w-]/g,'')).filter(Boolean);
+const rooms=()=>serverChannels||cfg.rooms.split(',').map(s=>s.trim().toLowerCase().replace(/[^\w-]/g,'')).filter(Boolean);
 function mkPane(sel){const el=$(sel);return{el,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
 const panes={room:mkPane('#roomPane'),dm:mkPane('#dmPane')};
 async function renderRooms(){if(!me)return;const on=friendIds().filter(u=>status(u)!=='offline').sort((a,b)=>rank(a)-rank(b));
@@ -202,7 +203,7 @@ async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();
   p.unsub=F.onSnapshot(F.query(C(...convoPath(c)),F.orderBy('at','desc'),F.limit(100)),async s=>{
     if(c.type==='room'){p.status.className='status ok';p.status.innerHTML='<i></i>Live'}
     const docs=s.docs.map(d=>d.data()).reverse();const us=await Promise.all(docs.map(m=>getUser(m.uid)));
-    const box=p.msgs,atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
+    const box=p.msgs,fromBottom=box.scrollHeight-box.scrollTop-box.clientHeight,prevCount=+box.dataset.n||0;
     box.innerHTML=docs.map((m,i)=>{const u=us[i],g=safeImg(m.gif),prev=docs[i-1];
       const grouped=prev&&prev.uid===m.uid&&ms(m.at)-ms(prev.at)<5*60e3;
       const body=`${m.text?`<div class="dtext">${fmt(m.text)}</div>`:''}${g?`<img class="gif" src="${g}" alt="GIF">`:''}`;
@@ -210,9 +211,15 @@ async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();
         :`<div class="dmsg"><div class="dav" data-user="${m.uid}">${pic(u,40,friendIds().includes(m.uid)||m.uid===me.uid?m.uid:null)}</div><div class="dbody"><div class="dhead"><b data-user="${m.uid}">${nameHTML(u)}</b><span class="muted">${when(m.at)}</span></div>${body}</div></div>`}).join('')
       ||`<div class="sysmsg">${c.type==='room'?'No messages yet. Say hi 👋':'This is the start of your private chat. Only you two can read it.'}</div>`;
     box.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>showUser(b.dataset.user));
-    if(atBottom||s.metadata.hasPendingWrites||box.dataset.c!==JSON.stringify(c))box.scrollTop=1e9;box.dataset.c=JSON.stringify(c)},
+    // new chat or my own message: jump to the end. A new message from someone: glide down to it,
+    // unless I've scrolled far up to read older messages, then show a "new message" button instead.
+    const switched=box.dataset.c!==JSON.stringify(c),grew=docs.length>prevCount&&!switched;box.dataset.c=JSON.stringify(c);box.dataset.n=docs.length;
+    if(switched||s.metadata.hasPendingWrites)box.scrollTop=box.scrollHeight;
+    else if(grew){if(fromBottom<600){box.scrollTop=box.scrollHeight-box.clientHeight-fromBottom;box.scrollTo({top:box.scrollHeight,behavior:'smooth'})}else showJump(p)}},
     e=>{p.status.className='status';p.status.innerHTML='<i></i>No access';p.msgs.innerHTML=`<div class="sysmsg">${esc(e.code==='permission-denied'?'You can only message friends.':e.message)}</div>`});
   unsubs.push(()=>p.unsub?.())}
+function showJump(p){let j=p.el.querySelector('.jump-new');if(!j){j=document.createElement('button');j.className='jump-new';j.textContent='New message ↓';p.el.appendChild(j);
+    j.onclick=()=>{p.msgs.scrollTo({top:p.msgs.scrollHeight,behavior:'smooth'});j.remove()};p.msgs.addEventListener('scroll',function f(){if(p.msgs.scrollHeight-p.msgs.scrollTop-p.msgs.clientHeight<80){j.remove();p.msgs.removeEventListener('scroll',f)}})}}
 async function sendMsg(p,text,gif){if(!me){openModal('authModal');return}if(!p.convo)return toast('Pick a chat first');text=(text||'').trim().slice(0,1000);if(!text&&!gif)return;
   try{await F.addDoc(C(...convoPath(p.convo)),{uid:me.uid,text,gif:gif||'',at:F.serverTimestamp()})}catch(e){toast('Not sent: '+e.message)}}
 Object.values(panes).forEach(p=>{p.form.onsubmit=e=>{e.preventDefault();const v=p.input.value;p.input.value='';sendMsg(p,v)};
@@ -247,27 +254,107 @@ $('#postImgClear').onclick=()=>{postImage='';$('#postThumb').style.display='none
 $('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=$('#postText').value.trim().slice(0,2000);if(!text&&!postImage)return toast('Write something or add an image');
   $('#postBtn').disabled=true;try{await F.addDoc(C('posts'),{uid:me.uid,text,image:postImage,at:F.serverTimestamp()});$('#postText').value='';$('#postImgClear').click();toast('Posted')}catch(e){toast('Could not post: '+e.message)}$('#postBtn').disabled=false};
 const postAgo=t=>ago(ms(t));
+let feedPosts=new Map();
+const VIEW_GLOW=50,COMMENT_GLOW=150;
 function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at','desc'),F.limit(40)),async s=>{
-  const posts=s.docs.map(d=>({id:d.id,...d.data()}));const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
-  $('#feed').innerHTML=posts.map((p,i)=>{const u=us[i],img=safeImg(p.image),sid=fr.includes(p.uid)||p.uid===me.uid?p.uid:null;return`<div class="card post" id="p-${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div></div>
+  const posts=s.docs.map(d=>({id:d.id,...d.data()}));feedPosts=new Map(posts.map(p=>[p.id,p]));const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
+  $('#feed').innerHTML=posts.map((p,i)=>{const u=us[i],img=safeImg(p.image),sid=fr.includes(p.uid)||p.uid===me.uid?p.uid:null,likes=p.likes||[],liked=likes.includes(me.uid);
+    return`<div class="card post" id="p-${p.id}" data-pid="${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div>${isAdmin()&&p.uid!==me.uid?`<button class="ib" data-delpost="${p.id}" title="Remove post (admin)" style="margin-left:auto">🗑</button>`:''}</div>
     ${p.text?`<div class="post-t">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
-    <div class="post-a"><button data-cm="${p.id}">💬 Comments</button>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||'<p class="muted">No posts yet. Be the first!</p>';
+    <div class="post-a"><button class="like${liked?' on':''}" data-like="${p.id}">${liked?'❤️':'🤍'} <span>${likes.length}</span></button><button data-cm="${p.id}">💬 ${p.ecomments?p.ecomments:''} Comments</button><span class="views" title="Views">👁 ${p.views||0}</span>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||'<p class="muted">No posts yet. Be the first!</p>';
   bindPeople($('#feed'));
   $$('#feed [data-cm]').forEach(b=>b.onclick=()=>toggleCmts(b.dataset.cm));
+  $$('#feed [data-like]').forEach(b=>b.onclick=()=>toggleLike(b.dataset.like,b));
   $$('#feed [data-delpost]').forEach(b=>b.onclick=()=>{if(confirm('Delete this post?'))F.deleteDoc(D('posts',b.dataset.delpost)).catch(e=>toast(e.message))});
-  openCmts.forEach((u,id)=>{u();openCmts.delete(id);if($('#c-'+id))toggleCmts(id)})}));
+  $$('#feed .post').forEach(el=>viewObs.observe(el));
+  [...openCmts.entries()].forEach(([id,u])=>{u();openCmts.delete(id);if($('#c-'+id))toggleCmts(id)})}));
   unsubs.push(()=>{openCmts.forEach(u=>u());openCmts.clear()})}
+async function toggleLike(pid,btn){if(banned)return toast('Your account is banned');const p=feedPosts.get(pid);if(!p)return;const liked=(p.likes||[]).includes(me.uid);
+  btn.classList.toggle('on',!liked);btn.innerHTML=`${liked?'🤍':'❤️'} <span>${(p.likes||[]).length+(liked?-1:1)}</span>`;if(!liked)btn.classList.add('pop');
+  try{await F.updateDoc(D('posts',pid),{likes:liked?F.arrayRemove(me.uid):F.arrayUnion(me.uid)})}catch(e){toast('Couldn’t like: '+e.message)}}
+
+/* views: a post counts as viewed after it's been on screen for a moment.
+   Never your own post, and at most 2 views per account per post per day (the rules enforce this). */
+const dayNo=()=>Math.floor(Date.now()/864e5);
+const VKEY='hub.views';
+function viewLog(){try{const v=JSON.parse(localStorage.getItem(VKEY)||'{}');return v.day===dayNo()?v:{day:dayNo(),n:{}}}catch{return{day:dayNo(),n:{}}}}
+const seenThisVisit=new Set(),viewTimers=new Map();
+const viewObs=new IntersectionObserver(es=>es.forEach(e=>{const pid=e.target.dataset.pid;if(!pid)return;
+  if(e.isIntersecting&&e.intersectionRatio>=.5){if(!viewTimers.has(pid))viewTimers.set(pid,setTimeout(()=>{viewTimers.delete(pid);countView(pid)},1200))}
+  else{clearTimeout(viewTimers.get(pid));viewTimers.delete(pid)}}),{threshold:[0,.5]});
+async function countView(pid){if(!me||banned||seenThisVisit.has(pid)||document.hidden||!$('#v-posts').classList.contains('on'))return;const p=feedPosts.get(pid);if(!p||p.uid===me.uid)return;
+  seenThisVisit.add(pid);const log=viewLog();let n=log.n[pid]||0;
+  while(n<2){n++;const vid=`${me.uid}_${dayNo()}_${n}`;const b=F.writeBatch(db);
+    b.set(D('posts',pid,'views',vid),{uid:me.uid});b.update(D('posts',pid),{views:F.increment(1),lastView:vid});
+    try{await b.commit();break}catch(e){console.warn('view not counted',vid,e.code,e.message);if(e.code!=='permission-denied')break}}
+  log.n[pid]=n;try{localStorage.setItem(VKEY,JSON.stringify(log))}catch{}}
+
 function toggleCmts(id){const box=$('#c-'+id);if(openCmts.has(id)){openCmts.get(id)();openCmts.delete(id);box.style.display='none';return}
   box.style.display='';box.innerHTML='<span class="muted">Loading…</span>';
   openCmts.set(id,F.onSnapshot(F.query(C('posts',id,'comments'),F.orderBy('at','asc'),F.limit(100)),async s=>{const cs=s.docs.map(d=>({id:d.id,...d.data()}));const us=await Promise.all(cs.map(c=>getUser(c.uid)));
-    const draftTxt=box.querySelector('input')?.value||'';
-    box.innerHTML=cs.map((c,i)=>{const g=safeImg(c.gif);return`<div class="cmt"><div data-user="${c.uid}" style="cursor:pointer">${pic(us[i],30)}</div><div class="bub"><small><b data-user="${c.uid}">${nameHTML(us[i])}</b> · ${postAgo(c.at)}${c.uid===me.uid?` · <a href="#" data-delc="${c.id}" style="color:inherit">delete</a>`:''}</small>${fmt(c.text||'')}${g?`<img class="gif" src="${g}" alt="GIF">`:''}</div></div>`}).join('')+
+    const draftTxt=box.querySelector('input')?.value||'';const owner=feedPosts.get(id)?.uid;
+    box.innerHTML=cs.map((c,i)=>{const g=safeImg(c.gif);return`<div class="cmt"><div data-user="${c.uid}" style="cursor:pointer">${pic(us[i],30)}</div><div class="bub"><small><b data-user="${c.uid}">${nameHTML(us[i])}</b> · ${postAgo(c.at)}${c.uid===me.uid||owner===me.uid||isAdmin()?` · <a href="#" data-delc="${c.id}" style="color:inherit">delete</a>`:''}</small>${fmt(c.text||'')}${g?`<img class="gif" src="${g}" alt="GIF">`:''}</div></div>`}).join('')+
       `<form class="cmt-in"><button type="button" class="ib" data-emoji="#ci-${id}">😊</button><button type="button" class="ib gif-b" data-gif>GIF</button><input id="ci-${id}" data-rich placeholder="Write a comment…" maxlength="500" value="${esc(draftTxt)}"><button class="btn-acc">Send</button></form>`;
     bindPeople(box);
     box.querySelectorAll('[data-delc]').forEach(a=>a.onclick=e=>{e.preventDefault();F.deleteDoc(D('posts',id,'comments',a.dataset.delc)).catch(err=>toast(err.message))});
-    const send=(text,gif)=>F.addDoc(C('posts',id,'comments'),{uid:me.uid,text:(text||'').slice(0,500),gif:gif||'',at:F.serverTimestamp()}).catch(e=>toast('Not sent: '+e.message));
+    const send=async(text,gif)=>{if(banned)return toast('Your account is banned');const data={uid:me.uid,text:(text||'').slice(0,500),gif:gif||'',at:F.serverTimestamp()};
+      try{if(owner&&owner!==me.uid){const ref=F.doc(C('posts',id,'comments'));const b=F.writeBatch(db);b.set(ref,data);b.update(D('posts',id),{ecomments:F.increment(1),lastComment:ref.id});await b.commit()}
+        else await F.addDoc(C('posts',id,'comments'),data)}catch(e){toast('Not sent: '+e.message)}};
     box.querySelector('form').onsubmit=e=>{e.preventDefault();const i=e.target.querySelector('input');if(i.value.trim()){send(i.value.trim());i.value=''}};
     box.querySelector('[data-gif]').onclick=async()=>{const g=await pickGif();if(g)send('',g)}},e=>box.innerHTML=`<span class="muted">${esc(e.message)}</span>`))}
+
+/* ---------- post analytics + collecting Glow ---------- */
+let myPosts=[];
+function listenMyPosts(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.where('uid','==',me.uid)),s=>{myPosts=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAnalytics()}))}
+const unpaid=p=>((p.views||0)-(p.paidViews||0))*VIEW_GLOW+((p.ecomments||0)-(p.paidComments||0))*COMMENT_GLOW;
+function renderAnalytics(){const box=$('#analytics');if(!box||!me)return;
+  const tot=myPosts.reduce((a,p)=>({views:a.views+(p.views||0),likes:a.likes+(p.likes||[]).length,comments:a.comments+(p.ecomments||0),earned:a.earned+(p.paidViews||0)*VIEW_GLOW+(p.paidComments||0)*COMMENT_GLOW,owed:a.owed+unpaid(p)}),{views:0,likes:0,comments:0,earned:0,owed:0});
+  const max=Math.max(1,...myPosts.map(p=>p.views||0));
+  box.innerHTML=`<div class="an-stats">${[['👁','Views',tot.views],['❤️','Likes',tot.likes],['💬','Comments',tot.comments],['✦','Glow earned',tot.earned]].map(([i,l,v])=>`<div class="card an-stat"><span>${i} ${l}</span><b>${v.toLocaleString()}</b></div>`).join('')}</div>
+    <div class="card an-collect"><div><b>✦ ${tot.owed.toLocaleString()} Glow waiting</b><span class="muted">Every view from someone else earns ${VIEW_GLOW} Glow (up to 2 per person per day) and every comment from someone else earns ${COMMENT_GLOW}.</span></div><button class="claim" id="collectBtn" ${tot.owed?'':'disabled'}>Collect</button></div>
+    <div class="card"><table class="an-table"><thead><tr><th>Post</th><th>Views</th><th>Likes</th><th>Comments</th><th>Glow</th></tr></thead><tbody>${myPosts.map(p=>`<tr><td><div class="an-post">${safeImg(p.image)?`<img src="${safeImg(p.image)}" alt="">`:''}<span>${esc((p.text||'Image post').replace(/^#{1,3}\s*/gm,'').slice(0,70))}</span></div><small class="muted">${postAgo(p.at)}</small></td>
+      <td><div class="an-bar"><i style="width:${Math.round((p.views||0)/max*100)}%"></i></div>${p.views||0}</td><td>${(p.likes||[]).length}</td><td>${p.ecomments||0}</td><td>${unpaid(p)?`<span class="price">+${unpaid(p)}</span>`:'✓'}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">You haven’t posted yet.</td></tr>'}</tbody></table></div>`;
+  $('#collectBtn').onclick=collectAll}
+async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got=0;
+  for(const p of myPosts.filter(p=>unpaid(p)>0)){const amt=unpaid(p);const b=F.writeBatch(db);
+    b.update(D('posts',p.id),{paidViews:p.views||0,paidComments:p.ecomments||0});
+    b.update(D('users',me.uid),{coins:(+myProfile.coins||0)+got+amt,lastEarn:p.id});
+    try{await b.commit();got+=amt}catch(e){toast('Couldn’t collect: '+e.message);break}}
+  if(got)toast(`+${got.toLocaleString()} ✦ Glow collected`);renderAnalytics()}
+$('#postTabs')?.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;$$('#postTabs button').forEach(x=>x.classList.toggle('on',x===b));$('#feedWrap').style.display=b.dataset.pt==='feed'?'':'none';$('#analytics').style.display=b.dataset.pt==='an'?'':'none';if(b.dataset.pt==='an')renderAnalytics()});
+
+/* ---------- server channels, bans, admin inbox ---------- */
+let serverChannels=null,banned=false,inbox=[];
+const ADMIN_UID='P1z4pyemPiZqpS65YBTdzI469yO2';
+const isAdmin=()=>me?.uid===ADMIN_UID;
+function listenServer(){unsubs.push(F.onSnapshot(D('server','config'),s=>{const c=s.data()?.channels;serverChannels=Array.isArray(c)&&c.length?c:null;renderRooms();renderAdmin()},()=>{}));
+  unsubs.push(F.onSnapshot(D('bans',me.uid),s=>{banned=s.exists();document.body.classList.toggle('is-banned',banned);if(banned)toast('This account has been banned by the admin')},()=>{}));
+  unsubs.push(F.onSnapshot(C('inbox',me.uid,'from'),s=>{inbox=s.docs.map(d=>d.id);renderFriends()},()=>{}))}
+
+/* ---------- admin control panel ---------- */
+let allUsers=[],adminQ='';
+function startAdmin(){$('#navAdmin').style.display=isAdmin()?'':'none';if(!isAdmin())return;
+  unsubs.push(F.onSnapshot(F.query(C('users'),F.orderBy('nameLower'),F.limit(500)),s=>{allUsers=s.docs.map(d=>({uid:d.id,...d.data()}));renderAdmin()}));
+  unsubs.push(F.onSnapshot(C('bans'),s=>{bannedSet=new Set(s.docs.map(d=>d.id));renderAdmin()}))}
+let bannedSet=new Set();
+function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
+  const chans=serverChannels||rooms();
+  const list=allUsers.filter(u=>!adminQ||u.nameLower?.includes(adminQ)||u.uid.toLowerCase().includes(adminQ));
+  box.innerHTML=`<div class="an-stats"><div class="card an-stat"><span>👥 Accounts</span><b>${allUsers.length}</b></div><div class="card an-stat"><span>🟢 Online friends</span><b>${friendIds().filter(u=>status(u)!=='offline').length}</b></div><div class="card an-stat"><span>⛔ Banned</span><b>${bannedSet.size}</b></div><div class="card an-stat"><span># Channels</span><b>${chans.length}</b></div></div>
+   <div class="two" style="align-items:start"><div class="card"><h2>Accounts</h2><input id="admQ" placeholder="Search name or ID" value="${esc(adminQ)}" style="margin:10px 0">
+     <div class="list adm-users">${list.map(u=>`<div class="person${bannedSet.has(u.uid)?' banned':''}">${pic(u,38)}<div class="info"><input class="adm-name" data-uid="${u.uid}" value="${esc(u.name||'')}" maxlength="24"><span class="muted" style="font-size:11px">${u.uid}${bannedSet.has(u.uid)?' · banned':''}${u.uid===ADMIN_UID?' · admin':''}</span></div>
+       ${u.uid===ADMIN_UID?'':`<button class="ib" data-admdm="${u.uid}" title="Message">💬</button>${bannedSet.has(u.uid)?`<button class="ib" data-unban="${u.uid}" title="Unban">↩</button>`:`<button class="ib" data-ban="${u.uid}" title="Delete profile and ban">⛔</button>`}`}</div>`).join('')||'<p class="muted">No accounts found.</p>'}</div></div>
+   <div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
+     <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div></div>`;
+  $('#admQ').oninput=e=>{adminQ=e.target.value.trim().toLowerCase();const pos=e.target.selectionStart;renderAdmin();const q=$('#admQ');q.focus();q.setSelectionRange(pos,pos)};
+  box.querySelectorAll('.adm-name').forEach(i=>i.onchange=async()=>{const name=i.value.trim().slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');try{await F.updateDoc(D('users',i.dataset.uid),{name,nameLower:name.toLowerCase()});users.delete(i.dataset.uid);toast('Renamed')}catch(e){toast(e.message)}});
+  box.querySelectorAll('[data-admdm]').forEach(b=>b.onclick=async()=>{const uid=b.dataset.admdm;try{await F.setDoc(D('inbox',uid,'from',me.uid),{at:F.serverTimestamp()})}catch{}openDm(uid)});
+  box.querySelectorAll('[data-ban]').forEach(b=>b.onclick=async()=>{const u=allUsers.find(x=>x.uid===b.dataset.ban);if(!confirm(`Delete ${u?.name||'this account'}'s profile and ban them? They won't be able to post, chat or sign up again with this account.`))return;
+    const bt=F.writeBatch(db);bt.set(D('bans',b.dataset.ban),{at:F.serverTimestamp(),name:u?.name||''});bt.delete(D('users',b.dataset.ban));try{await bt.commit();toast('Profile deleted and account banned')}catch(e){toast(e.message)}});
+  box.querySelectorAll('[data-unban]').forEach(b=>b.onclick=async()=>{try{await F.deleteDoc(D('bans',b.dataset.unban));toast('Unbanned')}catch(e){toast(e.message)}});
+  box.querySelectorAll('[data-rmch]').forEach(b=>b.onclick=()=>saveChannels(chans.filter(c=>c!==b.dataset.rmch)));
+  $('#addCh').onsubmit=e=>{e.preventDefault();const c=$('#newCh').value.trim().toLowerCase().replace(/[^\w-]/g,'').slice(0,30);if(!c)return;if(chans.includes(c))return toast('Already exists');saveChannels([...chans,c])}}
+async function saveChannels(list){try{await F.setDoc(D('server','config'),{channels:list},{merge:true});toast('Channels updated')}catch(e){toast(e.message)}}
 
 /* shared with shop.js */
 L.cloud={F,D,me:()=>me,profile:()=>myProfile,card,pic,nameHTML};

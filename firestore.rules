@@ -10,10 +10,17 @@ service cloud.firestore {
       return (exists(fs(a)) && get(fs(a)).data.status == 'accepted')
           || (exists(fs(b)) && get(fs(b)).data.status == 'accepted');
     }
+    // the admin account (control panel, can message anyone, moderate)
+    function isAdmin() { return signedIn() && uid() == 'P1z4pyemPiZqpS65YBTdzI469yO2'; }
+    function adminId() { return 'P1z4pyemPiZqpS65YBTdzI469yO2'; }
+    // banned accounts can read but not post, chat or change anything
+    function active() { return signedIn() && !exists(/databases/$(database)/documents/bans/$(uid())); }
+    function postPath(id) { return /databases/$(database)/documents/posts/$(id); }
+    function today() { return string(int(math.floor(request.time.toMillis() / 86400000))); }
     function okImage(v) { return v is string && v.size() < 900000 && (v == '' || v.matches('^(https://|data:image/).*')); }
 
     // Shop prices: must match js/cosmetics.js
-    function prices() { return {'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
+    function prices() { return {'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_blood': 500, 'fx_bloodrain': 450, 'fx_eyes': 450, 'fx_static': 400, 'fx_hands': 450, 'fx_claws': 400, 'fx_flicker': 350, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
     function profileOk(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 24
         && d.nameLower == d.name.lower()
@@ -39,32 +46,63 @@ service cloud.firestore {
         || (no == oo && nl == request.time
             && ((ol == null && nc == oc + 500)
              || (ol != null && request.time > ol + duration.value(20, 'h') && nc == oc + 150)))
+        || (no == oo && nl == ol && earnOk(o, n, oc, nc))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo)
             && n.get('lastBuy', '') in prices() && no.hasAny([n.lastBuy]) && !oo.hasAny([n.lastBuy])
             && nc == oc - prices()[n.lastBuy] && nc >= 0);
     }
 
+    // Collecting Glow from a post: 50 per new paid-out view, 150 per new paid-out comment,
+    // checked against the post's counters before and after the same batched write.
+    function earnOk(o, n, oc, nc) {
+      let pid = n.get('lastEarn', '');
+      let pb = get(postPath(pid)).data;
+      let pa = getAfter(postPath(pid)).data;
+      return pid != '' && pa.uid == uid()
+        && nc == oc + 50 * (pa.get('paidViews', 0) - pb.get('paidViews', 0)) + 150 * (pa.get('paidComments', 0) - pb.get('paidComments', 0))
+        && nc > oc;
+    }
+
     // Profiles: anyone signed in can read; only you can write yours.
     match /users/{userId} {
       allow read: if signedIn();
-      allow create: if signedIn() && uid() == userId && profileOk(request.resource.data)
+      allow create: if active() && uid() == userId && profileOk(request.resource.data)
         && request.resource.data.get('coins', 0) == 0 && request.resource.data.get('owned', []).size() == 0
         && !('lastClaim' in request.resource.data) && equipOk(request.resource.data);
       allow update: if signedIn() && uid() == userId && profileOk(request.resource.data)
         && economyOk(resource.data, request.resource.data) && equipOk(request.resource.data);
-      allow delete: if false;
+      // admin: rename anyone
+      allow update: if isAdmin() && profileOk(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'nameLower']);
+      allow delete: if isAdmin();
+    }
+
+    // Bans and the server's channel list: only the admin writes these
+    match /bans/{userId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /server/{doc} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40;
+    }
+
+    // lets people see that the admin messaged them (they aren't friends)
+    match /inbox/{userId}/from/{sender} {
+      allow read: if signedIn() && uid() == userId;
+      allow write: if isAdmin() && sender == uid();
     }
 
     // Online status + what you're doing: only you and your friends can read it.
     match /presence/{userId} {
       allow read: if signedIn() && (uid() == userId || friends(userId));
-      allow write: if signedIn() && uid() == userId;
+      allow write: if active() && uid() == userId;
     }
 
     // Friend requests. ID is the two user IDs sorted and joined with "_".
     match /friendships/{id} {
       allow read: if signedIn() && uid() in resource.data.users;
-      allow create: if signedIn()
+      allow create: if active()
         && request.resource.data.from == uid()
         && request.resource.data.status == 'pending'
         && request.resource.data.users.size() == 2
@@ -83,7 +121,8 @@ service cloud.firestore {
       function members() { return pair.split('_'); }
       function other() { return members()[0] == uid() ? members()[1] : members()[0]; }
       allow read: if signedIn() && uid() in members();
-      allow create: if signedIn() && uid() in members() && members().size() == 2 && friends(other())
+      allow create: if active() && uid() in members() && members().size() == 2
+        && (friends(other()) || isAdmin() || other() == adminId())
         && request.resource.data.uid == uid()
         && request.resource.data.text is string && request.resource.data.text.size() <= 1000
         && okImage(request.resource.data.get('gif', ''))
@@ -94,32 +133,62 @@ service cloud.firestore {
     // Public rooms.
     match /rooms/{room}/messages/{msg} {
       allow read: if signedIn();
-      allow create: if signedIn() && room.size() <= 32
+      allow create: if active() && room.size() <= 32
         && request.resource.data.uid == uid()
         && request.resource.data.text is string && request.resource.data.text.size() <= 1000
         && okImage(request.resource.data.get('gif', ''))
         && request.resource.data.at == request.time;
-      allow delete: if signedIn() && resource.data.uid == uid();
+      allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
     }
 
-    // Posts and comments.
+    // Posts: likes, views and comments.
     match /posts/{post} {
+      function d() { return request.resource.data; }
+      function o() { return resource.data; }
+      function keys() { return d().diff(o()).affectedKeys(); }
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.uid == uid()
-        && request.resource.data.text is string && request.resource.data.text.size() <= 2000
-        && okImage(request.resource.data.get('image', ''))
-        && request.resource.data.at == request.time;
-      allow delete: if signedIn() && resource.data.uid == uid();
+      allow create: if active() && d().uid == uid()
+        && d().text is string && d().text.size() <= 2000
+        && okImage(d().get('image', ''))
+        && d().at == request.time
+        && d().get('likes', []).size() == 0 && d().get('views', 0) == 0 && d().get('ecomments', 0) == 0
+        && d().get('paidViews', 0) == 0 && d().get('paidComments', 0) == 0;
+      // like or unlike: add or remove only your own id
+      allow update: if active() && keys().hasOnly(['likes']) && d().likes.size() <= 5000
+        && ((d().likes.toSet().difference(o().get('likes', []).toSet()) == [uid()].toSet() && o().get('likes', []).toSet().difference(d().likes.toSet()).size() == 0)
+         || (o().get('likes', []).toSet().difference(d().likes.toSet()) == [uid()].toSet() && d().likes.toSet().difference(o().get('likes', []).toSet()).size() == 0));
+      // a view: +1, paired with a new view record (max 2 per account per post per day, never the author)
+      allow update: if active() && uid() != o().uid && keys().hasOnly(['views', 'lastView'])
+        && d().views == o().get('views', 0) + 1
+        && (d().lastView == uid() + '_' + today() + '_1' || d().lastView == uid() + '_' + today() + '_2')
+        && !exists(/databases/$(database)/documents/posts/$(post)/views/$(d().lastView))
+        && existsAfter(/databases/$(database)/documents/posts/$(post)/views/$(d().lastView));
+      // a comment from someone else: +1, paired with the new comment
+      allow update: if active() && uid() != o().uid && keys().hasOnly(['ecomments', 'lastComment'])
+        && d().ecomments == o().get('ecomments', 0) + 1
+        && !exists(/databases/$(database)/documents/posts/$(post)/comments/$(d().lastComment))
+        && getAfter(/databases/$(database)/documents/posts/$(post)/comments/$(d().lastComment)).data.uid == uid();
+      // the author marks views and comments as paid out (the Glow itself is checked in users)
+      allow update: if active() && uid() == o().uid && keys().hasOnly(['paidViews', 'paidComments'])
+        && d().paidViews == o().get('views', 0) && d().paidComments == o().get('ecomments', 0)
+        && d().paidViews >= o().get('paidViews', 0) && d().paidComments >= o().get('paidComments', 0);
+      allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
+
+      match /views/{v} {
+        allow get: if signedIn() && v.matches('^' + uid() + '_.*');
+        allow create: if active() && v.matches('^' + uid() + '_' + today() + '_[12]$')
+          && request.resource.data.uid == uid()
+          && get(postPath(post)).data.uid != uid()
+          && getAfter(postPath(post)).data.views == get(postPath(post)).data.get('views', 0) + 1;
+      }
 
       match /comments/{c} {
         allow read: if signedIn();
-        allow create: if signedIn() && request.resource.data.uid == uid()
+        allow create: if active() && request.resource.data.uid == uid()
           && request.resource.data.text is string && request.resource.data.text.size() <= 500
           && okImage(request.resource.data.get('gif', ''))
           && request.resource.data.at == request.time;
-        // comment author or the post's author can delete
-        allow delete: if signedIn() && (resource.data.uid == uid()
-          || get(/databases/$(database)/documents/posts/$(post)).data.uid == uid());
+        allow delete: if signedIn() && (resource.data.uid == uid() || get(postPath(post)).data.uid == uid()) || isAdmin();
       }
     }
   }

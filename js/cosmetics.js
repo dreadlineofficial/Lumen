@@ -22,6 +22,13 @@ const CATALOG=[
  {id:'fx_lanterns',type:'fx',name:'Lanterns',price:450,desc:'Warm paper lanterns float into the night'},
  {id:'fx_grid',type:'fx',name:'Neon Grid',price:400,desc:'A retro horizon that scrolls forever'},
  {id:'fx_fog',type:'fx',name:'Haunted Fog',price:300,desc:'Thick mist rolls slowly past'},
+ {id:'fx_blood',type:'fx',name:'Bleeding',price:500,desc:'Blood seeps down from the top and drips off'},
+ {id:'fx_bloodrain',type:'fx',name:'Blood Rain',price:450,desc:'A red downpour that splashes at the bottom'},
+ {id:'fx_eyes',type:'fx',name:'They\'re Watching',price:450,desc:'Red eyes blink open in the dark'},
+ {id:'fx_static',type:'fx',name:'Cursed Signal',price:400,desc:'Broken TV static, scanlines and a face in the noise'},
+ {id:'fx_hands',type:'fx',name:'Handprints',price:450,desc:'Bloody handprints slap onto the glass'},
+ {id:'fx_claws',type:'fx',name:'Claw Marks',price:400,desc:'Something rakes its claws across your card'},
+ {id:'fx_flicker',type:'fx',name:'Dying Light',price:350,desc:'The light flickers and something stands in the dark'},
  {id:'fx_galaxy',type:'fx',name:'Galaxy Swirl',price:500,desc:'A spiral galaxy turns behind you'},
  // 3D buddies: little characters that live on your profile bar and card
  {id:'buddy_ted',type:'buddy',name:'Ted',price:500,desc:'Walks around, pulls up a chair to scroll his phone, sips a soda'},
@@ -88,6 +95,13 @@ function fxLayer(id){if(!byId[id]||byId[id].type!=='fx')return'';const n=id.slic
     case'lanterns':make(9,()=>`<i style="${css({left:R(2,92)+'%','--s':R(12,20)+'px','--d':R(10,18)+'s','--dl':-R(0,18)+'s','--x':R(-20,20)+'px'})}"></i>`);break;
     case'grid':p='<b class="sun"></b><b class="floor"></b>';break;
     case'fog':p='<b class="f1"></b><b class="f2"></b><b class="f3"></b>';break;
+    case'blood':p='<b class="pool"></b>';make(11,()=>{const l=R(2,96);return`<i style="${css({left:l+'%','--w':R(5,12)+'px','--h':R(25,70)+'%','--d':R(5,11)+'s','--dl':-R(0,11)+'s'})}"><s></s></i>`});break;
+    case'bloodrain':make(46,()=>`<i style="${css({left:R(-5,105)+'%','--h':R(10,24)+'px','--d':R(.5,1)+'s','--dl':-R(0,1)+'s',opacity:R(.45,.9)})}"></i>`);p+=(()=>{let r='';for(let i=0;i<8;i++)r+=`<b class="spl" style="${css({left:R(0,96)+'%','--d':R(.6,1.2)+'s','--dl':-R(0,1.2)+'s'})}"></b>`;return r})();break;
+    case'eyes':make(9,()=>`<i style="${css({left:R(4,88)+'%',top:R(6,86)+'%','--s':R(.6,1.25),'--d':R(4,9)+'s','--dl':-R(0,9)+'s'})}"><s></s><s></s></i>`);break;
+    case'static':p='<b class="noise"></b><b class="lines"></b><b class="roll"></b><b class="ghost"></b>';break;
+    case'hands':make(6,i=>`<i style="${css({left:R(2,80)+'%',top:R(5,70)+'%','--r':R(-35,35)+'deg','--s':R(.8,1.3),'--d':'7s','--dl':-(i*1.15)+'s'})}"></i>`);break;
+    case'claws':p='<b class="set s1"><s></s><s></s><s></s></b><b class="set s2"><s></s><s></s><s></s></b>';break;
+    case'flicker':p='<b class="dark"></b><b class="figure"></b>';break;
     case'galaxy':p='<b class="core"></b><b class="arms"></b><b class="arms a2"></b>';break;
     case'storm':p='<b class="flash"></b>'+(()=>{let r='';for(let i=0;i<30;i++)r+=`<i style="${css({left:R(-10,110)+'%','--h':R(12,24)+'px','--d':R(.5,.9)+'s','--dl':-R(0,.9)+'s',opacity:R(.2,.45)})}"></i>`;return r})();break;
   }

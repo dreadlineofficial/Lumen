@@ -13,7 +13,9 @@ function fmtPlain(s){return esc(s)
   .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?]|$)/g,'$1<i>$2</i>')
   .replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,!?]|$)/g,'$1<i>$2</i>')}
 // links are cut out first so formatting never touches a URL
-L.fmt=function(text){const s=String(text||'');const re=/https?:\/\/[^\s<]+/g;let out='',last=0,m;
+// "# text" at the start of a line becomes a big bold heading (## and ### are smaller)
+L.fmt=function(text){return String(text||'').split('\n').map(line=>{const m=line.match(/^(#{1,3})\s*(\S.*)$/);return m?`<span class="mdh mdh${m[1].length}">${fmtLine(m[2])}</span>`:fmtLine(line)}).join('\n')};
+function fmtLine(text){const s=String(text||'');const re=/https?:\/\/[^\s<]+/g;let out='',last=0,m;
   while((m=re.exec(s))){out+=fmtPlain(s.slice(last,m.index));const u=esc(m[0]);out+=`<a href="${u}" target="_blank" rel="noopener">${u}</a>`;last=m.index+m[0].length}
   return out+fmtPlain(s.slice(last))};
 document.addEventListener('click',e=>{const sp=e.target.closest('.spoiler');if(sp)sp.classList.add('show')});

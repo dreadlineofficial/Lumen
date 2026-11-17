@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const IN_APP=/LumenApp\//.test(navigator.userAgent);
 const KEY='hub.cfg.v1';
-const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startMode:'study',startUrl:'https://www.google.com/webhp?igu=1',schedule:[],swapMute:true,
+const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startMode:'study',startUrl:'lumen:doc',hotCorner:true,schedule:[],swapMute:true,
  navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
  histDisguise:true,histTitle:'Google Classroom',wipe:false,blurPanic:false,grade:'mid',
  title:'Lumen',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#06070b',
@@ -146,7 +146,7 @@ function enterStudy({keep=false}={}){if(!keep)closeView();else{setFrameMuted(cfg
   document.title=sub+' – '+cfg.portal;$('#fav').href=favUrl('classroom.google.com');$('#study').classList.add('on');$('#study').scrollTop=0;
   const tick=()=>$('#sClock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});tick();clearInterval(clockT);clockT=setInterval(tick,10000);
   if(!keep)setActivity(null);else window.Lumen?.onActivity?.(null)}
-function exitStudy(){$('#study').classList.remove('on');clearInterval(clockT);applyLook();if(swapped){setFrameMuted(false);window.Lumen?.browser?.pause(false);swapped=false;window.Lumen?.onActivity?.(activity)}}
+function exitStudy(){const wasOn=studyOn();$('#study').classList.remove('on');if(wasOn)setTimeout(showNews,400);clearInterval(clockT);applyLook();if(swapped){setFrameMuted(false);window.Lumen?.browser?.pause(false);swapped=false;window.Lumen?.onActivity?.(activity)}}
 const studyOn=()=>$('#study').classList.contains('on');
 $('#studyBtn').onclick=()=>enterStudy();$('#sBack').ondblclick=exitStudy;
 
@@ -158,14 +158,28 @@ function leaveTo(url){url=fixUrl(url||'https://www.google.com');document.body.in
   try{if(window.top!==window.self)window.top.location.replace(url);else location.replace(url)}catch{location.replace(url)}}
 /* ---------- cover pages (startup page + timed pages) ---------- */
 let coverOn=false,coverSwap=false;
-function showCover(url,{fromSwap=false}={}){url=fixUrl(url||'https://www.google.com/webhp?igu=1');const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}`;
+// sites that never load inside another page: show the essay decoy instead of a "refused to connect" error
+const REFUSES=/(^|\.)(classroom\.google\.com|docs\.google\.com|drive\.google\.com|mail\.google\.com|accounts\.google\.com|github\.com|instagram\.com|tiktok\.com|discord\.com|reddit\.com|x\.com|twitter\.com|facebook\.com|netflix\.com|twitch\.tv|spotify\.com|roblox\.com|chatgpt\.com|bing\.com|duckduckgo\.com|instructure\.com|teams\.microsoft\.com|office\.com|outlook\.live\.com)$/i;
+function decoyHTML(kind){const today=new Date().toLocaleDateString([],{day:'numeric',month:'long',year:'numeric'});
+  const shell=(title,body)=>`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{margin:0;background:#f1f3f4;font:15px/1.6 Arial,sans-serif;color:#202124}.bar{background:#fff;border-bottom:1px solid #dadce0;padding:10px 18px;display:flex;gap:14px;align-items:center}.ic{width:30px;height:38px;border-radius:3px;background:#4285f4;position:relative}.ic:after{content:"";position:absolute;left:7px;right:7px;top:12px;height:14px;border-top:2px solid #fff;border-bottom:2px solid #fff}.tb{background:#fff;border-bottom:1px solid #dadce0;padding:6px 18px;color:#444;font-size:13px;display:flex;gap:18px}.page{background:#fff;width:min(816px,92%);margin:22px auto;min-height:1056px;padding:72px 84px;box-sizing:border-box;box-shadow:0 1px 3px rgba(60,64,67,.3);outline:none}h1{font-size:24px;font-weight:400;margin:0 0 6px}p{margin:0 0 14px;text-align:justify}.q{margin:0 0 26px}.ans{border-bottom:1px solid #999;height:28px;margin-top:8px}</style></head><body><div class="bar"><div class="ic"></div><div><div style="font-size:18px">${title}</div><div style="font-size:12px;color:#5f6368">File&nbsp;&nbsp;Edit&nbsp;&nbsp;View&nbsp;&nbsp;Insert&nbsp;&nbsp;Format&nbsp;&nbsp;Tools&nbsp;&nbsp;Help</div></div></div><div class="tb"><span>100%</span><span>Normal text</span><span>Arial</span><span>11</span><b>B</b><i>I</i><u>U</u></div><div class="page" contenteditable spellcheck="false">${body}</div></body></html>`;
+  if(kind==='worksheet')return shell('Maths worksheet',`<h1>Algebra practice</h1><p style="color:#5f6368">${today}</p>${['Solve 3x + 7 = 22','Expand (x + 4)(x − 3)','Factorise x² + 9x + 20','Solve the simultaneous equations 2x + y = 11 and x − y = 1','Find the gradient of the line through (2, 5) and (6, 13)','Make r the subject of A = πr²'].map((q,i)=>`<div class="q"><b>${i+1}.</b> ${q}<div class="ans"></div><div class="ans"></div></div>`).join('')}`);
+  return shell('Essay draft',`<h1>How far did the Industrial Revolution change everyday life?</h1><p style="color:#5f6368">${today}</p><p>The Industrial Revolution transformed Britain between roughly 1760 and 1840, reshaping not only how goods were produced but where and how people lived. Mechanised factories drew workers away from agricultural villages and into rapidly growing towns such as Manchester and Leeds, where the population more than doubled within a generation.</p><p>Working life changed most visibly. Instead of seasonal labour governed by daylight and harvests, factory work was measured by the clock, with shifts of twelve hours or more. Children were employed in large numbers until reforms such as the Factory Act of 1833 began to limit their hours.</p><p>Living conditions, however, often failed to keep pace with this growth. Overcrowded housing, poor sanitation and polluted water led to outbreaks of cholera and typhus. It was only later in the nineteenth century that public health legislation began to address these problems.</p><p>On the other hand, the period also brought cheaper goods, new forms of transport and, eventually, rising living standards. The railways in particular shrank distances and created a national market…</p>`)}
+function showCover(url,{fromSwap=false}={}){url=String(url||'').trim()||'lumen:doc';
+  if(url==='lumen:study'){if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}enterStudy({keep:fromSwap});return}
+  let host='';try{if(!url.startsWith('lumen:'))host=new URL(fixUrl(url)).hostname}catch{}
+  if(host&&REFUSES.test(host)){toast(`${host} doesn't allow being shown inside other sites, so Lumen is showing a document instead`);url='lumen:doc'}
+  if(url.startsWith('lumen:')){const kind=url.slice(6)==='worksheet'?'worksheet':'doc';coverSwap=fromSwap;if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}
+    const f=$('#coverFrame');f.removeAttribute('src');f.srcdoc=decoyHTML(kind);f.onload=()=>{try{f.contentWindow.addEventListener('keydown',onKey,true);f.contentWindow.addEventListener('mousemove',e=>{if(e.clientX<=3&&e.clientY<=3&&(e.movementX||e.movementY))cornerHit()})}catch{}};
+    $('#cover').classList.add('on');coverOn=true;window.Lumen?.onActivity?.(null);document.title=kind==='worksheet'?'Maths worksheet':'Essay draft';$('#fav').href=favUrl('docs.google.com');return}
+  $('#coverFrame').removeAttribute('srcdoc');url=fixUrl(url);const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}`;
   if(/^https?:\/\/(www\.)?google\.[a-z.]+\/?(\?.*)?$/i.test(url))url='https://www.google.com/webhp?igu=1';
   coverSwap=fromSwap;if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}
   $('#coverFrame').src=url;$('#cover').classList.add('on');coverOn=true;window.Lumen?.onActivity?.(null);
   let h='';try{h=new URL(url).hostname.replace(/^www\./,'')}catch{}document.title=h.includes('google')?'Google':h||'New Tab';$('#fav').href=favUrl(h||'google.com')}
-function hideCover(){if(!coverOn)return;coverOn=false;$('#cover').classList.remove('on');$('#coverFrame').src='about:blank';if(coverSwap){setFrameMuted(false);window.Lumen?.browser?.pause(false)}coverSwap=false;applyLook();window.Lumen?.onActivity?.(activity)}
+function hideCover(){if(!coverOn)return;setTimeout(showNews,400);coverOn=false;$('#cover').classList.remove('on');$('#coverFrame').removeAttribute('srcdoc');$('#coverFrame').src='about:blank';if(coverSwap){setFrameMuted(false);window.Lumen?.browser?.pause(false)}coverSwap=false;applyLook();window.Lumen?.onActivity?.(activity)}
 // cross-origin pages swallow key presses; pull focus back so Panic keeps working
 addEventListener('blur',()=>{if(coverOn)setTimeout(()=>{if(document.activeElement===$('#coverFrame')){$('#coverFrame').blur();window.focus()}},0)});
+$('#coverHot').addEventListener('mouseenter',()=>setTimeout(()=>{if($('#coverHot').matches(':hover'))cornerHit()},120));
 let hotN=0,hotT;$('#coverHot').onclick=()=>{hotN++;clearTimeout(hotT);hotT=setTimeout(()=>hotN=0,600);if(hotN>=3){hotN=0;hideCover()}};
 function scheduledCover(){const d=new Date(),day=DAYS[d.getDay()],n=d.getHours()*60+d.getMinutes();
   return(cfg.schedule||[]).find(r=>r.url&&r.start&&r.end&&(r.day==='all'||r.day===day||(r.day==='weekdays'&&d.getDay()%6!==0))&&n>=mins(r.start)&&n<mins(r.end))}
@@ -191,22 +205,35 @@ $('#jumpForm').onsubmit=e=>{e.preventDefault();const v=$('#jumpIn').value.trim()
 let capturing=false;
 const typing=t=>t&&(/INPUT|TEXTAREA|SELECT/.test(t.tagName)||t.isContentEditable);
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
-function onKey(e){if(capturing)return;const t=e.target;if(e.key!==cfg.panicKey&&!['Shift','Control','Alt','Meta'].includes(e.key))onKey.lastTap=0;
-  if(coverOn&&[cfg.panicKey,cfg.studyKey,cfg.swapKey].some(k=>same(k,e.key))){e.preventDefault();e.stopPropagation();hideCover();return}
-  if(e.key===cfg.panicKey){
-    if(typing(t)&&e.key.length===1&&!t.readOnly){const now=Date.now();
-      if(now-(onKey.lastTap||0)>450){onKey.lastTap=now;return}
-      onKey.lastTap=0;try{const v=t.value,p=t.selectionStart;if(v[p-1]===e.key){t.value=v.slice(0,p-1)+v.slice(p)}}catch{}}
-    e.preventDefault();e.stopPropagation();panic();return}
-  if(typing(t)||e.ctrlKey||e.metaKey||e.altKey)return;
-  if(same(e.key,cfg.studyKey)){e.preventDefault();e.stopPropagation();studyOn()?exitStudy():enterStudy()}
-  else if(same(e.key,cfg.swapKey)){e.preventDefault();e.stopPropagation();if(studyOn())exitStudy();else{const sc=scheduledCover();sc?showCover(sc.url,{fromSwap:true}):enterStudy({keep:true})}}}
+// Panic, Study and Swap work everywhere in Lumen (and in Lumen's own games). Inside a text box,
+// a single press types the letter and a quick double-press triggers the action instead.
+const tap={key:'',at:0};
+function runKey(which){if(which==='panic')return panic();
+  if(which==='study')return studyOn()?exitStudy():enterStudy();
+  if(studyOn())exitStudy();else{const sc=scheduledCover();sc?showCover(sc.url,{fromSwap:true}):enterStudy({keep:true})}}
+function onKey(e){if(capturing)return;const t=e.target;
+  if(['Shift','Control','Alt','Meta'].includes(e.key))return;
+  const which=e.key===cfg.panicKey?'panic':same(e.key,cfg.studyKey)?'study':same(e.key,cfg.swapKey)?'swap':null;
+  if(!which){tap.key='';return}
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(coverOn){e.preventDefault();e.stopPropagation();hideCover();return}
+  if(typing(t)&&e.key.length===1&&!t.readOnly){const now=Date.now();
+    if(tap.key!==which||now-tap.at>450){tap.key=which;tap.at=now;return}
+    tap.key='';try{const v=t.value,p=t.selectionStart;if(v[p-1]&&same(v[p-1],e.key)){t.value=v.slice(0,p-1)+v.slice(p);t.setSelectionRange(p-1,p-1)}}catch{}}
+  e.preventDefault();e.stopPropagation();runKey(which)}
 addEventListener('keydown',onKey,true);
+let cornerT=0,cornerAt=0;
+function cornerHit(){if(!cfg.hotCorner||Date.now()-cornerAt<1500)return;cornerAt=Date.now();if(coverOn)hideCover();else if(!studyOn())enterStudy()}
+// only a real move *into* the corner counts (browsers also send fake moves when a page loads)
+let wasOut=false;
+addEventListener('mousemove',e=>{const inC=e.clientX<=3&&e.clientY<=3,moved=e.movementX||e.movementY;
+  if(!inC){if(moved)wasOut=true;if(cornerT){clearTimeout(cornerT);cornerT=0}return}
+  if(moved&&wasOut&&!cornerT)cornerT=setTimeout(()=>{cornerT=0;wasOut=false;cornerHit()},120)},{passive:true});
 addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFocus()&&document.activeElement?.tagName!=='IFRAME')panic()},150)});
 
 /* ---------- settings ---------- */
 const FIELDS=['searchEngine','startMode','startUrl','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','portal','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','aiKey','jumpLinks','rooms'];
-const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','aiOn'];
+const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','aiOn','hotCorner'];
 function fillSettings(){FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
   $('#navToggles').innerHTML=$$('nav .nav-btn').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
 // layout controls preview live
@@ -222,6 +249,24 @@ $('#exportAll').onclick=()=>{const a=document.createElement('a');a.href=URL.crea
 $('#importAll').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target.files[0].text())};save();location.reload()}catch{toast('Invalid file')}};
 $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this device?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
+
+$$('[data-decoy]').forEach(b=>b.onclick=()=>{$('#s_startUrl').value=b.dataset.decoy});
+try{if(localStorage.getItem('hub.bwnote'))$('#bwNote').style.display='none'}catch{}
+$('#bwNoteX').onclick=e=>{e.preventDefault();$('#bwNote').style.display='none';try{localStorage.setItem('hub.bwnote','1')}catch{}};
+
+/* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
+const NEWS={id:'2026-11-17',items:[
+  ['❤️','Likes on posts','Tap the heart on any post.'],
+  ['📊','Post analytics','Posts → My analytics shows views, likes and comments. Every view from someone else earns ✦ 50 Glow (up to 2 per person per day) and every comment earns ✦ 150. Press Collect to cash in.'],
+  ['🧸','Better buddies','Ted now drinks from a real bottle and keeps his paws to himself, and every buddy has more detail and new tricks.'],
+  ['🩸','Horror profile effects','Blood drips, blood rain, watching eyes, cursed static, handprints and claw marks in the Shop. All effects got an upgrade too.'],
+  ['#','Big headings','Start a line with # in chat or posts to make it big and bold (## and ### are smaller).'],
+  ['⌨️','Keys work everywhere','Double-tap your Study, Swap or Panic key while typing. Flick the mouse to the top-left corner to switch to study mode from anywhere, even inside a website.'],
+  ['📄','Cover pages that always work','Built-in essay and worksheet pages. Sites that refuse to load inside Lumen now show a document instead of an error.'],
+]};
+function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
+  $('#newsList').innerHTML=NEWS.items.map(([i,t,d])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('');
+  openModal('newsModal');cfg.seenNews=NEWS.id;save()}
 
 /* shared with cloud.js */
 window.Lumen={IN_APP,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};

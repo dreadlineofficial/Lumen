@@ -172,3 +172,58 @@ canvas.buddy{position:absolute;pointer-events:none;z-index:0}
 .pcard .ban{position:relative}
 .sitem .prev .buddy-stage{position:relative;width:90%;height:120px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.08));overflow:hidden}
 .sitem .prev .buddy-stage canvas.buddy{inset:0;width:100%;height:100%}
+
+
+/* ===================== Quality pass: depth + lighting for every effect ===================== */
+.fxl i:nth-child(3n){filter:blur(1.4px);opacity:.5;scale:.65}
+.fxl i:nth-child(5n){scale:1.25}
+.fxl::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 120%,var(--fxg,transparent),transparent 65%)}
+.fx-snow{--fxg:rgba(190,215,255,.22)}.fx-sakura{--fxg:rgba(255,150,190,.2)}.fx-fireflies{--fxg:rgba(180,255,90,.14)}
+.fx-embers{--fxg:rgba(255,110,30,.3)}.fx-bubbles{--fxg:rgba(120,220,255,.18)}.fx-hearts{--fxg:rgba(255,80,140,.22)}
+.fx-confetti{--fxg:rgba(255,215,100,.14)}.fx-lanterns{--fxg:rgba(255,150,50,.25)}.fx-leaves{--fxg:rgba(230,120,40,.2)}
+.fx-glitter{--fxg:rgba(255,210,90,.2)}.fx-pixel{--fxg:rgba(92,200,255,.16)}
+.fx-snow::before{content:"";position:absolute;left:-5%;right:-5%;bottom:-6px;height:14px;border-radius:50%;background:linear-gradient(#fff,#dfe8ff);box-shadow:0 -2px 10px rgba(255,255,255,.5);filter:blur(1px)}
+.fx-hearts i{filter:drop-shadow(0 0 6px rgba(255,92,138,.7))}
+.fx-embers i:nth-child(4n){background:#fff1c4;box-shadow:0 0 10px 3px rgba(255,160,40,.95)}
+
+/* ===================== Horror ===================== */
+.fx-blood{--fxg:rgba(140,0,0,.35);background:linear-gradient(180deg,rgba(60,0,0,.35),transparent 30%)}
+.fx-blood::before{content:"";position:absolute;left:0;right:0;top:0;height:16px;background:radial-gradient(circle at 10px 0,#8a0000 9px,transparent 10px) 0 0/22px 16px repeat-x,linear-gradient(#5a0000,#8a0000);filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.fx-blood i{top:6px;width:var(--w);height:var(--h);border-radius:0 0 999px 999px;background:linear-gradient(90deg,#5a0000,#a10808 45%,#6d0000);box-shadow:inset 2px 0 2px rgba(255,120,120,.35);transform-origin:top;animation:bl-seep var(--d) ease-in var(--dl) infinite}
+.fx-blood i s{position:absolute;left:50%;bottom:-4px;width:calc(var(--w) * .9);height:calc(var(--w) * 1.15);margin-left:calc(var(--w) * -.45);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:radial-gradient(circle at 35% 35%,#d42a2a,#7a0000 70%);animation:bl-drop var(--d) ease-in var(--dl) infinite}
+@keyframes bl-seep{0%{transform:scaleY(0)}55%{transform:scaleY(1)}100%{transform:scaleY(1)}}
+@keyframes bl-drop{0%,55%{transform:translateY(0);opacity:1}100%{transform:translateY(420px);opacity:1}}
+.fx-blood .pool{left:-10%;right:-10%;bottom:-10px;height:22px;border-radius:50%;background:radial-gradient(ellipse at 50% 30%,#a30d0d,#4a0000 70%);box-shadow:0 -1px 6px rgba(200,0,0,.4);animation:bl-pool 11s ease-in-out infinite alternate}
+@keyframes bl-pool{from{transform:scaleX(.85)}to{transform:scaleX(1.05)}}
+.fx-bloodrain{--fxg:rgba(150,0,0,.3);background:linear-gradient(180deg,rgba(40,0,0,.45),rgba(20,0,0,.15) 60%,rgba(70,0,0,.35))}
+.fx-bloodrain i{width:2px;height:var(--h);border-radius:2px;background:linear-gradient(transparent,#c41010);transform:skewX(-8deg);animation:fx-fall var(--d) linear var(--dl) infinite}
+.fx-bloodrain .spl{bottom:2px;width:18px;height:6px;border-radius:50%;border-top:2px solid rgba(200,20,20,.8);opacity:0;animation:bl-splash var(--d) ease-out var(--dl) infinite}
+@keyframes bl-splash{0%{opacity:0;transform:scale(.2)}20%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+.fx-eyes{background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.35),rgba(0,0,0,.75));--fxg:rgba(120,0,0,.3)}
+.fx-eyes i{display:flex;gap:10px;scale:var(--s);animation:ey-open var(--d) ease-in-out var(--dl) infinite}
+.fx-eyes i s{width:14px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffe0e0 0 1.5px,#ff2a2a 2.5px,#7a0000 6px);box-shadow:0 0 10px 3px rgba(255,0,0,.55);animation:ey-look calc(var(--d) * .5) ease-in-out var(--dl) infinite alternate}
+@keyframes ey-open{0%,30%,100%{transform:scaleY(0);opacity:0}36%,70%{transform:scaleY(1);opacity:1}48%{transform:scaleY(.1)}52%{transform:scaleY(1)}}
+@keyframes ey-look{to{background-position:3px 0;translate:2px 0}}
+.fx-static{--fxg:rgba(255,255,255,.08)}
+.fx-static .noise{inset:-50%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.22;mix-blend-mode:screen;animation:st-jump .25s steps(4) infinite}
+@keyframes st-jump{0%{transform:translate(0,0)}25%{transform:translate(-8%,5%)}50%{transform:translate(6%,-7%)}75%{transform:translate(-4%,-3%)}}
+.fx-static .lines{inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px)}
+.fx-static .roll{left:0;right:0;height:30%;background:linear-gradient(transparent,rgba(255,255,255,.12),transparent);animation:st-roll 4s linear infinite}
+@keyframes st-roll{from{top:-30%}to{top:110%}}
+.fx-static .ghost{left:50%;top:18%;width:90px;height:110px;margin-left:-45px;border-radius:45% 45% 40% 40%;background:radial-gradient(ellipse at 35% 40%,#000 0 7px,transparent 8px),radial-gradient(ellipse at 65% 40%,#000 0 7px,transparent 8px),radial-gradient(ellipse at 50% 72%,#000 0 9px,transparent 11px),radial-gradient(ellipse,rgba(230,230,230,.8),transparent 70%);filter:blur(1.5px) contrast(1.4);opacity:0;animation:st-ghost 9s steps(1) infinite}
+@keyframes st-ghost{0%,70%,100%{opacity:0}71%{opacity:.55}72%{opacity:0}73%{opacity:.7;transform:translateX(4px)}75%{opacity:0}}
+.fx-hands{--fxg:rgba(120,0,0,.25)}
+.fx-hands i{width:46px;height:56px;rotate:var(--r);scale:var(--s);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 56'%3E%3Cg fill='%238f0505'%3E%3Cellipse cx='23' cy='38' rx='13' ry='15'/%3E%3Crect x='9' y='10' width='6' height='24' rx='3'/%3E%3Crect x='17' y='4' width='6' height='28' rx='3'/%3E%3Crect x='25' y='5' width='6' height='27' rx='3'/%3E%3Crect x='33' y='12' width='5.5' height='22' rx='3'/%3E%3Crect x='2' y='30' width='12' height='5.5' rx='3' transform='rotate(-35 8 32)'/%3E%3Ccircle cx='31' cy='52' r='2'/%3E%3Ccircle cx='15' cy='53' r='1.5'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 0 2px rgba(0,0,0,.6));opacity:0;animation:hd-slap var(--d) ease-out var(--dl) infinite}
+@keyframes hd-slap{0%{opacity:0;transform:scale(1.6)}3%{opacity:.95;transform:scale(1)}60%{opacity:.85}100%{opacity:0;transform:scale(1) translateY(14px)}}
+.fx-claws{--fxg:rgba(110,0,0,.25)}
+.fx-claws .set{left:12%;top:12%;width:76%;height:70%;rotate:-28deg}
+.fx-claws .set.s2{left:20%;top:25%;rotate:24deg}
+.fx-claws s{position:absolute;left:0;height:5px;width:100%;border-radius:50%;background:linear-gradient(90deg,transparent,#3a0000 10%,#9c0a0a 45%,#3a0000 90%,transparent);box-shadow:0 1px 0 rgba(255,140,140,.35),0 0 8px rgba(180,0,0,.6);transform-origin:left;transform:scaleX(0);animation:cl-rake 6s cubic-bezier(.2,.9,.2,1) infinite}
+.fx-claws s:nth-child(1){top:20%}.fx-claws s:nth-child(2){top:40%;animation-delay:.05s}.fx-claws s:nth-child(3){top:60%;animation-delay:.1s}
+.fx-claws .s2 s{animation-delay:3s}.fx-claws .s2 s:nth-child(2){animation-delay:3.05s}.fx-claws .s2 s:nth-child(3){animation-delay:3.1s}
+@keyframes cl-rake{0%{transform:scaleX(0);opacity:1}6%{transform:scaleX(1);opacity:1}70%{opacity:.9}100%{transform:scaleX(1);opacity:0}}
+.fx-flicker .dark{inset:0;background:#000;animation:fl-light 5s steps(1) infinite}
+@keyframes fl-light{0%,100%{opacity:0}8%{opacity:.85}9%{opacity:0}11%{opacity:.9}12%{opacity:.2}40%{opacity:0}62%{opacity:.95}63%{opacity:.1}64%{opacity:.95}70%{opacity:0}}
+.fx-flicker .figure{right:12%;bottom:0;width:46px;height:120px;background:radial-gradient(ellipse at 50% 14%,#000 0 15px,transparent 16px),radial-gradient(ellipse at 50% 60%,#000 0 22px,transparent 24px),linear-gradient(#000,#000) 50% 100%/26px 55% no-repeat;opacity:0;animation:fl-fig 5s steps(1) infinite}
+.fx-flicker .figure::after{content:"";position:absolute;left:15px;top:13px;width:16px;height:3px;background:radial-gradient(circle,#ff2020 0 1.5px,transparent 2px) 0 0/8px 3px repeat-x;filter:drop-shadow(0 0 3px red)}
+@keyframes fl-fig{0%,100%{opacity:0}62%{opacity:.9}63%{opacity:0}64%{opacity:1}70%{opacity:0}}
