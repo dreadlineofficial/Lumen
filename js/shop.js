@@ -1,14 +1,15 @@
 /* Lumen Shop: earn ✦ Glow daily, buy and equip cosmetics. Every purchase is checked by firestore.rules. */
 const L=window.Lumen,{esc,toast}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const TABS=[['fx','✨ Profile effects'],['deco','💫 Decorations'],['plate','🎴 Nameplates'],['nfx','🔤 Name effects'],['theme','🎨 Themes'],['owned','🎒 Owned']];
-const SLOT={fx:'fx',deco:'deco',plate:'plate',nfx:'nfx',theme:'theme'};
-let tab='fx',prof=null,busy=false;
+const TABS=[['buddy','🧸 Buddies'],['fx','✨ Profile effects'],['deco','💫 Decorations'],['plate','🎴 Nameplates'],['nfx','🔤 Name effects'],['theme','🎨 Themes'],['owned','🎒 Owned']];
+const SLOT={buddy:'buddy',fx:'fx',deco:'deco',plate:'plate',nfx:'nfx',theme:'theme'};
+let tab='buddy',prof=null,busy=false;
 const owned=()=>prof?.owned||[];
 const coins=()=>+prof?.coins||0;
 const nextClaim=()=>{const t=prof?.lastClaim?.toMillis?.();return t?t+20*3600e3:0};
 
 function preview(it){const c=L.cloud,me=prof||{name:'You'};
+  if(it.type==='buddy')return`<div class="buddy-stage">${L.cos.buddyCanvas(it.id,'card')}</div>`;
   if(it.type==='fx')return c.card({...me,fx:it.id,bio:''},{compact:true});
   if(it.type==='deco')return c.pic({...me,deco:it.id},84);
   if(it.type==='plate')return`<div class="prev-plate${L.cos.plateCls(it.id)}">${c.pic(me,36)}<div><div style="font-weight:600">${c.nameHTML(me,{badges:false})}</div><div style="font-size:12px;opacity:.8">Online</div></div></div>`;

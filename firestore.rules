@@ -13,7 +13,7 @@ service cloud.firestore {
     function okImage(v) { return v is string && v.size() < 900000 && (v == '' || v.matches('^(https://|data:image/).*')); }
 
     // Shop prices: must match js/cosmetics.js
-    function prices() { return {'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
+    function prices() { return {'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
     function profileOk(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 24
         && d.nameLower == d.name.lower()
@@ -27,7 +27,8 @@ service cloud.firestore {
         && (d.get('deco', '') == '' || own.hasAny([d.get('deco', '')]))
         && (d.get('plate', '') == '' || own.hasAny([d.get('plate', '')]))
         && (d.get('nfx', '') == '' || own.hasAny([d.get('nfx', '')]))
-        && (d.get('theme', '') == '' || own.hasAny([d.get('theme', '')]));
+        && (d.get('theme', '') == '' || own.hasAny([d.get('theme', '')]))
+        && (d.get('buddy', '') == '' || own.hasAny([d.get('buddy', '')]));
     }
     // Glow can only change through the daily reward or a purchase at the listed price
     function economyOk(o, n) {

@@ -141,3 +141,34 @@ body[data-theme=aurora]{--bg:#030812;--acc:#5cffb1;--acc2:#a46bff;--o1:#2fe08a;-
 .theme-sw div{flex:1}
 .theme-sw div:first-child{flex:1.4}
 @media (prefers-reduced-motion:reduce){.fxl,.deco,.plate::before,.plate::after,.uname{animation:none!important}.fxl i,.fxl b,.deco b{animation:none!important}}
+
+/* ===================== More profile effects ===================== */
+.fx-meteor{background:radial-gradient(ellipse at 70% 0%,rgba(60,70,170,.3),transparent 70%)}
+.fx-meteor i{width:120px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9));transform:rotate(-35deg);opacity:0;animation:fx-meteor var(--d) ease-in var(--dl) infinite;box-shadow:0 0 8px rgba(190,210,255,.9)}
+@keyframes fx-meteor{0%{opacity:0;translate:0 0}5%{opacity:1}35%{opacity:0;translate:-260px 180px}100%{opacity:0;translate:-260px 180px}}
+.fx-meteor .st{width:2px;height:2px;border-radius:50%;background:#fff;animation:fx-twinkle var(--d) ease-in-out var(--dl) infinite}
+.fx-leaves i{width:var(--s);height:var(--s);background:var(--c);border-radius:0 80% 0 80%;box-shadow:inset -2px -2px 0 rgba(0,0,0,.18);animation:fx-fall var(--d) linear var(--dl) infinite,fx-sway 3.2s ease-in-out var(--dl) infinite alternate,fx-spin var(--d) linear var(--dl) infinite}
+.fx-pixel i{width:var(--s);height:var(--s);background:var(--c);box-shadow:0 0 6px var(--c);image-rendering:pixelated;animation:fx-rise var(--d) steps(18) var(--dl) infinite}
+.fx-glitter i{width:var(--s);height:var(--s);background:#ffe9a3;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);filter:drop-shadow(0 0 3px #ffcf4a);animation:fx-twinkle var(--d) ease-in-out var(--dl) infinite}
+.fx-lanterns{background:linear-gradient(0deg,rgba(255,140,40,.12),transparent 60%)}
+.fx-lanterns i{width:var(--s);height:calc(var(--s) * 1.3);border-radius:40% 40% 30% 30%;background:radial-gradient(circle at 50% 60%,#fff2b0,#ffb347 45%,#e8601a);box-shadow:0 0 14px 4px rgba(255,160,60,.55);animation:fx-rise var(--d) ease-in-out var(--dl) infinite,fx-sway 4s ease-in-out var(--dl) infinite alternate}
+.fx-grid{background:linear-gradient(180deg,rgba(40,0,60,.35),transparent 55%)}
+.fx-grid .sun{left:50%;top:22%;width:90px;height:90px;margin-left:-45px;border-radius:50%;background:linear-gradient(#ffe45c,#ff2bd6);-webkit-mask:repeating-linear-gradient(180deg,#000 0 8px,transparent 8px 11px);mask:repeating-linear-gradient(180deg,#000 0 8px,transparent 8px 11px);opacity:.8;filter:drop-shadow(0 0 12px #ff2bd6)}
+.fx-grid .floor{left:-30%;right:-30%;bottom:-6%;height:52%;background:linear-gradient(rgba(255,43,214,.75) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(43,232,255,.6) 1.5px,transparent 1.5px);background-size:34px 22px;transform:perspective(220px) rotateX(60deg);transform-origin:bottom;animation:sw-grid 1.4s linear infinite;-webkit-mask:linear-gradient(transparent,#000 50%);mask:linear-gradient(transparent,#000 50%)}
+.fx-fog b{width:200%;height:60%;left:-50%;border-radius:50%;background:radial-gradient(ellipse,rgba(220,225,240,.4),transparent 65%);filter:blur(14px)}
+.fx-fog .f1{bottom:-10%;animation:fx-fog 16s linear infinite}.fx-fog .f2{bottom:15%;opacity:.7;animation:fx-fog 22s linear -8s infinite reverse}.fx-fog .f3{top:-10%;opacity:.45;animation:fx-fog 28s linear -4s infinite}
+@keyframes fx-fog{from{transform:translateX(-25%)}to{transform:translateX(25%)}}
+.fx-galaxy{background:radial-gradient(circle at 50% 40%,rgba(30,10,60,.5),transparent 70%)}
+.fx-galaxy .core{left:50%;top:38%;width:40px;height:40px;margin:-20px;border-radius:50%;background:radial-gradient(circle,#fff,#ffd9a8 30%,rgba(255,150,220,.4) 60%,transparent 70%);filter:blur(1px)}
+.fx-galaxy .arms{left:50%;top:38%;width:320px;height:320px;margin:-160px;border-radius:50%;background:conic-gradient(from 0deg,transparent,rgba(160,120,255,.55) 8%,transparent 22%,transparent 50%,rgba(120,180,255,.5) 58%,transparent 72%);-webkit-mask:radial-gradient(circle,transparent 8%,#000 20%,#000 45%,transparent 70%);mask:radial-gradient(circle,transparent 8%,#000 20%,#000 45%,transparent 70%);filter:blur(4px);animation:d-spin 24s linear infinite}
+.fx-galaxy .arms.a2{transform:scale(.7);opacity:.7;animation-duration:16s;animation-direction:reverse}
+
+/* ===================== 3D buddies ===================== */
+canvas.buddy{position:absolute;pointer-events:none;z-index:0}
+.buddy-bar{right:0;bottom:0;width:64%;height:100%}
+.buddy-card{right:0;top:0;width:72%;height:100%}
+.person,.room,.me-chip{position:relative}
+.person>:not(canvas),.room>:not(canvas),.me-chip>:not(canvas){position:relative;z-index:1}
+.pcard .ban{position:relative}
+.sitem .prev .buddy-stage{position:relative;width:90%;height:120px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.08));overflow:hidden}
+.sitem .prev .buddy-stage canvas.buddy{inset:0;width:100%;height:100%}

@@ -15,6 +15,21 @@ const CATALOG=[
  {id:'fx_rain',type:'fx',name:'Midnight Rain',price:250,desc:'Cool rain streaking past'},
  {id:'fx_hearts',type:'fx',name:'Lovestruck',price:300,desc:'Hearts float up and fade'},
  {id:'fx_storm',type:'fx',name:'Thunderstorm',price:500,desc:'Lightning flashes in the dark'},
+ {id:'fx_meteor',type:'fx',name:'Meteor Shower',price:450,desc:'Shooting stars streak across the sky'},
+ {id:'fx_leaves',type:'fx',name:'Autumn',price:300,desc:'Orange leaves spin on the breeze'},
+ {id:'fx_pixel',type:'fx',name:'8-Bit',price:350,desc:'Chunky pixels drift up like an old game'},
+ {id:'fx_glitter',type:'fx',name:'Gold Glitter',price:400,desc:'Fine gold sparkles everywhere'},
+ {id:'fx_lanterns',type:'fx',name:'Lanterns',price:450,desc:'Warm paper lanterns float into the night'},
+ {id:'fx_grid',type:'fx',name:'Neon Grid',price:400,desc:'A retro horizon that scrolls forever'},
+ {id:'fx_fog',type:'fx',name:'Haunted Fog',price:300,desc:'Thick mist rolls slowly past'},
+ {id:'fx_galaxy',type:'fx',name:'Galaxy Swirl',price:500,desc:'A spiral galaxy turns behind you'},
+ // 3D buddies: little characters that live on your profile bar and card
+ {id:'buddy_ted',type:'buddy',name:'Ted',price:500,desc:'Walks around, pulls up a chair to scroll his phone, sips a soda'},
+ {id:'buddy_blob',type:'buddy',name:'Blob',price:300,desc:'A squishy slime that bounces everywhere'},
+ {id:'buddy_bot',type:'buddy',name:'Bit',price:400,desc:'A tiny robot that rolls, scans and beeps'},
+ {id:'buddy_pip',type:'buddy',name:'Pip',price:300,desc:'A chick that waddles, pecks and flaps'},
+ {id:'buddy_boo',type:'buddy',name:'Boo',price:350,desc:'A friendly ghost that floats and vanishes'},
+ {id:'buddy_mochi',type:'buddy',name:'Mochi',price:400,desc:'A cat that trots, stretches and naps'},
  // avatar decorations: frame around your picture everywhere
  {id:'deco_neon',type:'deco',name:'Neon Ring',price:250,desc:'A colour-shifting neon halo'},
  {id:'deco_halo',type:'deco',name:'Angel Halo',price:300,desc:'A golden halo that floats'},
@@ -66,6 +81,14 @@ function fxLayer(id){if(!byId[id]||byId[id].type!=='fx')return'';const n=id.slic
     case'hearts':make(14,()=>`<i style="${css({left:R(0,95)+'%','--s':R(10,18)+'px','--d':R(5,9)+'s','--dl':-R(0,9)+'s','--x':R(-30,30)+'px'})}">❤</i>`);break;
     case'matrix':{const ch='アイウエオカキクケコサシスセソ0123456789ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘ';make(14,()=>{let s='';for(let k=0;k<14;k++)s+=ch[(Math.random()*ch.length)|0]+'<br>';return`<i style="${css({left:R(0,96)+'%','--d':R(4,9)+'s','--dl':-R(0,9)+'s',opacity:R(.35,.8)})}">${s}</i>`});break}
     case'aurora':p='<b class="a1"></b><b class="a2"></b><b class="a3"></b>';break;
+    case'meteor':make(6,()=>`<i style="${css({left:R(20,120)+'%',top:R(-20,40)+'%','--d':R(2.5,5)+'s','--dl':-R(0,5)+'s'})}"></i>`);p+=(()=>{let r='';for(let i=0;i<24;i++)r+=`<b class="st" style="${css({left:R(0,100)+'%',top:R(0,100)+'%','--d':R(2,5)+'s','--dl':-R(0,5)+'s'})}"></b>`;return r})();break;
+    case'leaves':make(14,()=>`<i style="${css({left:R(0,100)+'%','--s':R(10,16)+'px','--c':['#e8742a','#d9481c','#f2a33a','#b8441e'][(Math.random()*4)|0],'--d':R(7,12)+'s','--dl':-R(0,12)+'s','--x':R(-70,70)+'px','--r':R(360,1080)+'deg'})}"></i>`);break;
+    case'pixel':make(26,()=>`<i style="${css({left:R(0,100)+'%','--s':[4,6,8][(Math.random()*3)|0]+'px','--c':['#5cff9d','#5cc8ff','#ff5ca8','#ffe45c'][(Math.random()*4)|0],'--d':R(4,9)+'s','--dl':-R(0,9)+'s'})}"></i>`);break;
+    case'glitter':make(40,()=>`<i style="${css({left:R(0,100)+'%',top:R(0,100)+'%','--s':R(2,4.5)+'px','--d':R(1.2,3)+'s','--dl':-R(0,3)+'s'})}"></i>`);break;
+    case'lanterns':make(9,()=>`<i style="${css({left:R(2,92)+'%','--s':R(12,20)+'px','--d':R(10,18)+'s','--dl':-R(0,18)+'s','--x':R(-20,20)+'px'})}"></i>`);break;
+    case'grid':p='<b class="sun"></b><b class="floor"></b>';break;
+    case'fog':p='<b class="f1"></b><b class="f2"></b><b class="f3"></b>';break;
+    case'galaxy':p='<b class="core"></b><b class="arms"></b><b class="arms a2"></b>';break;
     case'storm':p='<b class="flash"></b>'+(()=>{let r='';for(let i=0;i<30;i++)r+=`<i style="${css({left:R(-10,110)+'%','--h':R(12,24)+'px','--d':R(.5,.9)+'s','--dl':-R(0,.9)+'s',opacity:R(.2,.45)})}"></i>`;return r})();break;
   }
   return`<div class="fxl fx-${n}" aria-hidden="true">${p}</div>`}
@@ -75,9 +98,13 @@ function deco(id){if(!byId[id]||byId[id].type!=='deco')return'';const n=id.slice
   const inner=n==='orbit'?'<b>❤</b><b>❤</b><b>❤</b>':n==='sparkle'?'<b>✦</b><b>✦</b><b>✧</b><b>✦</b>':n==='crown'?'<b>👑</b>':'';
   return`<i class="deco deco-${n}" aria-hidden="true">${inner}</i>`}
 const plateCls=id=>byId[id]?.type==='plate'?` plate plate-${id.slice(6)}`:'';
+// 3D buddies are drawn by js/buddies.js onto these canvases
+let buddyLoad=null;
+function buddyCanvas(id,size){if(byId[id]?.type!=='buddy')return'';if(!buddyLoad)buddyLoad=import('./buddies.js?v=2').catch(e=>{console.warn('buddies failed',e);buddyLoad=null});
+  return`<canvas class="buddy buddy-${size}" data-buddy="${id}" aria-hidden="true"></canvas>`}
 const nfxCls=id=>byId[id]?.type==='nfx'?` nfx-${id.slice(4)}`:'';
 function applyTheme(id){document.body.dataset.theme=byId[id]?.type==='theme'?id.slice(6):''}
 
-window.Lumen.cos={CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme};
+window.Lumen.cos={CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
 applyTheme(window.Lumen.cfg.theme);
 })();
