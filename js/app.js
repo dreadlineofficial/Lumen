@@ -14,7 +14,7 @@ let cfg;try{cfg={...DEF,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{cf
 if(cfg.studyKey==='\\')cfg.studyKey='v';
 if('startStudy' in cfg){if(cfg.startStudy===false&&cfg.startMode==='study')cfg.startMode='lumen';delete cfg.startStudy}
 if(cfg.nbUrl==='../index.html')cfg.nbUrl=DEF.nbUrl;
-cfg.portal='Learning Portal';delete cfg.aiKey;delete cfg.aiOn;delete cfg.startMode;delete cfg.startUrl;
+cfg.portal='Learning Portal';if(['aiKey','aiOn','startMode','startUrl','startStudy'].some(k=>k in cfg)){delete cfg.aiKey;delete cfg.aiOn;delete cfg.startMode;delete cfg.startUrl;delete cfg.startStudy;try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}}
 if(cfg.extra){String(cfg.extra).split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&p[1].trim()).forEach(p=>cfg.games.push({id:'g'+Date.now()+Math.random().toString(36).slice(2,6),name:p[0].trim(),url:p[1].trim(),emoji:'🎮',color:'#7c5cff'}));cfg.extra=''}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200)};
@@ -167,7 +167,7 @@ function decoyHTML(kind){const today=new Date().toLocaleDateString([],{day:'nume
   return shell('Essay draft',`<h1>How far did the Industrial Revolution change everyday life?</h1><p style="color:#5f6368">${today}</p><p>The Industrial Revolution transformed Britain between roughly 1760 and 1840, reshaping not only how goods were produced but where and how people lived. Mechanised factories drew workers away from agricultural villages and into rapidly growing towns such as Manchester and Leeds, where the population more than doubled within a generation.</p><p>Working life changed most visibly. Instead of seasonal labour governed by daylight and harvests, factory work was measured by the clock, with shifts of twelve hours or more. Children were employed in large numbers until reforms such as the Factory Act of 1833 began to limit their hours.</p><p>Living conditions, however, often failed to keep pace with this growth. Overcrowded housing, poor sanitation and polluted water led to outbreaks of cholera and typhus. It was only later in the nineteenth century that public health legislation began to address these problems.</p><p>On the other hand, the period also brought cheaper goods, new forms of transport and, eventually, rising living standards. The railways in particular shrank distances and created a national market…</p>`)}
 // sites known to load fine inside Lumen; anything else opens as the real page in this tab
 const FRAMEABLE=/^https:\/\/((www\.)?google\.[a-z.]+\/(webhp|search)\?[^#]*igu=1|([a-z]+\.)?(m\.)?wikipedia\.org\/|(www\.)?desmos\.com\/|(www\.)?geogebra\.org\/|(www\.)?youtube-nocookie\.com\/embed\/|dreadlineofficial\.github\.io\/)/i;
-function openReal(url){try{sessionStorage.setItem('hub.realcover','1')}catch{}closeView();window.Lumen?.onPanic?.();toast(document.documentElement.dataset.lumenExt==='1'?'Opening… press your key to come back to Lumen':'Opening… press your browser’s Back button to return to Lumen');
+function openReal(url){try{sessionStorage.setItem('hub.realcover',String(Date.now()))}catch{}closeView();window.Lumen?.onPanic?.();toast(document.documentElement.dataset.lumenExt==='1'?'Opening… press your key to come back to Lumen':'Opening… press your browser’s Back button to return to Lumen');
   // switching before Lumen has finished loading would replace Lumen in the history, so Back couldn't return to it
   const go=()=>setTimeout(()=>location.assign(url),250);if(document.readyState==='complete')go();else addEventListener('load',go,{once:true})}
 // coming back with the Back button: don't bounce straight to the startup page again
@@ -290,5 +290,5 @@ window.Lumen={IN_APP,showCover,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openMo
 applyLook();renderGames();
 if(IN_APP){document.body.classList.add('in-app');$('#stealthBtn').closest('.card')?.querySelector('#stealthBtn')?.remove()}
 // Lumen always opens on the Learning Portal (except when coming back from a page it opened)
-let backFromReal=false;try{backFromReal=sessionStorage.getItem('hub.realcover')==='1';sessionStorage.removeItem('hub.realcover')}catch{}
+let backFromReal=false;try{const t=+sessionStorage.getItem('hub.realcover');sessionStorage.removeItem('hub.realcover');const nav=performance.getEntriesByType?.('navigation')?.[0]?.type;backFromReal=nav==='back_forward'&&t>0&&Date.now()-t<36e5}catch{}
 if(!backFromReal)enterStudy();
