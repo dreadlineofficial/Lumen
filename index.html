@@ -6,11 +6,17 @@
 <meta name="robots" content="noindex">
 <meta name="lumen-app" content="1">
 <title>Lumen</title>
+<script>
+/* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
+window.LUMEN_VERSION='2026-11-18c';
+(function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
+  if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
+</script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261118b">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261118b">
+<link rel="stylesheet" href="css/app.css?v=20261118c">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261118c">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -285,6 +291,7 @@
           <label>Show these menu items</label><div id="navToggles" class="row" style="flex-wrap:wrap;gap:6px"></div>
         </div>
         <div class="card"><h2>💾 Data</h2>
+          <p class="muted" style="font-size:12.5px;margin:4px 0 12px">Lumen version <b id="lumenVer"></b></p>
           <div class="row" style="flex-wrap:wrap"><button id="exportAll">Export settings</button><button id="importAll">Import settings</button><input type="file" id="importFile" accept=".json" hidden><button id="resetAll" style="color:var(--danger)">Reset everything</button></div>
         </div>
       </div>
@@ -361,13 +368,13 @@
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261118b"></script>
-<script src="js/study.js?v=20261118b"></script>
-<script src="js/app.js?v=20261118b"></script>
-<script src="js/cosmetics.js?v=20261118b"></script>
-<script src="js/rich.js?v=20261118b"></script>
-<script src="js/browser.js?v=20261118b"></script>
-<script type="module" src="js/cloud.js?v=20261118b"></script>
-<script type="module" src="js/shop.js?v=20261118b"></script>
+<script src="js/config.js?v=20261118c"></script>
+<script src="js/study.js?v=20261118c"></script>
+<script src="js/app.js?v=20261118c"></script>
+<script src="js/cosmetics.js?v=20261118c"></script>
+<script src="js/rich.js?v=20261118c"></script>
+<script src="js/browser.js?v=20261118c"></script>
+<script type="module" src="js/cloud.js?v=20261118c"></script>
+<script type="module" src="js/shop.js?v=20261118c"></script>
 </body>
 </html>

@@ -265,6 +265,9 @@ $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this
 try{if(localStorage.getItem('hub.bwnote'))$('#bwNote').style.display='none'}catch{}
 $('#bwNoteX').onclick=e=>{e.preventDefault();$('#bwNote').style.display='none';try{localStorage.setItem('hub.bwnote','1')}catch{}};
 
+try{document.getElementById('lumenVer').textContent=window.LUMEN_VERSION||''}catch{}
+// the ?lv= marker from the update check isn't needed once loaded
+try{const u=new URL(location.href);if(u.searchParams.has('lv')){u.searchParams.delete('lv');history.replaceState(history.state,'',u.toString())}}catch{}
 function extStatus(){const el=document.getElementById('extStatus');if(!el)return;const on=document.documentElement.dataset.lumenExt==='1';el.innerHTML=on?'<span style="color:#7ee2a8">● Installed and working</span>':'<span class="muted">○ Not installed in this browser</span>'}
 setTimeout(extStatus,1800);document.addEventListener('click',e=>{if(e.target.closest?.('[data-v=settings]'))setTimeout(extStatus,50)});
 
