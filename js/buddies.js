@@ -21,126 +21,176 @@ function eyes(r=.018,gap=.045,y=0,z=.1){const g=new T.Group(),b=M(0x111116,{roug
 // floating "Zzz", "♪" and "!" bubbles
 function puff(inst,txt,color){const s=textSprite(txt,color);s.position.set(inst.actor.position.x+rnd(-.03,.05),inst.actor.position.y+inst.top,0.1);s.userData={life:1.4,vy:.09};inst.scene.add(s);inst.fx.push(s)}
 
-/* ---------- Ted (from models/ted.glb) ---------- */
-let tedP=null;
+/* ---------- Ted (models/ted.glb + bottle and phone from models/ted-props.glb) ---------- */
+let tedP=null,propsP=null;
 const loadTed=()=>tedP||(tedP=new T.GLTFLoader().loadAsync(new URL('../models/ted.glb',import.meta.url).href));
+const loadProps=()=>propsP||(propsP=new T.GLTFLoader().loadAsync(new URL('../models/ted-props.glb',import.meta.url).href).catch(()=>null));
+// bake a set of meshes into one group, centred, scaled to a height, optionally turned
+function bake(scene,test,height,rotY=0,anchor='center'){const parts=[];scene.updateMatrixWorld(true);scene.traverse(o=>{if(o.isMesh&&test(o.name))parts.push(o)});if(!parts.length)return null;
+  const g=new T.Group();for(const o of parts){const geo=o.geometry.clone().applyMatrix4(o.matrixWorld);const m=new T.Mesh(geo,o.material.clone());g.add(m)}
+  const b=new T.Box3().setFromObject(g),c=b.getCenter(new T.Vector3()),sz=b.getSize(new T.Vector3());const k=height/sz.y,rot=new T.Matrix4().makeRotationY(rotY);
+  g.children.forEach(m=>{m.geometry.translate(-c.x,anchor==='bottom'?-b.min.y:-c.y,-c.z);m.geometry.scale(k,k,k);m.geometry.applyMatrix4(rot)});return g}
 function chairMesh(){const g=new T.Group(),wood=M(0x8a5a33,{roughness:.7}),dark=M(0x6b4325,{roughness:.75}),cush=M(0xb5342b,{roughness:.9});
   const seatY=.072,w=.19,d=.16,bz=-.075;
-  g.add(mesh(new T.BoxGeometry(w,.016,d),wood,[0,seatY,bz]));                 // seat
-  g.add(mesh(new T.BoxGeometry(w*.86,.012,d*.82),cush,[0,seatY+.013,bz+.004])); // cushion
-  for(const sx of[-1,1])for(const sz of[-1,1])g.add(mesh(new T.BoxGeometry(.014,seatY,.014),dark,[sx*(w/2-.012),seatY/2,bz+sz*(d/2-.012)])); // legs
-  for(const sx of[-1,1])g.add(mesh(new T.BoxGeometry(.014,.2,.014),dark,[sx*(w/2-.012),seatY+.1,bz-d/2+.008])); // back posts
-  for(const y of[.13,.2,.255])g.add(mesh(new T.BoxGeometry(w-.02,.026,.01),wood,[0,seatY+y-.06,bz-d/2+.008])); // back slats
+  g.add(mesh(new T.BoxGeometry(w,.016,d),wood,[0,seatY,bz]));
+  g.add(mesh(new T.BoxGeometry(w*.86,.012,d*.82),cush,[0,seatY+.013,bz+.004]));
+  for(const sx of[-1,1])for(const sz of[-1,1])g.add(mesh(new T.BoxGeometry(.014,seatY,.014),dark,[sx*(w/2-.012),seatY/2,bz+sz*(d/2-.012)]));
+  for(const sx of[-1,1])g.add(mesh(new T.BoxGeometry(.014,.2,.014),dark,[sx*(w/2-.012),seatY+.1,bz-d/2+.008]));
+  for(const y of[.13,.2,.255])g.add(mesh(new T.BoxGeometry(w-.02,.026,.01),wood,[0,seatY+y-.06,bz-d/2+.008]));
   const outer=new T.Group();g.scale.setScalar(.85);outer.add(g);return outer}
-function phoneMesh(){const g=new T.Group();g.add(mesh(new T.BoxGeometry(.04,.075,.008),M(0xb08cff,{roughness:.35,metalness:.1})));
-  g.add(mesh(new T.CircleGeometry(.005,12),M(0x222228),[.011,.026,-.0042]));
-  const scr=mesh(new T.PlaneGeometry(.034,.066),new T.MeshBasicMaterial({color:0x7fb4ff}),[0,0,.0042]);g.add(scr);g.userData.scr=scr;return g}
-function canMesh(){const g=new T.Group();const c=document.createElement('canvas');c.width=64;c.height=32;const x=c.getContext('2d');x.fillStyle='#d11f2b';x.fillRect(0,0,64,32);x.fillStyle='#fff';x.font='bold 15px sans-serif';x.fillText('FIZZ',12,22);
-  g.add(mesh(new T.CylinderGeometry(.024,.024,.07,24),new T.MeshStandardMaterial({map:new T.CanvasTexture(c),roughness:.35,metalness:.3})));
-  g.add(mesh(new T.CylinderGeometry(.021,.024,.008,24),M(0xcfd3da,{metalness:.8,roughness:.25}),[0,.039,0]));return g}
-async function makeTed(inst){const gltf=await loadTed();const root=T.cloneSkinned(gltf.scene);
+function fallbackPhone(){const g=new T.Group();g.add(mesh(new T.BoxGeometry(.034,.064,.007),M(0x1a1c22,{roughness:.3})));g.add(mesh(new T.PlaneGeometry(.03,.058),new T.MeshBasicMaterial({color:0x7fb4ff}),[0,0,.0036]));return g}
+function fallbackBottle(){const g=new T.Group(),glass=new T.MeshPhysicalMaterial({color:0x5a2e0c,roughness:.15,metalness:0,transmission:0,clearcoat:1});
+  g.add(mesh(new T.CylinderGeometry(.014,.014,.045,20),glass,[0,.0225,0]));g.add(mesh(new T.CylinderGeometry(.006,.014,.014,20),glass,[0,.052,0]));g.add(mesh(new T.CylinderGeometry(.006,.006,.018,16),glass,[0,.068,0]));return g}
+async function makeTed(inst){const [gltf,props]=await Promise.all([loadTed(),loadProps()]);const root=T.cloneSkinned(gltf.scene);
   root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;if(o.material){o.material=o.material.clone();o.material.roughness=Math.max(.75,o.material.roughness??.8)}}});
   const mixer=new T.AnimationMixer(root),A={};for(const n of['walk_cycle','sit_phone','beer'])A[n]=mixer.clipAction(gltf.animations.find(a=>a.name===n));
   A.sit_phone.setLoop(T.LoopOnce);A.sit_phone.clampWhenFinished=true;A.beer.setLoop(T.LoopOnce);A.beer.clampWhenFinished=true;
-  // a calm idle pose: the first frame of the drinking animation, held still
   const idle=mixer.clipAction(gltf.animations.find(a=>a.name==='beer').clone());idle.play();idle.paused=true;idle.time=0;let cur=idle;
   const fade=(to,d=.35)=>{if(to===cur)return;to.reset();to.play();if(to===idle){to.paused=true;to.time=0}cur.crossFadeTo(to,d,false);cur=to};
-  const handR=root.getObjectByName('handR'),handL=root.getObjectByName('handL'),head=root.getObjectByName('head');const lv=new T.Vector3();
-  const chair=chairMesh(),phone=phoneMesh(),can=canMesh();chair.visible=phone.visible=can.visible=false;
-  const holder=new T.Group();holder.add(root);root.scale.setScalar(.85);inst.scene.add(chair);inst.scene.add(phone);inst.scene.add(can);
-  const v=new T.Vector3(),hv=new T.Vector3();let prop=null,chairT=0,chairOn=false,yawFace=0;
+  const B=n=>root.getObjectByName(n);const handR=B('handR'),handL=B('handL'),head=B('head'),armL=B('upper_armL'),armR=B('upper_armR');
+  // props: the beer bottle and phone from the accessories model, with drawn fallbacks
+  const bottle=(props&&bake(props.scene,n=>n==='Cylinder',.11,0,'bottom'))||fallbackBottle();
+  const phone=(props&&bake(props.scene,n=>/^pC(ube|ylinder)/.test(n),.075,-Math.PI/2))||fallbackPhone();
+  bottle.traverse(o=>{if(o.isMesh){o.material.color?.offsetHSL(0,.1,.12);o.material.roughness=.18;if('emissive' in o.material){o.material.emissive.set(0x3a1a05)}}});
+  const chair=chairMesh();chair.visible=phone.visible=bottle.visible=false;
+  const holder=new T.Group();holder.add(root);root.scale.setScalar(.85);inst.scene.add(chair,phone,bottle);
+  const v=new T.Vector3(),hv=new T.Vector3(),lv=new T.Vector3(),Z=new T.Vector3(0,0,1),qa=new T.Quaternion();
+  let prop=null,chairT=0,chairOn=false,spread=.3;
   return{obj:holder,top:.44,speed:.11,
     walkStart(){fade(A.walk_cycle,.25)},walkStop(){fade(idle,.3)},
     walkFacing:d=>d>0?-.55:-(Math.PI-.55),faceYaw:0,
     actions:{
       sit:{yaw:.8,dur:A.sit_phone.getClip().duration+.2,start(){chairOn=true;chair.position.set(holder.position.x,0,0);fade(A.sit_phone,.3);prop=phone;phone.visible=true},end(){chairOn=false;phone.visible=false;prop=null;fade(idle,.4)}},
-      drink:{dur:A.beer.getClip().duration,start(){fade(A.beer,.3);prop=can;can.visible=true},end(){can.visible=false;prop=null;fade(idle,.3)}},
-      hop:{dur:1.1,start(){},tick(t){const k=(t*2)%1;holder.position.y=Math.sin(k*Math.PI)*.06;holder.scale.y=1-Math.max(0,.12-Math.sin(k*Math.PI)*.12)},end(){holder.position.y=0;holder.scale.y=1}},
-      look:{dur:2.4,start(){},tick(t){holder.rotation.y=Math.sin(t*2.6)*.6},end(){}},
+      drink:{yaw:.35,dur:A.beer.getClip().duration,start(){fade(A.beer,.3);prop=bottle;bottle.visible=true},end(){bottle.visible=false;prop=null;fade(idle,.3)}},
+      hop:{dur:1.1,tick(t){const k=(t*2)%1;holder.position.y=Math.sin(k*Math.PI)*.06;holder.scale.y=1-Math.max(0,.12-Math.sin(k*Math.PI)*.12)},end(){holder.position.y=0;holder.scale.y=1}},
+      look:{dur:2.4,tick(t){holder.rotation.y=Math.sin(t*2.6)*.6}},
     },
-    update(dt){mixer.update(dt);
-      // the chair pops in and out with a little bounce
+    update(dt,t,inst){mixer.update(dt);
+      // keep his paws out of his tummy: open the upper arms a little after each animation frame
+      const drinkingNow=prop===bottle&&handR.getWorldPosition(v).y>.27;spread=lerp(spread,inst.state==='walk'?.12:drinkingNow?.05:inst.act&&prop===phone?.26:.34,Math.min(1,dt*5));
+      armL.quaternion.multiply(qa.setFromAxisAngle(Z,-spread));armR.quaternion.multiply(qa.setFromAxisAngle(Z,spread));
       if(chairOn){chair.position.x=holder.position.x;chair.rotation.y=holder.rotation.y}chairT=clamp(chairT+(chairOn?dt:-dt)*3.5,0,1);chair.visible=chairT>0;const u=chairT-1,s=chairOn?1+2.7*u*u*u+1.7*u*u:ease(chairT);chair.scale.setScalar(Math.max(.001,s));
-      if(prop){root.updateMatrixWorld(true);handR.getWorldPosition(v);head.getWorldPosition(hv);if(prop===can){handL.getWorldPosition(lv);v.lerp(lv,.5)}prop.position.copy(v);
-        if(prop===phone){prop.position.y+=.012;prop.position.z+=.02;prop.lookAt(hv);phone.userData.scr.material.color.setHSL(.6,.7,.62+Math.sin(performance.now()/300)*.06)}
-        else{const drinking=clamp((v.y-.29)/.05,0,1);prop.position.z+=.03;prop.position.y-=.01;prop.rotation.set(-drinking*1.1,0,0)}}}}}
+      if(prop){root.updateMatrixWorld(true);handR.getWorldPosition(v);head.getWorldPosition(hv);
+        if(prop===bottle){const drinking=clamp((v.y-.27)/.05,0,1);
+          // held by the body in his right paw; tipped up to his mouth when the paw rises
+          prop.position.set(v.x,v.y-.045+drinking*.03,v.z+.012);prop.rotation.set(-drinking*2.1,0,drinking*.15)}
+        else{prop.position.set(v.x,v.y+.01,v.z+.02);prop.lookAt(hv)}}}}}
 
 /* ---------- procedural buddies ---------- */
+// shared: eyes that blink on their own
+function blinker(eyeGroup){let next=rnd(1.5,4),t=0;return dt=>{t+=dt;if(t>next){const k=t-next;eyeGroup.scale.y=k<.06?1-k/.06*.9:k<.14?.1+(k-.06)/.08*.9:1;if(k>.14){t=0;next=rnd(1.8,4.5)}}}}
+const put=(p,m)=>(p.add(m),m);
+const toon=(c,o={})=>new T.MeshPhysicalMaterial({color:c,roughness:.45,clearcoat:.4,clearcoatRoughness:.4,sheen:.6,sheenColor:new T.Color(0xffffff),...o});
+
 function makeBlob(){const g=new T.Group(),body=new T.Group();g.add(body);
-  const mat=new T.MeshPhysicalMaterial({color:0x5cf0b5,roughness:.15,clearcoat:1,clearcoatRoughness:.1,sheen:.5,sheenColor:new T.Color(0xbfffe6)});
-  const b=mesh(new T.SphereGeometry(.11,32,24),mat,[0,.1,0],[1,.85,1]);body.add(b);const e=eyes(.017,.06,.11,.085);body.add(e);
-  const cheek=new T.MeshBasicMaterial({color:0xff8fb8,transparent:true,opacity:.6});for(const s of[-1,1])body.add(mesh(new T.CircleGeometry(.012,16),cheek,[s*.055,.085,.094]));
+  const mat=new T.MeshPhysicalMaterial({color:0x4fe3a8,roughness:.08,clearcoat:1,clearcoatRoughness:.05,sheen:.8,sheenColor:new T.Color(0xc8ffe9),transmission:.15,thickness:.2,ior:1.3});
+  const blob=mesh(new T.SphereGeometry(.11,40,32),mat,[0,.1,0],[1,.86,1]);body.add(blob);
+  const inner=mesh(new T.SphereGeometry(.05,20,16),new T.MeshBasicMaterial({color:0x9dffd8,transparent:true,opacity:.25}),[.02,.09,-.02]);body.add(inner);
+  const shine=mesh(new T.SphereGeometry(.022,16,12),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8}),[-.045,.16,.07],[1,.6,.4]);body.add(shine);
+  const ey=eyes(.017,.06,.115,.088);body.add(ey);const blink=blinker(ey);
+  const mouth=mesh(new T.TorusGeometry(.016,.004,8,20,Math.PI),new T.MeshBasicMaterial({color:0x163a2c}),[0,.088,.098]);mouth.rotation.z=Math.PI;body.add(mouth);
+  const cheek=new T.MeshBasicMaterial({color:0xff8fb8,transparent:true,opacity:.55});for(const s of[-1,1])body.add(mesh(new T.CircleGeometry(.013,16),cheek,[s*.058,.092,.093]));
+  const drip=mesh(new T.SphereGeometry(.014,12,10),mat,[.07,.03,.05],[1,1.4,1]);body.add(drip);
   let hopT=0;return{obj:g,top:.24,speed:.14,
-    walkStart(){hopT=0},walkTick(dt){hopT+=dt*2.4;const k=hopT%1,h=Math.sin(k*Math.PI);body.position.y=h*.07;body.scale.set(1+(1-h)*.12*(k<.15||k>.85),1-(1-h)*.18*(k<.15||k>.85)+h*.06,1)},
-    walkStop(){body.position.y=0;body.scale.set(1,1,1)},walkFacing:d=>d>0?.5:-.5,faceYaw:0,
+    walkStart(){hopT=0},walkTick(dt){hopT+=dt*2.4;const k=hopT%1,h=Math.sin(k*Math.PI),land=k<.12||k>.88;body.position.y=h*.075;body.scale.set(land?1.14:1-h*.05,land?.82:1+h*.1,land?1.14:1-h*.05);mouth.scale.y=1+h*.6},
+    walkStop(){body.position.y=0;body.scale.set(1,1,1);mouth.scale.y=1},walkFacing:d=>d>0?.5:-.5,faceYaw:0,
     actions:{
-      bounce:{dur:1.4,tick(t){const k=t/1.4,h=Math.sin(k*Math.PI);body.position.y=h*.2;body.rotation.y=ease(k)*TAU;body.scale.setScalar(1+h*.05)},end(){body.position.y=0;body.rotation.y=0;body.scale.set(1,1,1)}},
-      melt:{dur:2.2,tick(t){const k=t<1?ease(t):t>1.6?1-ease((t-1.6)/.6):1;body.scale.set(1+k*.45,1-k*.55,1+k*.45)},end(){body.scale.set(1,1,1)}},
-      wiggle:{dur:1.6,tick(t){body.rotation.z=Math.sin(t*18)*.15*(1-t/1.6)},end(){body.rotation.z=0}},
-    },update(dt,t){if(!this.moving)b.scale.y=.85+Math.sin(t*3)*.02}}}
+      bounce:{dur:1.6,start(i){puff(i,'boing','#9dffd8')},tick(t){const k=t/1.6,h=Math.sin(k*Math.PI);body.position.y=h*.22;body.rotation.y=ease(k)*TAU;body.scale.set(1-h*.08,1+h*.15,1-h*.08)},end(){body.position.y=0;body.rotation.y=0;body.scale.set(1,1,1)}},
+      melt:{dur:2.4,tick(t){const k=t<.9?ease(t/.9):t>1.8?1-ease((t-1.8)/.6):1;body.scale.set(1+k*.55,1-k*.6,1+k*.55);drip.position.y=.03-k*.025}},
+      wiggle:{dur:1.6,tick(t){body.rotation.z=Math.sin(t*20)*.18*(1-t/1.6);ey.position.x=Math.sin(t*20)*.006}},
+      split:{dur:2.2,start(i){puff(i,'!','#fff')},tick(t){const k=Math.sin(Math.min(t/2.2,1)*Math.PI);body.scale.set(1+k*.35,1-k*.2,1);inner.position.x=.02+Math.sin(t*12)*.03}},
+    },update(dt,t){blink(dt);if(!this.moving){blob.scale.y=.86+Math.sin(t*3)*.025;blob.scale.x=1-Math.sin(t*3)*.012}shine.position.x=-.045+Math.sin(t*.7)*.005}}}
+
 function makeBot(){const g=new T.Group(),body=new T.Group();g.add(body);
-  const shell=M(0xe8ecf3,{roughness:.35,metalness:.2}),dark=M(0x1d222c,{roughness:.3}),glow=new T.MeshBasicMaterial({color:0x4dd8ff});
-  body.add(mesh(new T.BoxGeometry(.13,.1,.1),shell,[0,.1,0]));const head=new T.Group();head.position.set(0,.19,0);body.add(head);
-  head.add(mesh(new T.BoxGeometry(.12,.08,.09),shell));head.add(mesh(new T.BoxGeometry(.1,.045,.01),dark,[0,0,.046]));
-  const eL=mesh(new T.BoxGeometry(.018,.018,.004),glow,[-.025,0,.052]),eR=mesh(new T.BoxGeometry(.018,.018,.004),glow,[.025,0,.052]);head.add(eL,eR);
-  head.add(mesh(new T.CylinderGeometry(.004,.004,.05),dark,[0,.065,0]));const tip=mesh(new T.SphereGeometry(.012,12,8),new T.MeshBasicMaterial({color:0xff5c7a}),[0,.093,0]);head.add(tip);
-  const wheel=mesh(new T.CylinderGeometry(.035,.035,.09,20),dark,[0,.035,0]);wheel.rotation.z=Math.PI/2;body.add(wheel);
-  for(const s of[-1,1])body.add(mesh(new T.BoxGeometry(.02,.06,.03),shell,[s*.078,.1,0]));
-  return{obj:g,top:.3,speed:.12,
-    walkStart(){},walkTick(dt,t){wheel.rotation.x+=dt*8;body.rotation.x=.08;head.rotation.z=Math.sin(t*10)*.03},walkStop(){body.rotation.x=0;head.rotation.z=0},
+  const shell=toon(0xeef1f6,{roughness:.3,metalness:.15,sheen:0}),dark=M(0x1d222c,{roughness:.35,metalness:.3}),accent=M(0x6b7cff,{roughness:.4}),glow=new T.MeshBasicMaterial({color:0x4dd8ff});
+  const torso=mesh(new T.CapsuleGeometry(.055,.04,8,20),shell,[0,.115,0],[1.1,1,.85]);body.add(torso);
+  body.add(mesh(new T.CircleGeometry(.016,20),glow,[0,.12,.05]));const chestRing=mesh(new T.TorusGeometry(.02,.003,8,24),accent,[0,.12,.049]);body.add(chestRing);
+  const head=new T.Group();head.position.set(0,.205,0);body.add(head);
+  head.add(mesh(new T.BoxGeometry(.13,.085,.095),shell));for(const s of[-1,1])put(head,mesh(new T.CylinderGeometry(.018,.018,.012,16),accent,[s*.07,0,0])).rotation.z=Math.PI/2;
+  const visor=mesh(new T.BoxGeometry(.105,.05,.01),dark,[0,0,.048]);head.add(visor);
+  const ey=new T.Group();ey.position.set(0,0,.054);head.add(ey);const eL=mesh(new T.CapsuleGeometry(.006,.01,4,8),glow,[-.025,0,0]),eR=mesh(new T.CapsuleGeometry(.006,.01,4,8),glow,[.025,0,0]);ey.add(eL,eR);const blink=blinker(ey);
+  head.add(mesh(new T.CylinderGeometry(.003,.003,.05),dark,[0,.065,0]));const tip=mesh(new T.SphereGeometry(.012,16,12),new T.MeshBasicMaterial({color:0xff5c7a}),[0,.094,0]);head.add(tip);
+  const arms=[-1,1].map(s=>{const sh=new T.Group();sh.position.set(s*.072,.15,0);body.add(sh);sh.add(mesh(new T.SphereGeometry(.014,12,10),accent));
+    const arm=mesh(new T.CapsuleGeometry(.009,.05,4,10),shell,[0,-.035,0]);sh.add(arm);sh.add(mesh(new T.SphereGeometry(.013,12,10),dark,[0,-.07,0]));return sh});
+  const tread=new T.Group();tread.position.y=.032;body.add(tread);tread.add(mesh(new T.BoxGeometry(.12,.05,.075),dark));
+  const wheels=[-.04,0,.04].map(x=>{const w=mesh(new T.CylinderGeometry(.022,.022,.08,16),accent,[x,0,0]);w.rotation.x=Math.PI/2;tread.add(w);return w});
+  return{obj:g,top:.32,speed:.12,
+    walkStart(){},walkTick(dt,t){wheels.forEach(w=>w.rotation.y+=dt*9);body.rotation.x=.06;head.rotation.z=Math.sin(t*10)*.03;arms[0].rotation.x=Math.sin(t*6)*.5;arms[1].rotation.x=-Math.sin(t*6)*.5},
+    walkStop(){body.rotation.x=0;head.rotation.z=0;arms.forEach(a=>a.rotation.x=0)},
     walkFacing:d=>d>0?.9:-.9,faceYaw:0,
     actions:{
-      scan:{dur:2.6,tick(t){head.rotation.y=Math.sin(t*3)*.9;glow.color.setHSL(.53+Math.sin(t*8)*.04,1,.6)},end(){head.rotation.y=0;glow.color.set(0x4dd8ff)}},
-      spin:{dur:1.2,tick(t){body.rotation.y=ease(t/1.2)*TAU},end(){body.rotation.y=0}},
+      scan:{dur:2.8,tick(t){head.rotation.y=Math.sin(t*2.6)*.9;glow.color.setHSL(.53+Math.sin(t*8)*.05,1,.6);visor.scale.y=1+Math.sin(t*20)*.05},end(){head.rotation.y=0;glow.color.set(0x4dd8ff);visor.scale.y=1}},
+      spin:{dur:1.3,tick(t){body.rotation.y=ease(t/1.3)*TAU;arms.forEach((a,i)=>a.rotation.z=(i?-1:1)*Math.sin(t/1.3*Math.PI)*1.2)},end(){body.rotation.y=0;arms.forEach(a=>a.rotation.z=0)}},
+      wave:{dur:2,start(i){puff(i,'hi!','#9fd8ff')},tick(t){arms[1].rotation.z=-2.4+Math.sin(t*12)*.35;head.rotation.z=-.15},end(){arms[1].rotation.z=0;head.rotation.z=0}},
       beep:{dur:1.4,start(i){puff(i,'!','#ffd76a')},tick(t){body.position.y=Math.max(0,Math.sin(t*9))*.03;tip.material.color.setHSL(t*2%1,1,.6)},end(){body.position.y=0;tip.material.color.set(0xff5c7a)}},
-    },update(dt,t){eL.scale.y=eR.scale.y=(t%3.2)<.12?.15:1}}}
-function makePip(){const g=new T.Group(),body=new T.Group();g.add(body);const yel=M(0xffd84d,{roughness:.8}),org=M(0xff9a2e,{roughness:.6});
-  body.add(mesh(new T.SphereGeometry(.075,24,18),yel,[0,.085,0]));const head=new T.Group();head.position.set(0,.17,.01);body.add(head);
-  head.add(mesh(new T.SphereGeometry(.05,24,18),yel));head.add(eyes(.009,.04,.01,.043));const beak=mesh(new T.ConeGeometry(.012,.028,10),org,[0,-.005,.055]);beak.rotation.x=Math.PI/2;head.add(beak);
-  head.add(mesh(new T.SphereGeometry(.012,8,6),yel,[0,.052,0]));
-  const wings=[-1,1].map(s=>{const w=mesh(new T.SphereGeometry(.035,16,12),yel,[s*.072,.09,0],[.4,.8,1]);body.add(w);return w});
-  for(const s of[-1,1])body.add(mesh(new T.BoxGeometry(.012,.02,.025),org,[s*.03,.008,.01]));
-  return{obj:g,top:.26,speed:.1,
-    walkStart(){},walkTick(dt,t){body.rotation.z=Math.sin(t*14)*.12;body.position.y=Math.abs(Math.sin(t*14))*.012},walkStop(){body.rotation.z=0;body.position.y=0},
+    },update(dt,t){blink(dt);chestRing.rotation.z+=dt*2;if(!this.moving)torso.scale.y=1+Math.sin(t*2.4)*.015}}}
+
+function makePip(){const g=new T.Group(),body=new T.Group();g.add(body);const yel=toon(0xffd84d,{roughness:.85}),org=M(0xff9a2e,{roughness:.6}),belly=toon(0xfff1b8,{roughness:.9});
+  const torso=mesh(new T.SphereGeometry(.075,32,24),yel,[0,.085,0],[1,1.05,1]);body.add(torso);body.add(mesh(new T.SphereGeometry(.055,24,18),belly,[0,.075,.032],[1,1.1,.6]));
+  const head=new T.Group();head.position.set(0,.17,.01);body.add(head);
+  head.add(mesh(new T.SphereGeometry(.052,32,24),yel));const ey=eyes(.009,.042,.012,.045);head.add(ey);const blink=blinker(ey);
+  const beakT=mesh(new T.ConeGeometry(.013,.026,12),org,[0,-.002,.058]);beakT.rotation.x=Math.PI/2;head.add(beakT);
+  const beakB=mesh(new T.ConeGeometry(.01,.018,12),org,[0,-.012,.054]);beakB.rotation.x=Math.PI/2;head.add(beakB);
+  const blush=new T.MeshBasicMaterial({color:0xff9db8,transparent:true,opacity:.6});for(const s of[-1,1])head.add(mesh(new T.CircleGeometry(.009,12),blush,[s*.035,-.006,.042]));
+  for(const [x,r] of[[-.008,-.4],[.006,0],[.016,.4]]){const f=mesh(new T.ConeGeometry(.006,.03,6),yel,[x,.06,-.005]);f.rotation.z=r;head.add(f)}
+  const tail=new T.Group();tail.position.set(0,.09,-.07);body.add(tail);for(const r of[-.5,0,.5]){const f=mesh(new T.ConeGeometry(.01,.035,6),yel,[0,0,0]);f.rotation.set(-1.1,0,r);tail.add(f)}
+  const wings=[-1,1].map(s=>{const p=new T.Group();p.position.set(s*.072,.105,0);body.add(p);p.add(mesh(new T.SphereGeometry(.035,16,12),yel,[0,-.02,0],[.35,.85,1]));return p});
+  const feet=[-1,1].map(s=>{const f=new T.Group();f.position.set(s*.03,.012,.01);body.add(f);f.add(mesh(new T.CylinderGeometry(.005,.005,.02,6),org,[0,.005,0]));for(const r of[-.5,0,.5]){const toe=mesh(new T.BoxGeometry(.005,.004,.022),org,[0,-.004,.008]);toe.rotation.y=r;f.add(toe)}return f});
+  return{obj:g,top:.27,speed:.1,
+    walkStart(){},walkTick(dt,t){body.rotation.z=Math.sin(t*14)*.12;body.position.y=Math.abs(Math.sin(t*14))*.014;feet[0].position.y=.012+Math.max(0,Math.sin(t*14))*.012;feet[1].position.y=.012+Math.max(0,-Math.sin(t*14))*.012;wings.forEach((w,i)=>w.rotation.z=(i?-1:1)*(.15+Math.abs(Math.sin(t*14))*.25));tail.rotation.y=Math.sin(t*14)*.3},
+    walkStop(){body.rotation.z=0;body.position.y=0;feet.forEach(f=>f.position.y=.012);wings.forEach(w=>w.rotation.z=0);tail.rotation.y=0},
     walkFacing:d=>d>0?.9:-.9,faceYaw:0,
     actions:{
-      peck:{dur:2,tick(t){head.rotation.x=Math.max(0,Math.sin(t*9))*.9;head.position.y=.17-Math.max(0,Math.sin(t*9))*.03},end(){head.rotation.x=0;head.position.y=.17}},
-      flap:{dur:1.8,start(i){puff(i,'♪','#ffe45c')},tick(t){const f=Math.sin(t*30);wings[0].rotation.z=.4+f*.6;wings[1].rotation.z=-.4-f*.6;body.position.y=Math.sin(Math.min(t/1.8,1)*Math.PI)*.07},end(){wings.forEach(w=>w.rotation.z=0);body.position.y=0}},
-      tilt:{dur:1.6,tick(t){head.rotation.z=Math.sin(Math.min(t,1.2)/1.2*Math.PI)*.45},end(){head.rotation.z=0}},
-    },update(){}}}
+      peck:{dur:2.2,tick(t){const p=Math.max(0,Math.sin(t*9));head.rotation.x=p*.9;head.position.y=.17-p*.035;head.position.z=.01+p*.02;tail.rotation.x=-p*.3},end(){head.rotation.x=0;head.position.set(0,.17,.01);tail.rotation.x=0}},
+      flap:{dur:2,start(i){puff(i,'♪','#ffe45c')},tick(t){const f=Math.sin(t*32);wings[0].rotation.z=.5+f*.7;wings[1].rotation.z=-.5-f*.7;body.position.y=Math.sin(Math.min(t/2,1)*Math.PI)*.08;feet.forEach(x=>x.rotation.x=.4)},end(){wings.forEach(w=>w.rotation.z=0);body.position.y=0;feet.forEach(x=>x.rotation.x=0)}},
+      dance:{dur:2.6,start(i){puff(i,'♫','#ffe45c')},tick(t){body.rotation.y=Math.sin(t*6)*.6;body.position.y=Math.abs(Math.sin(t*12))*.02;head.rotation.z=Math.sin(t*12)*.2;wings.forEach((w,i)=>w.rotation.z=(i?-1:1)*(.3+Math.sin(t*12)*.3))},end(){body.rotation.y=0;body.position.y=0;head.rotation.z=0;wings.forEach(w=>w.rotation.z=0)}},
+      tilt:{dur:1.6,tick(t){head.rotation.z=Math.sin(Math.min(t,1.2)/1.2*Math.PI)*.45}},
+    },update(dt,t){blink(dt);if(!this.moving)torso.scale.y=1.05+Math.sin(t*3.2)*.02}}}
+
 function makeBoo(){const g=new T.Group(),body=new T.Group();g.add(body);
-  const pts=[];for(let i=0;i<=20;i++){const a=i/20;pts.push(new T.Vector2(Math.sin(a*Math.PI*.5+.0001)*.075*(a<.5?1:1),.2-a*.2))}
-  const geo=new T.LatheGeometry([new T.Vector2(0,.22),...Array.from({length:14},(_,i)=>{const a=i/13;return new T.Vector2(Math.sin(a*Math.PI/2)*.08,.22-a*.12)}),new T.Vector2(.082,.06),new T.Vector2(.084,.02)],32);
-  const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){const y=pos.getY(i);if(y<.03){const x=pos.getX(i),z=pos.getZ(i);pos.setY(i,y+Math.sin(Math.atan2(z,x)*6)*.012)}}geo.computeVertexNormals();
-  const mat=new T.MeshPhysicalMaterial({color:0xf4f6ff,emissive:0x8fa6ff,emissiveIntensity:.25,roughness:.4,transparent:true,opacity:.92,side:T.DoubleSide});
-  const sh=mesh(geo,mat,[0,.03,0]);body.add(sh);body.add(eyes(.013,.045,.18,.07));
-  const mouth=mesh(new T.CircleGeometry(.01,16),new T.MeshBasicMaterial({color:0x222233}),[0,.15,.078]);mouth.scale.y=1.4;body.add(mouth);
-  for(const s of[-1,1]){const arm=mesh(new T.SphereGeometry(.02,12,8),mat,[s*.085,.12,0],[1,.6,.8]);body.add(arm)}
-  return{obj:g,top:.3,speed:.09,
-    walkStart(){},walkTick(dt,t){body.rotation.z=-.1*Math.sign(this.dir||1)},walkStop(){body.rotation.z=0},walkFacing:d=>d>0?.6:-.6,faceYaw:0,
+  const prof=[new T.Vector2(0,.235)];for(let i=1;i<=16;i++){const a=i/16;prof.push(new T.Vector2(Math.sin(a*Math.PI/2)*.085,.235-a*.13))}prof.push(new T.Vector2(.088,.06),new T.Vector2(.09,.015));
+  const geo=new T.LatheGeometry(prof,48);const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){const y=pos.getY(i);if(y<.04){const x=pos.getX(i),z=pos.getZ(i);pos.setY(i,y+Math.sin(Math.atan2(z,x)*7)*.014*(1-y/.04))}}geo.computeVertexNormals();
+  const mat=new T.MeshPhysicalMaterial({color:0xf6f7ff,emissive:0x9fb0ff,emissiveIntensity:.3,roughness:.35,clearcoat:.6,transparent:true,opacity:.93,side:T.DoubleSide});
+  const sh=mesh(geo,mat,[0,.03,0]);body.add(sh);const ey=eyes(.014,.048,.19,.075);body.add(ey);const blink=blinker(ey);
+  const mouth=mesh(new T.CircleGeometry(.011,20),new T.MeshBasicMaterial({color:0x2a2240}),[0,.15,.084]);mouth.scale.y=1.3;body.add(mouth);
+  const tongue=mesh(new T.CircleGeometry(.006,12),new T.MeshBasicMaterial({color:0xff7aa8}),[0,.144,.0845]);body.add(tongue);
+  const blush=new T.MeshBasicMaterial({color:0xffa3c6,transparent:true,opacity:.5});for(const s of[-1,1])body.add(mesh(new T.CircleGeometry(.011,14),blush,[s*.045,.165,.08]));
+  const arms=[-1,1].map(s=>{const a=new T.Group();a.position.set(s*.083,.13,0);body.add(a);put(a,mesh(new T.CapsuleGeometry(.012,.02,4,10),mat,[s*.012,0,0])).rotation.z=s*1.2;return a});
+  const glowLight=new T.PointLight(0xaab8ff,.6,.6);glowLight.position.set(0,.15,.1);body.add(glowLight);
+  let trailT=0;
+  return{obj:g,top:.32,speed:.09,
+    walkStart(){},walkTick(dt,t){body.rotation.z=-.12*Math.sign(this.dir||1);arms.forEach((a,i)=>a.rotation.z=Math.sin(t*5+i)*.3)},walkStop(){body.rotation.z=0;arms.forEach(a=>a.rotation.z=0)},walkFacing:d=>d>0?.6:-.6,faceYaw:0,
     actions:{
-      spook:{dur:1.6,start(i){puff(i,'boo!','#cfd8ff')},tick(t){const k=Math.sin(Math.min(t/1.2,1)*Math.PI);body.scale.setScalar(1+k*.25);body.rotation.z=Math.sin(t*30)*.06*k},end(){body.scale.setScalar(1);body.rotation.z=0}},
-      vanish:{dur:2.6,tick(t){mat.opacity=.92*(t<1?1-t:t>1.6?(t-1.6):0)},end(){mat.opacity=.92}},
-      twirl:{dur:1.5,tick(t){body.rotation.y=ease(t/1.5)*TAU},end(){body.rotation.y=0}},
-    },update(dt,t){body.position.y=.04+Math.sin(t*2.2)*.02}}}
-function makeMochi(){const g=new T.Group(),body=new T.Group();g.add(body);const fur=M(0xf1e4d4,{roughness:.9}),pat=M(0xe08a3c,{roughness:.9}),pink=M(0xff9db8);
-  const torso=mesh(new T.SphereGeometry(.07,24,18),fur,[0,.07,0],[1.35,.85,1]);body.add(torso);
-  const head=new T.Group();head.position.set(.075,.13,0);body.add(head);head.add(mesh(new T.SphereGeometry(.052,24,18),fur));
-  head.add(mesh(new T.SphereGeometry(.02,12,8),pat,[0,.035,.02]));
-  for(const s of[-1,1]){const ear=mesh(new T.ConeGeometry(.018,.035,4),s<0?pat:fur,[0,.05,s*.03]);ear.rotation.x=s*.25;head.add(ear)}
-  const ey=eyes(.008,.036,.008,.0);ey.rotation.y=Math.PI/2;ey.position.x=.047;head.add(ey);head.add(mesh(new T.SphereGeometry(.006,8,6),pink,[.052,-.008,0]));
-  const curve=new T.CatmullRomCurve3([new T.Vector3(-.09,.08,0),new T.Vector3(-.13,.12,0),new T.Vector3(-.12,.18,0),new T.Vector3(-.09,.2,0)]);
-  const tail=new T.Group();tail.position.set(-.08,.06,0);body.add(tail);const tm=mesh(new T.TubeGeometry(curve,16,.011,8),pat,[.08,-.06,0]);tail.add(tm);
-  const legs=[[.05,.03],[.05,-.03],[-.05,.03],[-.05,-.03]].map(([x,z])=>{const l=mesh(new T.CylinderGeometry(.011,.011,.04,8),fur,[x,.02,z]);body.add(l);return l});
+      spook:{dur:1.7,start(i){puff(i,'boo!','#cfd8ff')},tick(t){const k=Math.sin(Math.min(t/1.2,1)*Math.PI);body.scale.setScalar(1+k*.3);body.rotation.z=Math.sin(t*30)*.07*k;arms.forEach((a,i)=>a.rotation.z=(i?-1:1)*k*1.4);mouth.scale.set(1+k,1.3+k*1.5,1)},end(){body.scale.setScalar(1);body.rotation.z=0;arms.forEach(a=>a.rotation.z=0);mouth.scale.set(1,1.3,1)}},
+      vanish:{dur:2.8,tick(t){mat.opacity=.93*(t<1?1-t:t>1.8?Math.min(1,t-1.8):0);glowLight.intensity=mat.opacity*.6},end(){mat.opacity=.93;glowLight.intensity=.6}},
+      twirl:{dur:1.6,tick(t){body.rotation.y=ease(t/1.6)*TAU*2;body.position.y=.04+Math.sin(t/1.6*Math.PI)*.05}},
+      wave:{dur:1.8,start(i){puff(i,'hi','#cfd8ff')},tick(t){arms[1].rotation.z=-1.6+Math.sin(t*12)*.4},end(){arms[1].rotation.z=0}},
+    },update(dt,t,inst){blink(dt);body.position.y=.045+Math.sin(t*2.2)*.022;tongue.visible=Math.sin(t*.9)>.6;
+      trailT+=dt;if(this.moving&&trailT>.25){trailT=0;puff(inst,'✦','#cfd8ff')}}}}
+
+function makeMochi(){const g=new T.Group(),body=new T.Group();g.add(body);const fur=toon(0xf3e6d6,{roughness:.95}),pat=toon(0xe08a3c,{roughness:.95}),pink=M(0xff9db8),dark=M(0x2a2228);
+  const torso=mesh(new T.CapsuleGeometry(.055,.07,8,20),fur,[0,.07,0]);torso.rotation.z=Math.PI/2;torso.scale.set(1,1,.95);body.add(torso);
+  for(const x of[-.03,0,.03])put(body,mesh(new T.TorusGeometry(.055,.006,6,20,Math.PI*.7),pat,[x,.07,0])).rotation.set(0,Math.PI/2,Math.PI*.15);
+  const head=new T.Group();head.position.set(.085,.13,0);body.add(head);head.add(mesh(new T.SphereGeometry(.053,32,24),fur,[0,0,0],[1,.95,1.05]));
+  head.add(mesh(new T.SphereGeometry(.025,16,12),pat,[-.01,.035,0],[1,.6,1.4]));head.add(mesh(new T.SphereGeometry(.022,16,12),fur,[.04,-.012,0],[.9,.7,1.1]));
+  for(const s of[-1,1]){const ear=mesh(new T.ConeGeometry(.02,.038,4),s<0?pat:fur,[-.005,.05,s*.03]);ear.rotation.x=s*.3;head.add(ear);const inEar=mesh(new T.ConeGeometry(.011,.024,4),pink,[0,.048,s*.03]);inEar.rotation.x=s*.3;head.add(inEar)}
+  const ey=eyes(.009,.04,.012,0);ey.rotation.y=Math.PI/2;ey.position.x=.048;head.add(ey);const blink=blinker(ey);
+  head.add(mesh(new T.SphereGeometry(.006,8,6),pink,[.058,-.004,0]));
+  const wmat=new T.LineBasicMaterial({color:0x6b5a50});for(const s of[-1,1])for(const dy of[-.004,.004]){const lg=new T.BufferGeometry().setFromPoints([new T.Vector3(.055,-.008,s*.012),new T.Vector3(.07,-.008+dy*2,s*.045)]);head.add(new T.Line(lg,wmat))}
+  const tail=new T.Group();tail.position.set(-.09,.08,0);body.add(tail);
+  const curve=new T.CatmullRomCurve3([new T.Vector3(0,0,0),new T.Vector3(-.04,.03,0),new T.Vector3(-.035,.09,0),new T.Vector3(-.005,.115,0)]);tail.add(mesh(new T.TubeGeometry(curve,20,.011,8),pat));
+  const legs=[[.05,.03],[.05,-.03],[-.05,.03],[-.05,-.03]].map(([x,z])=>{const l=new T.Group();l.position.set(x,.04,z);body.add(l);l.add(mesh(new T.CapsuleGeometry(.011,.02,4,8),fur,[0,-.02,0]));l.add(mesh(new T.SphereGeometry(.013,10,8),fur,[.004,-.036,0],[1.2,.6,1]));return l});
   let sleeping=false;
-  return{obj:g,top:.24,speed:.1,
-    walkStart(){},walkTick(dt,t){legs.forEach((l,i)=>l.rotation.z=Math.sin(t*16+(i%2?Math.PI:0))*.5);body.position.y=Math.abs(Math.sin(t*16))*.006},walkStop(){legs.forEach(l=>l.rotation.z=0);body.position.y=0},
+  return{obj:g,top:.25,speed:.1,
+    walkStart(){},walkTick(dt,t){legs.forEach((l,i)=>l.rotation.z=Math.sin(t*16+(i===0||i===3?Math.PI:0))*.55);body.position.y=Math.abs(Math.sin(t*16))*.007;head.rotation.z=Math.sin(t*8)*.04;tail.rotation.z=Math.sin(t*8)*.2},
+    walkStop(){legs.forEach(l=>l.rotation.z=0);body.position.y=0;head.rotation.z=0},
     walkFacing:d=>d>0?-.35:-(Math.PI-.35),faceYaw:-Math.PI/2+.5,
     actions:{
-      nap:{dur:6,start(i){sleeping=true},tick(t,i){const k=Math.min(t/.6,1)*(t>5.4?1-(t-5.4)/.6:1);body.scale.y=1-k*.3;head.position.y=.13-k*.05;if(((t*10)|0)%14===0&&Math.random()<.2)puff(i,'z','#cfd8ff')},end(){sleeping=false;body.scale.y=1;head.position.y=.13}},
-      stretch:{dur:2,tick(t){const k=Math.sin(Math.min(t/2,1)*Math.PI);body.scale.x=1+k*.25;head.position.y=.13-k*.03;torso.rotation.z=-k*.15},end(){body.scale.x=1;head.position.y=.13;torso.rotation.z=0}},
-      wag:{dur:2,tick(t){tail.rotation.x=Math.sin(t*14)*.5},end(){tail.rotation.x=0}},
-    },update(dt,t){if(!sleeping)tail.rotation.z=Math.sin(t*2)*.15}}}
+      nap:{dur:6.5,start(){sleeping=true},tick(t,i){const k=Math.min(t/.6,1)*(t>5.9?1-(t-5.9)/.6:1);body.scale.y=1-k*.32;head.position.y=.13-k*.055;head.rotation.z=-k*.25;ey.scale.y=Math.max(.1,1-k*.95);legs.forEach(l=>l.scale.y=1-k*.6);if(Math.random()<.05)puff(i,'z','#cfd8ff')},end(){sleeping=false;body.scale.y=1;head.position.y=.13;head.rotation.z=0;ey.scale.y=1;legs.forEach(l=>l.scale.y=1)}},
+      stretch:{dur:2.2,tick(t){const k=Math.sin(Math.min(t/2.2,1)*Math.PI);body.scale.x=1+k*.25;legs[0].rotation.z=legs[1].rotation.z=-k*.8;head.position.y=.13-k*.04;tail.rotation.z=k*.6},end(){body.scale.x=1;legs.forEach(l=>l.rotation.z=0);head.position.y=.13;tail.rotation.z=0}},
+      groom:{dur:2.4,tick(t){legs[0].rotation.z=-1.6+Math.sin(t*10)*.3;legs[0].position.y=.07;head.rotation.z=.3+Math.sin(t*10)*.08},end(){legs[0].rotation.z=0;legs[0].position.y=.04;head.rotation.z=0}},
+      wag:{dur:2,start(i){puff(i,'♥','#ff9db8')},tick(t){tail.rotation.x=Math.sin(t*14)*.6},end(){tail.rotation.x=0}},
+    },update(dt,t){if(!sleeping){blink(dt);tail.rotation.y=Math.sin(t*2)*.2;head.rotation.y=Math.sin(t*.6)*.15}if(!this.moving&&!sleeping)torso.scale.x=1+Math.sin(t*2.6)*.02}}}
 const KINDS={buddy_blob:makeBlob,buddy_bot:makeBot,buddy_pip:makePip,buddy_boo:makeBoo,buddy_mochi:makeMochi};
 
 /* ---------- instances ---------- */
@@ -165,9 +215,9 @@ function detach(cv){const i=insts.get(cv);if(!i)return;insts.delete(cv);io.unobs
 /* brain: idle → wander → do something → idle */
 function think(inst,dt){const k=inst.kind,a=inst.actor;inst.timer-=dt;k.moving=inst.state==='walk';
   if(inst.state==='idle'){a.rotation.y=angLerp(a.rotation.y,k.faceYaw,dt*3);
-    if(inst.timer<=0){if(Math.random()<.55&&inst.half>.1){inst.target=rnd(-inst.half,inst.half);if(Math.abs(inst.target-a.position.x)<.08)inst.target=-a.position.x;inst.dir=Math.sign(inst.target-a.position.x)||1;k.dir=inst.dir;inst.state='walk';k.walkStart?.()}
+    if(inst.timer<=0){if(Math.random()<.55&&inst.half>.1){inst.target=rnd(-inst.half,inst.half);if(Math.abs(inst.target-a.position.x)<.08)inst.target=-a.position.x;inst.dir=Math.sign(inst.target-a.position.x)||1;k.dir=inst.dir;inst.state='walk';inst.sp=0;k.walkStart?.()}
       else{const names=Object.keys(k.actions);const n=pick(names);inst.act=k.actions[n];inst.actT=0;inst.state='act';inst.act.start?.(inst);inst.timer=inst.act.dur}}}
-  else if(inst.state==='walk'){a.rotation.y=angLerp(a.rotation.y,k.walkFacing(inst.dir),dt*6);a.position.x+=inst.dir*k.speed*dt;k.walkTick?.(dt,inst.t);
+  else if(inst.state==='walk'){a.rotation.y=angLerp(a.rotation.y,k.walkFacing(inst.dir),dt*6);inst.sp=lerp(inst.sp||0,Math.min(k.speed,Math.abs(inst.target-a.position.x)*3+.02),Math.min(1,dt*4));a.position.x+=inst.dir*inst.sp*dt;k.walkTick?.(dt,inst.t);
     if((inst.target-a.position.x)*inst.dir<=0){a.position.x=inst.target;inst.state='idle';inst.timer=rnd(1,3.5);k.walkStop?.()}}
   else if(inst.state==='act'){inst.actT+=dt;a.rotation.y=angLerp(a.rotation.y,inst.act.yaw??k.faceYaw,dt*4);inst.act.tick?.(inst.actT,inst);
     if(inst.timer<=0){inst.act.end?.(inst);inst.act=null;inst.state='idle';inst.timer=rnd(1.5,4)}}
