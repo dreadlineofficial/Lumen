@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Lumen Return Key",
+  "version": "1.0.0",
+  "description": "Press your Lumen Panic, Study or Swap key on any website to go straight back to Lumen.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "run_at": "document_start",
+    "all_frames": true
+  }],
+  "icons": { "128": "icon128.png" }
+}

@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="lumen-app" content="1">
 <title>Lumen</title>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261117f">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261117f">
+<link rel="stylesheet" href="css/app.css?v=20261117g">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261117g">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -222,6 +223,13 @@
           <label>Your Anthropic API key</label><input id="s_aiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
           <p class="muted" style="font-size:12px;margin:8px 0 0">Get one at console.anthropic.com → API keys. It's saved only in this browser and sent only to Anthropic. Each search uses Claude with web search, which costs a little on your Anthropic account. Don't share exported settings files, because they include the key.</p>
         </div>
+        <div class="card"><h2>🔑 Return-key extension</h2>
+          <p class="muted" style="font-size:13px;margin:4px 0 10px">When you open a real site from Lumen (ManageBac, YouTube…), Lumen isn't running in that tab, and websites can't see key presses on other sites. This small Chrome extension listens for your Panic, Study and Swap keys (and the hot corner) on every site and takes you straight back to Lumen. It does nothing else.</p>
+          <p id="extStatus" style="font-size:13px;margin:0 0 10px"></p>
+          <a class="btn-acc" href="extension/lumen-return-key.zip" download style="display:inline-block;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600">⬇ Download extension</a>
+          <ol class="muted" style="font-size:12.5px;margin:12px 0 0;padding-left:18px;line-height:1.6"><li>Unzip the download.</li><li>Open <code>chrome://extensions</code> and switch on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and pick the <b>lumen-return-key</b> folder.</li><li>Reload Lumen once so it learns your keys.</li></ol>
+          <p class="muted" style="font-size:12px;margin:8px 0 0">Works in Chrome, Edge, Brave and other Chromium browsers. School-managed browsers may block extensions; your browser's Back button always works.</p>
+        </div>
         <div class="card"><h2>🚪 Startup screen</h2>
           <label>When Lumen opens, show</label>
           <select id="s_startMode"><option value="study">Study mode</option><option value="cover">A web page I choose</option><option value="lumen">Lumen straight away</option></select>
@@ -322,14 +330,14 @@
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261117f"></script>
-<script src="js/study.js?v=20261117f"></script>
-<script src="js/app.js?v=20261117f"></script>
-<script src="js/cosmetics.js?v=20261117f"></script>
-<script src="js/rich.js?v=20261117f"></script>
-<script src="js/browser.js?v=20261117f"></script>
-<script type="module" src="js/ai.js?v=20261117f"></script>
-<script type="module" src="js/cloud.js?v=20261117f"></script>
-<script type="module" src="js/shop.js?v=20261117f"></script>
+<script src="js/config.js?v=20261117g"></script>
+<script src="js/study.js?v=20261117g"></script>
+<script src="js/app.js?v=20261117g"></script>
+<script src="js/cosmetics.js?v=20261117g"></script>
+<script src="js/rich.js?v=20261117g"></script>
+<script src="js/browser.js?v=20261117g"></script>
+<script type="module" src="js/ai.js?v=20261117g"></script>
+<script type="module" src="js/cloud.js?v=20261117g"></script>
+<script type="module" src="js/shop.js?v=20261117g"></script>
 </body>
 </html>

@@ -166,7 +166,7 @@ function decoyHTML(kind){const today=new Date().toLocaleDateString([],{day:'nume
   return shell('Essay draft',`<h1>How far did the Industrial Revolution change everyday life?</h1><p style="color:#5f6368">${today}</p><p>The Industrial Revolution transformed Britain between roughly 1760 and 1840, reshaping not only how goods were produced but where and how people lived. Mechanised factories drew workers away from agricultural villages and into rapidly growing towns such as Manchester and Leeds, where the population more than doubled within a generation.</p><p>Working life changed most visibly. Instead of seasonal labour governed by daylight and harvests, factory work was measured by the clock, with shifts of twelve hours or more. Children were employed in large numbers until reforms such as the Factory Act of 1833 began to limit their hours.</p><p>Living conditions, however, often failed to keep pace with this growth. Overcrowded housing, poor sanitation and polluted water led to outbreaks of cholera and typhus. It was only later in the nineteenth century that public health legislation began to address these problems.</p><p>On the other hand, the period also brought cheaper goods, new forms of transport and, eventually, rising living standards. The railways in particular shrank distances and created a national market…</p>`)}
 // sites known to load fine inside Lumen; anything else opens as the real page in this tab
 const FRAMEABLE=/^https:\/\/((www\.)?google\.[a-z.]+\/(webhp|search)\?[^#]*igu=1|([a-z]+\.)?(m\.)?wikipedia\.org\/|(www\.)?desmos\.com\/|(www\.)?geogebra\.org\/|(www\.)?youtube-nocookie\.com\/embed\/|dreadlineofficial\.github\.io\/)/i;
-function openReal(url){try{sessionStorage.setItem('hub.realcover','1')}catch{}closeView();window.Lumen?.onPanic?.();toast('Opening… press your browser’s Back button to return to Lumen');
+function openReal(url){try{sessionStorage.setItem('hub.realcover','1')}catch{}closeView();window.Lumen?.onPanic?.();toast(document.documentElement.dataset.lumenExt==='1'?'Opening… press your key to come back to Lumen':'Opening… press your browser’s Back button to return to Lumen');
   // switching before Lumen has finished loading would replace Lumen in the history, so Back couldn't return to it
   const go=()=>setTimeout(()=>location.assign(url),250);if(document.readyState==='complete')go();else addEventListener('load',go,{once:true})}
 // coming back with the Back button: don't bounce straight to the startup page again
@@ -263,6 +263,9 @@ $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this
 $$('[data-decoy]').forEach(b=>b.onclick=()=>{$('#s_startUrl').value=b.dataset.decoy});
 try{if(localStorage.getItem('hub.bwnote'))$('#bwNote').style.display='none'}catch{}
 $('#bwNoteX').onclick=e=>{e.preventDefault();$('#bwNote').style.display='none';try{localStorage.setItem('hub.bwnote','1')}catch{}};
+
+function extStatus(){const el=document.getElementById('extStatus');if(!el)return;const on=document.documentElement.dataset.lumenExt==='1';el.innerHTML=on?'<span style="color:#7ee2a8">● Installed and working</span>':'<span class="muted">○ Not installed in this browser</span>'}
+setTimeout(extStatus,1800);document.addEventListener('click',e=>{if(e.target.closest?.('[data-v=settings]'))setTimeout(extStatus,50)});
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
 const NEWS={id:'2026-11-17',items:[
