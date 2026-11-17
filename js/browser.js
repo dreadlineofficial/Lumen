@@ -102,7 +102,7 @@ try{const s=JSON.parse(sessionStorage.getItem('hub.yt.tok')||'null');if(s&&s.exp
 const gaOn=()=>GA.token&&GA.exp>Date.now()+30e3;
 function gaSave(){try{sessionStorage.setItem('hub.yt.tok',JSON.stringify({token:GA.token,exp:GA.exp,profile:GA.profile}))}catch{}}
 function loadGis(){return window.google?.accounts?.oauth2?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=ok;s.onerror=()=>no(new Error('Couldn’t load Google sign-in'));document.head.appendChild(s)})}
-async function gaSignIn(){const cid=(window.LUMEN_CONFIG||{}).googleClientId;if(!cid)throw new Error('Google sign-in isn’t set up yet: add googleClientId to js/config.js (see SETUP.md)');
+async function gaSignIn(){if(L.IN_APP)throw new Error('Google sign-in isn’t available inside the Android app (Google blocks it). Use the website in your browser for this.');const cid=(window.LUMEN_CONFIG||{}).googleClientId;if(!cid)throw new Error('Google sign-in isn’t set up yet: add googleClientId to js/config.js (see SETUP.md)');
   await loadGis();return new Promise((ok,no)=>{GA.client=google.accounts.oauth2.initTokenClient({client_id:cid,scope:'https://www.googleapis.com/auth/youtube.readonly',
     callback:async r=>{if(r.error)return no(new Error(r.error_description||r.error));GA.token=r.access_token;GA.exp=Date.now()+(+r.expires_in||3600)*1000;
       try{const me=await ytAuth('channels?part=snippet&mine=true');const c=me.items?.[0]?.snippet;GA.profile=c?{name:dec(c.title),pic:c.thumbnails?.default?.url||''}:null}catch{GA.profile=null}gaSave();ok()},

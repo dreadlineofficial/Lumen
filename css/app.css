@@ -413,3 +413,5 @@ body.nav-top .dc-view.on{height:calc(100vh - 80px)}
 .yt-acct img{width:28px;height:28px;border-radius:50%}.yt-acct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .yt-need{text-align:center;padding:34px}.yt-need b{font-size:18px;display:block;margin-bottom:6px}.yt-need .yt-signin{margin-top:8px}
 .yt-th{position:relative}.yt-count{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.75);font-size:11px;padding:2px 8px;border-radius:6px}
+
+body.in-app #authGoogle{display:none}

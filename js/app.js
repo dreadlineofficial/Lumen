@@ -1,5 +1,6 @@
 /* Lumen core: settings, games, web viewer, study / swap / panic, timetable. Online features live in cloud.js. */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const IN_APP=/LumenApp\//.test(navigator.userAgent);
 const KEY='hub.cfg.v1';
 const DEF={panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startMode:'study',startUrl:'https://www.google.com/webhp?igu=1',schedule:[],swapMute:true,
  navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
@@ -101,7 +102,7 @@ $('#gSave').onclick=async()=>{const name=$('#gName').value.trim();if(!name)retur
 
 /* about:blank cloak */
 const NOFRAME=/(^|\.)(youtube\.com|instagram\.com|tiktok\.com|discord\.com|reddit\.com|x\.com|twitter\.com|facebook\.com|netflix\.com|twitch\.tv|spotify\.com|roblox\.com|github\.com|chatgpt\.com|claude\.ai|duckduckgo\.com|bing\.com)$/i;
-function cloak(url,title){const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+function cloak(url,title){if(IN_APP){window.open(url,'_blank');toast('Opened in your phone’s browser');return null}const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
   let host='';try{host=new URL(url).hostname}catch{}
   if(/^(www\.)?google\.[a-z.]+$/i.test(host)&&!/igu=1/.test(url))url+=(url.includes('?')?'&':'?')+'igu=1';
   else if(!id&&NOFRAME.test(host)){const n=window.open(url,'_blank','noopener');toast(n===null?'This site can’t load inside another page, so it opened in a normal tab (that tab is saved in history)':'Allow pop-ups for this site');return null}
@@ -179,7 +180,7 @@ function cleanup(){closeView();window.Lumen?.browser?.wipe();window.Lumen?.onPan
 function panic(){if(coverOn){hideCover();return}const sc=scheduledCover();if(sc){showCover(sc.url,{fromSwap:true});return}
   if(cfg.panicAction==='study'){enterStudy();return}
   cleanup();disguiseHistory();
-  setTimeout(()=>{if(cfg.panicAction==='close'){try{(window.top!==window.self?window.top:window).close()}catch{}setTimeout(()=>leaveTo(cfg.panicUrl),120)}else leaveTo(cfg.panicUrl)},cfg.histDisguise?180:0)}
+  setTimeout(()=>{if(cfg.panicAction==='close'&&window.LumenApp){LumenApp.close();leaveTo(cfg.panicUrl)}else if(cfg.panicAction==='close'){try{(window.top!==window.self?window.top:window).close()}catch{}setTimeout(()=>leaveTo(cfg.panicUrl),120)}else leaveTo(cfg.panicUrl)},cfg.histDisguise?180:0)}
 function switchTo(url){cleanup();disguiseHistory();setTimeout(()=>leaveTo(url),cfg.histDisguise?150:0)}
 $('#panicBtn').onclick=panic;
 function renderJump(){$('#jumpList').innerHTML=lines(cfg.jumpLinks).map((l,i)=>{let h='';try{h=new URL(l.url).hostname}catch{}return`<button class="person" data-j="${i}" style="text-align:left"><img src="${favUrl(h)}" width="20" height="20" alt=""><div class="info"><b>${esc(l.name)}</b><span>${esc(h)}</span></div></button>`}).join('')||'<p class="muted">Add pages in Settings → “Switch to” pages.</p>';
@@ -223,8 +224,9 @@ $('#importFile').onchange=async e=>{try{cfg={...DEF,...JSON.parse(await e.target
 $('#resetAll').onclick=()=>{if(confirm('Reset all settings and timetable on this device?')){Object.keys(localStorage).filter(k=>k.startsWith('hub.')).forEach(k=>localStorage.removeItem(k));location.reload()}};
 
 /* shared with cloud.js */
-window.Lumen={NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
+window.Lumen={IN_APP,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
 
 /* ---------- boot ---------- */
 applyLook();renderGames();
+if(IN_APP){document.body.classList.add('in-app');$('#stealthBtn').closest('.card')?.querySelector('#stealthBtn')?.remove()}
 if(cfg.startMode==='study')enterStudy();else if(cfg.startMode==='cover')showCover(cfg.startUrl);
