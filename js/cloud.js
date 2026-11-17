@@ -65,7 +65,7 @@ function ensureProfile(u,name){if(!profileJobs.has(u.uid))profileJobs.set(u.uid,
 async function makeProfile(u,name){const r=D('users',u.uid);const s=await F.getDoc(r);if(!s.exists()){name=String(name||'').trim().slice(0,24);if(name.length<2)name='Player'+Math.floor(Math.random()*900+100);await F.setDoc(r,{name,nameLower:name.toLowerCase(),bio:'',avatar:'',createdAt:F.serverTimestamp()})}}
 $('#meChip').onclick=()=>me?L.go('profile'):(authMode(false),openModal('authModal'));
 
-function renderMe(){if(!myProfile)return;const mc=$('#meChip');mc.className='me-chip'+(L.cos?.plateCls(myProfile.plate)||'');const oldB=mc.querySelector('canvas.buddy');if((oldB?.dataset.buddy||'')!==(myProfile.buddy||'')){oldB?.remove();if(myProfile.buddy)mc.insertAdjacentHTML('afterbegin',L.cos.buddyCanvas(myProfile.buddy,'bar'))}$('#mePic').outerHTML=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic');$('#meName').innerHTML=nameHTML(myProfile,{badges:false});$('#meSt').textContent=statusText(me.uid)}
+function renderMe(){if(!myProfile)return;const mc=$('#meChip');mc.className='me-chip'+(L.cos?.plateCls(myProfile.plate)||'');const oldB=mc.querySelector('canvas.buddy');if((oldB?.dataset.buddy||'')!==(myProfile.buddy||'')){oldB?.remove();if(myProfile.buddy)mc.insertAdjacentHTML('afterbegin',L.cos.buddyCanvas(myProfile.buddy,'bar','me:chip'))}$('#mePic').outerHTML=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic');$('#meName').innerHTML=nameHTML(myProfile,{badges:false});$('#meSt').textContent=statusText(me.uid)}
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();
   if(!u){myProfile=null;L.onProfile?.(null);$('#meChip').className='me-chip';$('#meChip canvas.buddy')?.remove();$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
@@ -81,7 +81,7 @@ function banStyle(u){const img=safeImg(u.banner);if(img)return`background-image:
 function cardBg(u){const c=okColor(u.color),c1=okColor(u.nameC1||u.color),c2=okColor(u.nameC2,'#9ff0e6');
   return u.cardStyle==='tint'?`background:linear-gradient(180deg,${c}33,${c}11 60%,rgba(20,20,28,.85))`:u.cardStyle==='gradient'?`background:linear-gradient(160deg,${c1}55,${c2}33 55%,rgba(20,20,28,.9))`:u.cardStyle==='dark'?'background:#0b0c12':''}
 function card(u,{uid,buttons='',compact=false}={}){const links=String(u.links||'').split('\n').map(l=>l.trim()).filter(l=>/^https?:\/\/\S+$/i.test(l)).slice(0,3);const act=uid?actText(uid):'',st=uid?statusText(uid):'';
-  return`<div class="pcard${compact?' compact':''}" style="--pc:${okColor(u.color)};${cardBg(u)}">${L.cos?.fxLayer(u.fx)||''}<div class="ban" style="${banStyle(u)}">${L.cos?.buddyCanvas(u.buddy,'card')||''}</div><div class="body">${pic(u,compact?80:92,uid)}
+  return`<div class="pcard${compact?' compact':''}" style="--pc:${okColor(u.color)};${cardBg(u)}">${L.cos?.fxLayer(u.fx)||''}<div class="ban" style="${banStyle(u)}">${L.cos?.buddyCanvas(u.buddy,'card',(uid||u.uid||'me')+':card:'+(compact?'c':'f'))||''}</div><div class="body">${pic(u,compact?80:92,uid)}
    <h3>${nameHTML(u)}${u.pronouns?`<span class="pron">${esc(u.pronouns)}</span>`:''}</h3>
    ${u.status||u.emoji?`<div class="stat">${esc(u.emoji||'')} ${esc(u.status||'')}</div>`:''}
    ${st?`<div class="st-line st-${status(uid)}"><i></i>${esc(st)}</div>`:''}
@@ -156,7 +156,7 @@ function listenFriends(){unsubs.push(F.onSnapshot(F.query(C('friendships'),F.whe
   const t=setInterval(soon,30000);unsubs.push(()=>clearInterval(t))}
 const rank=uid=>({online:0,idle:1,offline:2}[status(uid)]??3);
 async function personRow(uid,{buttons='',sub='',click=''}={}){const u=await getUser(uid);
-  return`<div class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${L.cos?.buddyCanvas(u.buddy,'bar')||''}${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
+  return`<div class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${L.cos?.buddyCanvas(u.buddy,'bar',uid+':bar:'+(click||'row'))||''}${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
 async function renderFriends(){if(!me)return;
   const acc=friendIds().sort((a,b)=>rank(a)-rank(b)),inc=friendships.filter(f=>f.status==='pending'&&f.from!==me.uid),out=friendships.filter(f=>f.status==='pending'&&f.from===me.uid);
   const other=f=>f.users.find(x=>x!==me.uid);const online=acc.filter(u=>status(u)!=='offline').length;
@@ -185,7 +185,7 @@ const rooms=()=>serverChannels||cfg.rooms.split(',').map(s=>s.trim().toLowerCase
 function mkPane(sel){const el=$(sel);return{el,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
 const panes={room:mkPane('#roomPane'),dm:mkPane('#dmPane')};
 async function renderRooms(){if(!me)return;const on=friendIds().filter(u=>status(u)!=='offline').sort((a,b)=>rank(a)-rank(b));
-  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${L.cos?.buddyCanvas(u.buddy,'bar')||''}${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
+  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${L.cos?.buddyCanvas(u.buddy,'bar',uid+':room')||''}${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
   $('#roomList').innerHTML=rooms().map(r=>`<button class="room ${panes.room.convo?.id===r?'on':''}" data-room="${r}"><span class="hash">#</span>${r}</button>`).join('')+
     `<div class="dc-title" style="margin-top:16px">Friends online — ${on.length}</div>`+(fr.join('')||'<p class="muted" style="font-size:12px;padding:0 10px">Nobody online right now.</p>');
   $$('#roomList [data-room]').forEach(b=>b.onclick=()=>openConvo(panes.room,{type:'room',id:b.dataset.room}));
@@ -342,19 +342,23 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
   const list=allUsers.filter(u=>!adminQ||u.nameLower?.includes(adminQ)||u.uid.toLowerCase().includes(adminQ));
   box.innerHTML=`<div class="an-stats"><div class="card an-stat"><span>👥 Accounts</span><b>${allUsers.length}</b></div><div class="card an-stat"><span>🟢 Online friends</span><b>${friendIds().filter(u=>status(u)!=='offline').length}</b></div><div class="card an-stat"><span>⛔ Banned</span><b>${bannedSet.size}</b></div><div class="card an-stat"><span># Channels</span><b>${chans.length}</b></div></div>
    <div class="two" style="align-items:start"><div class="card"><h2>Accounts</h2><input id="admQ" placeholder="Search name or ID" value="${esc(adminQ)}" style="margin:10px 0">
-     <div class="list adm-users">${list.map(u=>`<div class="person${bannedSet.has(u.uid)?' banned':''}">${pic(u,38)}<div class="info"><input class="adm-name" data-uid="${u.uid}" value="${esc(u.name||'')}" maxlength="24"><span class="muted" style="font-size:11px">${u.uid}${bannedSet.has(u.uid)?' · banned':''}${u.uid===ADMIN_UID?' · admin':''}</span></div>
-       ${u.uid===ADMIN_UID?'':`<button class="ib" data-admdm="${u.uid}" title="Message">💬</button>${bannedSet.has(u.uid)?`<button class="ib" data-unban="${u.uid}" title="Unban">↩</button>`:`<button class="ib" data-ban="${u.uid}" title="Delete profile and ban">⛔</button>`}`}</div>`).join('')||'<p class="muted">No accounts found.</p>'}</div></div>
+     <div class="list adm-users">${list.map(u=>`<div class="person${bannedSet.has(u.uid)?' banned':''}">${pic(u,38)}<div class="info"><input class="adm-name" data-uid="${u.uid}" value="${esc(u.name||'')}" maxlength="24"><span class="muted" style="font-size:11px">✦ ${(+u.coins||0).toLocaleString()} · ${u.uid}${bannedSet.has(u.uid)?' · banned':''}${u.uid===ADMIN_UID?' · admin':''}</span></div>
+       <button class="ib" data-gift="${u.uid}" title="Gift Glow">🎁</button>${u.uid===ADMIN_UID?'':`<button class="ib" data-admdm="${u.uid}" title="Message">💬</button>${bannedSet.has(u.uid)?`<button class="ib" data-unban="${u.uid}" title="Unban">↩</button>`:`<button class="ib" data-ban="${u.uid}" title="Delete profile and ban">⛔</button>`}`}</div>`).join('')||'<p class="muted">No accounts found.</p>'}</div></div>
    <div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
      <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div></div>`;
   $('#admQ').oninput=e=>{adminQ=e.target.value.trim().toLowerCase();const pos=e.target.selectionStart;renderAdmin();const q=$('#admQ');q.focus();q.setSelectionRange(pos,pos)};
-  box.querySelectorAll('.adm-name').forEach(i=>i.onchange=async()=>{const name=i.value.trim().slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');try{await F.updateDoc(D('users',i.dataset.uid),{name,nameLower:name.toLowerCase()});users.delete(i.dataset.uid);toast('Renamed')}catch(e){toast(e.message)}});
+  box.querySelectorAll('.adm-name').forEach(i=>i.onchange=async()=>{const name=i.value.trim().slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');try{await F.updateDoc(D('users',i.dataset.uid),{name,nameLower:name.toLowerCase()});users.delete(i.dataset.uid);toast('Renamed')}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-admdm]').forEach(b=>b.onclick=async()=>{const uid=b.dataset.admdm;try{await F.setDoc(D('inbox',uid,'from',me.uid),{at:F.serverTimestamp()})}catch{}openDm(uid)});
   box.querySelectorAll('[data-ban]').forEach(b=>b.onclick=async()=>{const u=allUsers.find(x=>x.uid===b.dataset.ban);if(!confirm(`Delete ${u?.name||'this account'}'s profile and ban them? They won't be able to post, chat or sign up again with this account.`))return;
-    const bt=F.writeBatch(db);bt.set(D('bans',b.dataset.ban),{at:F.serverTimestamp(),name:u?.name||''});bt.delete(D('users',b.dataset.ban));try{await bt.commit();toast('Profile deleted and account banned')}catch(e){toast(e.message)}});
+    const bt=F.writeBatch(db);bt.set(D('bans',b.dataset.ban),{at:F.serverTimestamp(),name:u?.name||''});bt.delete(D('users',b.dataset.ban));try{await bt.commit();toast('Profile deleted and account banned')}catch(e){adminErr(e)}});
+  box.querySelectorAll('[data-gift]').forEach(b=>b.onclick=async()=>{const u=allUsers.find(x=>x.uid===b.dataset.gift);const raw=prompt(`How much Glow to gift ${u?.name||'this account'}? (current: ${(+u?.coins||0).toLocaleString()})`,'1000');if(raw===null)return;
+    const amt=Math.floor(Number(String(raw).replace(/[^0-9.-]/g,'')));if(!Number.isFinite(amt)||amt<=0)return toast('Enter a positive number');
+    try{const fresh=await F.getDoc(D('users',b.dataset.gift));const next=Math.min(1e9,(+fresh.data()?.coins||0)+amt);await F.updateDoc(D('users',b.dataset.gift),{coins:next});toast(`Gifted ✦ ${amt.toLocaleString()} to ${u?.name||'them'}`)}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-unban]').forEach(b=>b.onclick=async()=>{try{await F.deleteDoc(D('bans',b.dataset.unban));toast('Unbanned')}catch(e){toast(e.message)}});
   box.querySelectorAll('[data-rmch]').forEach(b=>b.onclick=()=>saveChannels(chans.filter(c=>c!==b.dataset.rmch)));
   $('#addCh').onsubmit=e=>{e.preventDefault();const c=$('#newCh').value.trim().toLowerCase().replace(/[^\w-]/g,'').slice(0,30);if(!c)return;if(chans.includes(c))return toast('Already exists');saveChannels([...chans,c])}}
-async function saveChannels(list){try{await F.setDoc(D('server','config'),{channels:list},{merge:true});toast('Channels updated')}catch(e){toast(e.message)}}
+function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. Re-publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).':e.message)}
+async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
 L.cloud={F,D,me:()=>me,profile:()=>myProfile,card,pic,nameHTML};

@@ -71,6 +71,9 @@ service cloud.firestore {
         && !('lastClaim' in request.resource.data) && equipOk(request.resource.data);
       allow update: if signedIn() && uid() == userId && profileOk(request.resource.data)
         && economyOk(resource.data, request.resource.data) && equipOk(request.resource.data);
+      // admin: gift Glow to anyone (including themselves)
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins'])
+        && request.resource.data.coins is int && request.resource.data.coins >= 0 && request.resource.data.coins <= 1000000000;
       // admin: rename anyone
       allow update: if isAdmin() && profileOk(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'nameLower']);

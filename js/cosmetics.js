@@ -114,8 +114,8 @@ function deco(id){if(!byId[id]||byId[id].type!=='deco')return'';const n=id.slice
 const plateCls=id=>byId[id]?.type==='plate'?` plate plate-${id.slice(6)}`:'';
 // 3D buddies are drawn by js/buddies.js onto these canvases
 let buddyLoad=null;
-function buddyCanvas(id,size){if(byId[id]?.type!=='buddy')return'';if(!buddyLoad)buddyLoad=import('./buddies.js?v=2').catch(e=>{console.warn('buddies failed',e);buddyLoad=null});
-  return`<canvas class="buddy buddy-${size}" data-buddy="${id}" aria-hidden="true"></canvas>`}
+function buddyCanvas(id,size,key){if(byId[id]?.type!=='buddy')return'';if(!buddyLoad)buddyLoad=import('./buddies.js?v=3').catch(e=>{console.warn('buddies failed',e);buddyLoad=null});
+  return`<canvas class="buddy buddy-${size}" data-buddy="${id}"${key?` data-bkey="${key}"`:''} aria-hidden="true"></canvas>`}
 const nfxCls=id=>byId[id]?.type==='nfx'?` nfx-${id.slice(4)}`:'';
 function applyTheme(id){document.body.dataset.theme=byId[id]?.type==='theme'?id.slice(6):''}
 

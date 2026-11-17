@@ -164,15 +164,25 @@ function decoyHTML(kind){const today=new Date().toLocaleDateString([],{day:'nume
   const shell=(title,body)=>`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{margin:0;background:#f1f3f4;font:15px/1.6 Arial,sans-serif;color:#202124}.bar{background:#fff;border-bottom:1px solid #dadce0;padding:10px 18px;display:flex;gap:14px;align-items:center}.ic{width:30px;height:38px;border-radius:3px;background:#4285f4;position:relative}.ic:after{content:"";position:absolute;left:7px;right:7px;top:12px;height:14px;border-top:2px solid #fff;border-bottom:2px solid #fff}.tb{background:#fff;border-bottom:1px solid #dadce0;padding:6px 18px;color:#444;font-size:13px;display:flex;gap:18px}.page{background:#fff;width:min(816px,92%);margin:22px auto;min-height:1056px;padding:72px 84px;box-sizing:border-box;box-shadow:0 1px 3px rgba(60,64,67,.3);outline:none}h1{font-size:24px;font-weight:400;margin:0 0 6px}p{margin:0 0 14px;text-align:justify}.q{margin:0 0 26px}.ans{border-bottom:1px solid #999;height:28px;margin-top:8px}</style></head><body><div class="bar"><div class="ic"></div><div><div style="font-size:18px">${title}</div><div style="font-size:12px;color:#5f6368">File&nbsp;&nbsp;Edit&nbsp;&nbsp;View&nbsp;&nbsp;Insert&nbsp;&nbsp;Format&nbsp;&nbsp;Tools&nbsp;&nbsp;Help</div></div></div><div class="tb"><span>100%</span><span>Normal text</span><span>Arial</span><span>11</span><b>B</b><i>I</i><u>U</u></div><div class="page" contenteditable spellcheck="false">${body}</div></body></html>`;
   if(kind==='worksheet')return shell('Maths worksheet',`<h1>Algebra practice</h1><p style="color:#5f6368">${today}</p>${['Solve 3x + 7 = 22','Expand (x + 4)(x − 3)','Factorise x² + 9x + 20','Solve the simultaneous equations 2x + y = 11 and x − y = 1','Find the gradient of the line through (2, 5) and (6, 13)','Make r the subject of A = πr²'].map((q,i)=>`<div class="q"><b>${i+1}.</b> ${q}<div class="ans"></div><div class="ans"></div></div>`).join('')}`);
   return shell('Essay draft',`<h1>How far did the Industrial Revolution change everyday life?</h1><p style="color:#5f6368">${today}</p><p>The Industrial Revolution transformed Britain between roughly 1760 and 1840, reshaping not only how goods were produced but where and how people lived. Mechanised factories drew workers away from agricultural villages and into rapidly growing towns such as Manchester and Leeds, where the population more than doubled within a generation.</p><p>Working life changed most visibly. Instead of seasonal labour governed by daylight and harvests, factory work was measured by the clock, with shifts of twelve hours or more. Children were employed in large numbers until reforms such as the Factory Act of 1833 began to limit their hours.</p><p>Living conditions, however, often failed to keep pace with this growth. Overcrowded housing, poor sanitation and polluted water led to outbreaks of cholera and typhus. It was only later in the nineteenth century that public health legislation began to address these problems.</p><p>On the other hand, the period also brought cheaper goods, new forms of transport and, eventually, rising living standards. The railways in particular shrank distances and created a national market…</p>`)}
+// sites known to load fine inside Lumen; anything else opens as the real page in this tab
+const FRAMEABLE=/^https:\/\/((www\.)?google\.[a-z.]+\/(webhp|search)\?[^#]*igu=1|([a-z]+\.)?(m\.)?wikipedia\.org\/|(www\.)?desmos\.com\/|(www\.)?geogebra\.org\/|(www\.)?youtube-nocookie\.com\/embed\/|dreadlineofficial\.github\.io\/)/i;
+function openReal(url){try{sessionStorage.setItem('hub.realcover','1')}catch{}closeView();window.Lumen?.onPanic?.();toast('Opening… press your browser’s Back button to return to Lumen');
+  // switching before Lumen has finished loading would replace Lumen in the history, so Back couldn't return to it
+  const go=()=>setTimeout(()=>location.assign(url),250);if(document.readyState==='complete')go();else addEventListener('load',go,{once:true})}
+// coming back with the Back button: don't bounce straight to the startup page again
+addEventListener('pageshow',e=>{if(e.persisted){coverOn=false;$('#cover')?.classList.remove('on');applyLook()}});
 function showCover(url,{fromSwap=false}={}){url=String(url||'').trim()||'lumen:doc';
   if(url==='lumen:study'){if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}enterStudy({keep:fromSwap});return}
   let host='';try{if(!url.startsWith('lumen:'))host=new URL(fixUrl(url)).hostname}catch{}
-  if(host&&REFUSES.test(host)){toast(`${host} doesn't allow being shown inside other sites, so Lumen is showing a document instead`);url='lumen:doc'}
   if(url.startsWith('lumen:')){const kind=url.slice(6)==='worksheet'?'worksheet':'doc';coverSwap=fromSwap;if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}
     const f=$('#coverFrame');f.removeAttribute('src');f.srcdoc=decoyHTML(kind);f.onload=()=>{try{f.contentWindow.addEventListener('keydown',onKey,true);f.contentWindow.addEventListener('mousemove',e=>{if(e.clientX<=3&&e.clientY<=3&&(e.movementX||e.movementY))cornerHit()})}catch{}};
     $('#cover').classList.add('on');coverOn=true;window.Lumen?.onActivity?.(null);document.title=kind==='worksheet'?'Maths worksheet':'Essay draft';$('#fav').href=favUrl('docs.google.com');return}
-  $('#coverFrame').removeAttribute('srcdoc');url=fixUrl(url);const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}`;
-  if(/^https?:\/\/(www\.)?google\.[a-z.]+\/?(\?.*)?$/i.test(url))url='https://www.google.com/webhp?igu=1';
+  $('#coverFrame').removeAttribute('srcdoc');url=fixUrl(url);try{url=new URL(url).href}catch{}
+  // Google can be shown inside Lumen in its special embeddable mode
+  if(/^https?:\/\/(www\.)?google\.[a-z.]+\/?(\?.*)?$/i.test(url)&&!/igu=1/.test(url))url='https://www.google.com/webhp?igu=1';
+  else if(/^https?:\/\/(www\.)?google\.[a-z.]+\/search\?/i.test(url)&&!/igu=1/.test(url))url+='&igu=1';
+  const id=ytId(url);if(id)url=`https://www.youtube-nocookie.com/embed/${id}`;
+  if(!FRAMEABLE.test(url)){openReal(url);return}
   coverSwap=fromSwap;if(fromSwap){setFrameMuted(true);window.Lumen?.browser?.pause(true)}
   $('#coverFrame').src=url;$('#cover').classList.add('on');coverOn=true;window.Lumen?.onActivity?.(null);
   let h='';try{h=new URL(url).hostname.replace(/^www\./,'')}catch{}document.title=h.includes('google')?'Google':h||'New Tab';$('#fav').href=favUrl(h||'google.com')}
@@ -269,9 +279,10 @@ function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   openModal('newsModal');cfg.seenNews=NEWS.id;save()}
 
 /* shared with cloud.js */
-window.Lumen={IN_APP,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
+window.Lumen={IN_APP,showCover,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
 
 /* ---------- boot ---------- */
 applyLook();renderGames();
 if(IN_APP){document.body.classList.add('in-app');$('#stealthBtn').closest('.card')?.querySelector('#stealthBtn')?.remove()}
-if(cfg.startMode==='study')enterStudy();else if(cfg.startMode==='cover')showCover(cfg.startUrl);
+let backFromReal=false;try{backFromReal=sessionStorage.getItem('hub.realcover')==='1';sessionStorage.removeItem('hub.realcover')}catch{}
+if(backFromReal){}else if(cfg.startMode==='study')enterStudy();else if(cfg.startMode==='cover')showCover(cfg.startUrl);
