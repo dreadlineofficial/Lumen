@@ -177,8 +177,11 @@ const plateCls=id=>CID.test(id||'')?(ensure(id),` plate cplate cplate-${id}`):by
 // 3D buddies are drawn by js/buddies.js onto these canvases
 let buddyLoad=null;
 const BUDDIES_ON=true; // buddies are back as a premium beta (buying one needs Lumen Lite)
-function buddyCanvas(id,size,key){if(!BUDDIES_ON)return'';if(byId[id]?.type!=='buddy')return'';if(!buddyLoad)buddyLoad=import('./buddies.js?v=4').catch(e=>{console.warn('buddies failed',e);buddyLoad=null});
-  return`<canvas class="buddy buddy-${size}" data-buddy="${id}"${key?` data-bkey="${key}"`:''} aria-hidden="true"></canvas>`}
+// u = whose buddy it is: buddies only show for people with an active Lite/Pro/Ultimate plan (shop previews pass no u)
+const premOn=u=>!!u?.tier&&((u.tierUntil?.toMillis?.()||(u.tierUntil instanceof Date?+u.tierUntil:0))>Date.now());
+function buddyCanvas(id,size,key,u){if(!BUDDIES_ON)return'';if(byId[id]?.type!=='buddy')return'';if(u&&!premOn(u))return'';
+  const bx=size==='bar'&&u&&Number.isInteger(u.buddyX)&&u.buddyX>=0&&u.buddyX<=100?` data-bx="${u.buddyX}"`:'';if(!buddyLoad)buddyLoad=import('./buddies.js?v=5').catch(e=>{console.warn('buddies failed',e);buddyLoad=null});
+  return`<canvas class="buddy buddy-${size}" data-buddy="${id}"${key?` data-bkey="${key}"`:''}${bx} aria-hidden="true"></canvas>`}
 const nfxCls=id=>byId[id]?.type==='nfx'?` nfx-${id.slice(4)}`:'';
 function applyTheme(id){document.body.dataset.theme=byId[id]?.type==='theme'?id.slice(6):''}
 

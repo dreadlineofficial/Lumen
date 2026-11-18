@@ -43,7 +43,8 @@ service cloud.firestore {
         && d.nameLower == d.name.lower()
         && d.get('bio', '').size() <= 300
         && ((okImage(d.get('avatar', '')) && d.get('avatar', '').size() < 120000) || (mediaRef(d.get('avatar', '')) && isLite()))
-        && (!mediaRef(d.get('banner', '')) || isLite());
+        && (!mediaRef(d.get('banner', '')) || isLite())
+        && (!('buddyX' in d) || (d.buddyX is int && d.buddyX >= -1 && d.buddyX <= 100));
     }
     // the tier tag on your profile must match your plan; premium-only profile options need a plan
     function tierOk(d) {

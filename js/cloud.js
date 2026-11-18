@@ -25,6 +25,19 @@ const ago=m=>{const d=Date.now()-m;return d<60e3?'just now':d<36e5?Math.floor(d/
 const when=t=>{const d=new Date(ms(t));return Date.now()-d<864e5?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString()};
 const pairId=(a,b)=>[a,b].sort().join('_');
 let me=null,myProfile=null;
+/* update a list in place: only what changed is touched, so animated GIFs, nameplates and buddies keep playing */
+function morph(el,html){if(!el)return;const t=document.createElement('template');t.innerHTML=html;morphKids(el,t.content)}
+function morphKids(a,b){const an=[...a.childNodes],bn=[...b.childNodes];
+  for(let i=0;i<bn.length;i++){const x=an[i],y=bn[i];if(!x){a.appendChild(y);continue}
+    if(x.nodeType!==y.nodeType||x.nodeName!==y.nodeName||(x.nodeType===1&&(x.dataset.k||'')!==(y.dataset.k||''))){a.replaceChild(y,x);continue}
+    if(x.nodeType!==1){if(x.nodeValue!==y.nodeValue)x.nodeValue=y.nodeValue;continue}
+    if(x.nodeName==='CANVAS'){if(x.dataset.buddy!==y.dataset.buddy)a.replaceChild(y,x);else if((x.dataset.bx||'')!==(y.dataset.bx||''))x.dataset.bx=y.dataset.bx||'';continue}
+    morphEl(x,y)}
+  for(let i=an.length-1;i>=bn.length;i--)an[i].remove()}
+function morphEl(x,y){for(const at of [...x.attributes])if(!y.hasAttribute(at.name))x.removeAttribute(at.name);
+  for(const at of [...y.attributes])if(x.getAttribute(at.name)!==at.value)x.setAttribute(at.name,at.value);
+  if(x.nodeName!=='INPUT'&&x.nodeName!=='TEXTAREA')morphKids(x,y)}
+L.morph=morph;
 /* Lumen premium: subs/{uid} holds an end date per plan. Lite, Upgrade, Pro, Ultimate (+ the Ultimate admin renewal) */
 let mySub={},adminOn=false;const tsMs=v=>v?.toMillis?.()||(v instanceof Date?+v:0);const liveK=k=>tsMs(mySub[k])>Date.now();
 const plan={sub:()=>mySub,lite:()=>liveK('lite')||liveK('pro')||liveK('ultimate'),up:()=>liveK('upgrade'),pro:()=>liveK('pro')||liveK('ultimate'),ult:()=>liveK('ultimate'),
@@ -66,6 +79,7 @@ async function doSync(){if(!me||!myProfile||syncing||!subReady)return;const t=pl
   const tu=t?mySub[t]:0;if((p.tier||'')!==t||(t&&tsMs(p.tierUntil)!==tsMs(tu))){d.tier=t;d.tierUntil=t?tu:0}
   const up=plan.up();if(!!p.up!==up||(up&&tsMs(p.upUntil)!==tsMs(mySub.upgrade))){d.up=up;d.upUntil=up?mySub.upgrade:0}
   for(const k of['fx','deco','plate','nfx'])if(p[k]&&plan.wears(p[k])===false&&!(p.owned||[]).includes(p[k]))d[k]='';
+  if(p.buddy&&!plan.lite())d.buddy='';
   if(!plan.lite()){if(['script','pixel','gothic','wide'].includes(p.nameFont))d.nameFont='sans';if(p.cardBorder&&p.cardBorder!=='none')d.cardBorder='';
     if(['aurora','holo','midnight'].includes(p.cardStyle))d.cardStyle='glass';if(/^media:/.test(p.avatar||''))d.avatar='';if(/^media:/.test(p.banner||''))d.banner=''}
   if(!Object.keys(d).length)return;syncing=true;try{await F.updateDoc(D('users',me.uid),d)}catch(e){console.warn('plan sync',e.code||e.message)}syncing=false}
@@ -117,7 +131,11 @@ function ensureProfile(u,name){if(!profileJobs.has(u.uid))profileJobs.set(u.uid,
 async function makeProfile(u,name){const r=D('users',u.uid);const s=await F.getDoc(r);if(!s.exists()){name=String(name||'').trim().slice(0,24);if(name.length<2)name='Player'+Math.floor(Math.random()*900+100);await F.setDoc(r,{name,nameLower:name.toLowerCase(),bio:'',avatar:'',createdAt:F.serverTimestamp()})}}
 $('#meChip').onclick=()=>me?L.go('profile'):(authMode(false),openModal('authModal'));
 
-function renderMe(){if(!myProfile)return;const mc=$('#meChip');mc.className='me-chip'+(L.cos?.plateCls(myProfile.plate)||'');const oldB=mc.querySelector('canvas.buddy');if((oldB?.dataset.buddy||'')!==(myProfile.buddy||'')){oldB?.remove();if(myProfile.buddy)mc.insertAdjacentHTML('afterbegin',L.cos.buddyCanvas(myProfile.buddy,'bar','me:chip'))}$('#mePic').outerHTML=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic');$('#meName').innerHTML=nameHTML(myProfile,{badges:false});$('#meSt').textContent=statusText(me.uid)}
+function renderMe(){if(!myProfile)return;const mc=$('#meChip'),cls='me-chip'+(L.cos?.plateCls(myProfile.plate)||'');if(mc.className!==cls)mc.className=cls;
+  const bh=L.cos?.buddyCanvas(myProfile.buddy,'bar','me:chip',myProfile)||'';const oldB=mc.querySelector('canvas.buddy');
+  if((oldB?.dataset.buddy||'')!==(bh?myProfile.buddy:'')){oldB?.remove();if(bh)mc.insertAdjacentHTML('afterbegin',bh)}else if(oldB)oldB.dataset.bx=myProfile.buddyX>=0?String(myProfile.buddyX):'';
+  const ph=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic'),mp=$('#mePic');if(mp._src!==ph){const t=document.createElement('template');t.innerHTML=ph;const n=t.content.firstElementChild;if(mp._src)morphEl(mp,n);else mp.replaceWith(n);$('#mePic')._src=ph}
+  const nh=nameHTML(myProfile,{badges:false});if($('#meName')._src!==nh){$('#meName').innerHTML=nh;$('#meName')._src=nh}const st=statusText(me.uid);if($('#meSt').textContent!==st)$('#meSt').textContent=st}
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();mySub={};adminOn=false;
   if(!u){myProfile=null;L.onProfile?.(null);$('#meChip').className='me-chip';$('#meChip canvas.buddy')?.remove();$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
@@ -137,9 +155,9 @@ function cardBg(u){const c=okColor(u.color),c1=okColor(u.nameC1||u.color),c2=okC
     :!tierOf(u)?'':u.cardStyle==='aurora'?`background:linear-gradient(200deg,${c1}40,transparent 45%),linear-gradient(20deg,${c2}40,transparent 50%),#0d0f1a`
     :u.cardStyle==='holo'?'background:linear-gradient(125deg,rgba(255,154,213,.22),rgba(168,192,255,.22),rgba(138,243,255,.2),rgba(199,255,158,.18),rgba(255,229,143,.2)),#12131c'
     :u.cardStyle==='midnight'?'background:radial-gradient(120% 80% at 50% 0,#1b1f4a,#07080f 70%)':''}
-function card(u,{uid,buttons='',compact=false}={}){const links=String(u.links||'').split('\n').map(l=>l.trim()).filter(l=>/^https?:\/\/\S+$/i.test(l)).slice(0,3);const act=uid?actText(uid):'',st=uid?statusText(uid):'';
+function card(u,{uid,buttons='',compact=false,preview=false}={}){const links=String(u.links||'').split('\n').map(l=>l.trim()).filter(l=>/^https?:\/\/\S+$/i.test(l)).slice(0,3);const act=uid?actText(uid):'',st=uid?statusText(uid):'';
   const tier=tierOf(u),border=tier&&/^[a-z]{2,12}$/.test(u.cardBorder||'')&&u.cardBorder!=='none'?' cb-'+u.cardBorder:'';
-  return`<div class="pcard${compact?' compact':''}${tier?' tier-'+tier:''}${border}" style="--pc:${okColor(u.color)};${cardBg(u)}">${L.cos?.fxLayer(u.fx)||''}<div class="ban" style="${banStyle(u)}">${L.cos?.buddyCanvas(u.buddy,'card',(uid||u.uid||'me')+':card:'+(compact?'c':'f'))||''}</div><div class="body">${pic(u,compact?80:92,uid)}
+  return`<div class="pcard${compact?' compact':''}${tier?' tier-'+tier:''}${border}" style="--pc:${okColor(u.color)};${cardBg(u)}">${L.cos?.fxLayer(u.fx)||''}<div class="ban" style="${banStyle(u)}">${L.cos?.buddyCanvas(u.buddy,'card',(uid||u.uid||'me')+':card:'+(compact?'c':'f')+(preview?':p':''),preview?undefined:u)||''}</div><div class="body">${pic(u,compact?80:92,uid)}
    <h3>${nameHTML(u)}${u.pronouns?`<span class="pron">${esc(u.pronouns)}</span>`:''}</h3>
    ${u.status||u.emoji?`<div class="stat">${esc(u.emoji||'')} ${esc(u.status||'')}</div>`:''}
    ${st?`<div class="st-line st-${status(uid)}"><i></i>${esc(st)}</div>`:''}
@@ -153,8 +171,8 @@ function relButtons(uid,{close=false}={}){const fr=friendships.find(f=>f.users.i
 
 /* side panels (Discord-style profile on the right) */
 const sideUid={chat:null,fr:null};
-async function showSide(where,uid){sideUid[where]=uid;const el=$(where==='chat'?'#chatSide':'#frSide');if(!uid){el.innerHTML='';return}
-  const u=await getUser(uid,uid!==me?.uid);if(sideUid[where]!==uid)return;el.innerHTML=card(u,{uid,buttons:relButtons(uid),compact:true});bindPeople(el)}
+async function showSide(where,uid){sideUid[where]=uid;const el=$(where==='chat'?'#chatSide':'#frSide');if(!uid){el.innerHTML='';el._uid=null;return}
+  const u=await getUser(uid,uid!==me?.uid);if(sideUid[where]!==uid)return;const h=card(u,{uid,buttons:relButtons(uid),compact:true});if(el._uid===uid)morph(el,h);else el.innerHTML=h;el._uid=uid;bindPeople(el)}
 const refreshSides=()=>{['chat','fr'].forEach(w=>{if(sideUid[w])showSide(w,sideUid[w])})};
 async function showUser(uid){const onChat=$('#v-chat').classList.contains('on'),onFr=$('#v-friends').classList.contains('on');
   if(onChat&&innerWidth>1100)return showSide('chat',uid);if(onFr&&innerWidth>1100)return showSide('fr',uid);
@@ -162,19 +180,23 @@ async function showUser(uid){const onChat=$('#v-chat').classList.contains('on'),
 
 /* ---------- my profile tab ---------- */
 let draft={};
-const PF={cardBorder:'#pCardBorder',name:'#pName',pronouns:'#pPron',emoji:'#pEmoji',status:'#pStatus',bio:'#pBio',favGame:'#pFav',links:'#pLinks',color:'#pColor',nameStyle:'#pNameStyle',nameC1:'#pN1',nameC2:'#pN2',nameFont:'#pNameFont',badges:'#pBadges',ring:'#pRing',cardStyle:'#pCardStyle'};
+const PF={buddyX:'#pBuddyX',cardBorder:'#pCardBorder',name:'#pName',pronouns:'#pPron',emoji:'#pEmoji',status:'#pStatus',bio:'#pBio',favGame:'#pFav',links:'#pLinks',color:'#pColor',nameStyle:'#pNameStyle',nameC1:'#pN1',nameC2:'#pN2',nameFont:'#pNameFont',badges:'#pBadges',ring:'#pRing',cardStyle:'#pCardStyle'};
 function formToDraft(){for(const[k,s]of Object.entries(PF))draft[k]=$(s).value;draft.name=draft.name.trim()}
-function preview(){formToDraft();$('#pPreview').innerHTML=card(draft,{uid:me?.uid});$$('#pSwatches button').forEach((b,i)=>b.style.outline=!safeImg(draft.banner)&&!mediaId(draft.banner)&&(+draft.bannerG||0)===i?'2px solid #fff':'none')}
+function preview(){formToDraft();draft.buddyX=$('#pBuddyWander').checked?-1:Math.round(+$('#pBuddyX').value);$('#pBuddyX').disabled=draft.buddyX<0;
+  const bb=$('#pBuddyBox');bb.style.display=draft.buddy&&plan.lite()?'':'none';
+  if(draft.buddy){const bar=$('#pBuddyBar');const html=`<div class="person${L.cos?.plateCls(draft.plate)||''}">${L.cos?.buddyCanvas(draft.buddy,'bar','me:prof-bar',{...draft,tier:myProfile?.tier,tierUntil:myProfile?.tierUntil})||''}${pic(draft,40)}<div class="info"><b>${nameHTML(draft,{badges:false})}</b><span>Online</span></div></div>`;morph(bar,html)}
+  $('#pPreview').innerHTML=card(draft,{uid:me?.uid});$$('#pSwatches button').forEach((b,i)=>b.style.outline=!safeImg(draft.banner)&&!mediaId(draft.banner)&&(+draft.bannerG||0)===i?'2px solid #fff':'none')}
 // premium options are visible to everyone (so people know they exist) but only pickable with Lite
 function lockPrem(){const on=plan.lite();$$('#v-profile option[data-lite]').forEach(o=>{o.disabled=!on;o.textContent=o.textContent.replace(/ 🔒$/,'')+(on?'':' 🔒')});$('#pPremNote').style.display=on?'none':''}
 function openProfile(){const p=myProfile||{};draft={...p};
-  const def={nameStyle:'solid',nameFont:'sans',ring:'none',cardStyle:'glass',cardBorder:'none'};lockPrem();
-  for(const[k,s]of Object.entries(PF))$(s).value=k==='color'?okColor(p.color):k==='nameC1'?okColor(p.nameC1||p.color):k==='nameC2'?okColor(p.nameC2,'#9ff0e6'):(p[k]??def[k]??'');
+  const def={nameStyle:'solid',nameFont:'sans',ring:'none',cardStyle:'glass',cardBorder:'none',buddyX:-1};lockPrem();
+  $('#pBuddyWander').checked=!(p.buddyX>=0);
+  for(const[k,s]of Object.entries(PF))$(s).value=k==='buddyX'?(p.buddyX>=0?p.buddyX:50):k==='color'?okColor(p.color):k==='nameC1'?okColor(p.nameC1||p.color):k==='nameC2'?okColor(p.nameC2,'#9ff0e6'):(p[k]??def[k]??'');
   $('#pShare').checked=cfg.share;$('#pShareGame').checked=cfg.shareGame;$('#pShareYt').checked=cfg.shareYt;$('#pShareWeb').checked=cfg.shareWeb;$('#pSeeOthers').checked=cfg.seeOthers;
   $('#pEmail').textContent='Signed in as '+(me?.email||'');preview()}
 $('#pSwatches').innerHTML=GRADS.map((g,i)=>`<button type="button" data-g="${i}" style="background:${g}" title="Banner colour"></button>`).join('');
 $$('#pSwatches button').forEach(b=>b.onclick=()=>{draft.banner='';draft.bannerG=+b.dataset.g;preview()});
-Object.values(PF).forEach(s=>{$(s).addEventListener('input',preview);$(s).addEventListener('change',preview)});
+Object.values(PF).forEach(s=>{$(s).addEventListener('input',preview);$(s).addEventListener('change',preview)});$('#pBuddyWander').addEventListener('change',preview);
 $('#pPicBtn').onclick=()=>$('#pPicIn').click();
 // Lite keeps GIFs animated and photos sharp (up to 10 MB, 15 MB with Upgrade); free pictures are shrunk to fit
 async function bigPick(f,kind){const mb=plan.uploadMB();if(f.size>mb*1048576){toast(`That file is ${(f.size/1048576).toFixed(1)} MB. Your limit is ${mb} MB.`);return''}
@@ -190,7 +212,7 @@ const pick=(v,list,d)=>list.includes(v)?v:d;
 $('#pSave').onclick=async()=>{if(!me)return openModal('authModal');formToDraft();const name=draft.name.slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');
   const d={name,nameLower:name.toLowerCase(),bio:String(draft.bio||'').slice(0,300),avatar:draft.avatar||'',banner:draft.banner||'',bannerG:+draft.bannerG||0,color:okColor(draft.color),
     pronouns:draft.pronouns.slice(0,20),emoji:draft.emoji.slice(0,4),status:draft.status.slice(0,80),favGame:draft.favGame.slice(0,40),links:String(draft.links||'').slice(0,400),
-    nameStyle:pick(draft.nameStyle,['solid','gradient','animated','glow'],'solid'),nameC1:okColor(draft.nameC1),nameC2:okColor(draft.nameC2,'#9ff0e6'),nameFont:pick(draft.nameFont,['sans','serif','mono','round','display',...(plan.lite()?['script','pixel','gothic','wide']:[])],'sans'),cardBorder:plan.lite()?pick(draft.cardBorder,['none','gold','neon','rainbow','glow','ice'],'none'):'',
+    nameStyle:pick(draft.nameStyle,['solid','gradient','animated','glow'],'solid'),nameC1:okColor(draft.nameC1),nameC2:okColor(draft.nameC2,'#9ff0e6'),nameFont:pick(draft.nameFont,['sans','serif','mono','round','display',...(plan.lite()?['script','pixel','gothic','wide']:[])],'sans'),buddyX:$('#pBuddyWander').checked?-1:Math.max(0,Math.min(100,Math.round(+$('#pBuddyX').value||0))),cardBorder:plan.lite()?pick(draft.cardBorder,['none','gold','neon','rainbow','glow','ice'],'none'):'',
     badges:graphemes(draft.badges).filter(x=>x.trim()).slice(0,5).join(''),ring:pick(draft.ring,['none','solid','gradient','rainbow'],'none'),cardStyle:pick(draft.cardStyle,['glass','tint','gradient','dark',...(plan.lite()?['aurora','holo','midnight']:[])],'glass')};
   cfg.share=$('#pShare').checked;cfg.shareGame=$('#pShareGame').checked;cfg.shareYt=$('#pShareYt').checked;cfg.shareWeb=$('#pShareWeb').checked;cfg.seeOthers=$('#pSeeOthers').checked;save();
   $('#pSave').disabled=true;
@@ -226,14 +248,14 @@ function listenFriends(){unsubs.push(F.onSnapshot(F.query(C('friendships'),F.whe
   const t=setInterval(soon,30000);unsubs.push(()=>clearInterval(t))}
 const rank=uid=>({online:0,idle:1,offline:2}[status(uid)]??3);
 async function personRow(uid,{buttons='',sub='',click=''}={}){const u=await getUser(uid);
-  return`<div class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${L.cos?.buddyCanvas(u.buddy,'bar',uid+':bar:'+(click||'row'))||''}${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
+  return`<div data-k="${uid}" class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${click==='dm'?L.cos?.buddyCanvas(u.buddy,'bar',uid+':bar:dm',u)||'':''}${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
 async function renderFriends(){if(!me)return;
   const acc=friendIds().sort((a,b)=>rank(a)-rank(b)),inc=friendships.filter(f=>f.status==='pending'&&f.from!==me.uid),out=friendships.filter(f=>f.status==='pending'&&f.from===me.uid);
   const other=f=>f.users.find(x=>x!==me.uid);const online=acc.filter(u=>status(u)!=='offline').length;
   const rows=await Promise.all(acc.map(uid=>personRow(uid,{sub:actText(uid)||esc(statusText(uid)),click:'dm'})));
   const adminRow=inbox.includes(ADMIN_UID)&&!acc.includes(ADMIN_UID)?(await personRow(ADMIN_UID,{sub:'<b>Lumen admin</b> · messaged you',click:'dm'})).replace('class="person','class="person admin-row'):'';
-  $('#friendList').innerHTML=adminRow+(acc.length?`<div class="fr-count"><span class="st-dot st-online"></span>${online} online · ${acc.length} friends</div>`:'')+(rows.join('')||'<p class="muted">No friends yet. Search for people above.</p>');
-  $('#reqList').innerHTML=(await Promise.all([...inc.map(f=>personRow(other(f),{buttons:`<button class="ib" data-accept="${f.id}" title="Accept">✓</button><button class="ib" data-unfriend="${f.id}" title="Decline">✕</button>`,sub:'Wants to be friends'})),...out.map(f=>personRow(other(f),{buttons:`<button class="ib" data-unfriend="${f.id}" title="Cancel">✕</button>`,sub:'Request sent'}))])).join('')||'<p class="muted" style="font-size:13px">No requests.</p>';
+  morph($('#friendList'),adminRow+(acc.length?`<div class="fr-count"><span class="st-dot st-online"></span>${online} online · ${acc.length} friends</div>`:'')+(rows.join('')||'<p class="muted">No friends yet. Search for people above.</p>'));
+  morph($('#reqList'),(await Promise.all([...inc.map(f=>personRow(other(f),{buttons:`<button class="ib" data-accept="${f.id}" title="Accept">✓</button><button class="ib" data-unfriend="${f.id}" title="Decline">✕</button>`,sub:'Wants to be friends'})),...out.map(f=>personRow(other(f),{buttons:`<button class="ib" data-unfriend="${f.id}" title="Cancel">✕</button>`,sub:'Request sent'}))])).join('')||'<p class="muted" style="font-size:13px">No requests.</p>');
   $('#reqBadge').style.display=inc.length?'':'none';$('#reqBadge').textContent=inc.length;bindPeople($('#v-friends'))}
 function bindPeople(root){
   root.querySelectorAll('[data-open]').forEach(r=>r.onclick=e=>{if(e.target.closest('button'))return;openDm(r.dataset.open)});
@@ -255,15 +277,15 @@ const rooms=()=>serverChannels||cfg.rooms.split(',').map(s=>s.trim().toLowerCase
 function mkPane(sel){const el=$(sel);const ty=document.createElement('div');ty.className='typing';el.querySelector('form').before(ty);return{el,ty,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
 const panes={room:mkPane('#roomPane'),dm:mkPane('#dmPane')};
 async function renderRooms(){if(!me)return;const on=friendIds().filter(u=>status(u)!=='offline').sort((a,b)=>rank(a)-rank(b));
-  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${L.cos?.buddyCanvas(u.buddy,'bar',uid+':room')||''}${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
-  $('#roomList').innerHTML=rooms().map(r=>`<button class="room ${panes.room.convo?.id===r?'on':''}" data-room="${r}"><span class="hash">#</span>${r}</button>`).join('')+
-    `<div class="dc-title" style="margin-top:16px">Friends online — ${on.length}</div>`+(fr.join('')||'<p class="muted" style="font-size:12px;padding:0 10px">Nobody online right now.</p>');
+  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button data-k="${uid}" class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
+  morph($('#roomList'),rooms().map(r=>`<button class="room ${panes.room.convo?.id===r?'on':''}" data-room="${r}"><span class="hash">#</span>${r}</button>`).join('')+
+    `<div class="dc-title" style="margin-top:16px">Friends online — ${on.length}</div>`+(fr.join('')||'<p class="muted" style="font-size:12px;padding:0 10px">Nobody online right now.</p>'));
   $$('#roomList [data-room]').forEach(b=>b.onclick=()=>openConvo(panes.room,{type:'room',id:b.dataset.room}));
   $$('#roomList [data-user]').forEach(b=>b.onclick=()=>showUser(b.dataset.user))}
 L.onRooms=()=>renderRooms();
 const convoPath=c=>c.type==='room'?['rooms',c.id,'messages']:['dms',pairId(me.uid,c.id),'messages'];
 async function refreshDmHead(){const p=panes.dm;if(p.convo?.type!=='dm')return;const uid=p.convo.id;const u=await getUser(uid);
-  p.pt.innerHTML=`${pic(u,28,uid)}<span>${nameHTML(u)}</span>`;const act=actText(uid);p.status.className='status st-'+status(uid);p.status.innerHTML=`<i></i>${act||esc(statusText(uid))}`}
+  morph(p.pt,`${pic(u,28,uid)}<span>${nameHTML(u)}</span>`);const act=actText(uid);p.status.className='status st-'+status(uid);p.status.innerHTML=`<i></i>${act||esc(statusText(uid))}`}
 function openDm(uid){L.go('friends');openConvo(panes.dm,{type:'dm',id:uid});showSide('fr',uid)}
 const msgCache=new Map(),cKey=c=>convoPath(c).join('/');
 async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();p.unsub=null;const key=cKey(c);
@@ -281,17 +303,17 @@ async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();p.unsub=null;c
 async function drawMsgs(p,c,docs,fromCache,pending){const us=await Promise.all(docs.map(m=>getUser(m.uid)));if(p.convo!==c)return;
     const box=p.msgs,fromBottom=box.scrollHeight-box.scrollTop-box.clientHeight,prevCount=+box.dataset.n||0;
     p.docs=docs;
-    box.innerHTML=docs.map((m,i)=>{const u=us[i],g=safeImg(m.gif),prev=docs[i-1],mid=/^[A-Za-z0-9]{16,30}$/.test(m.media||'')?m.media:'';if(mid&&!mediaNow(mid))loadMedia(mid);
+    morph(box,docs.map((m,i)=>{const u=us[i],g=safeImg(m.gif),prev=docs[i-1],mid=/^[A-Za-z0-9]{16,30}$/.test(m.media||'')?m.media:'';if(mid&&!mediaNow(mid))loadMedia(mid);
       const grouped=prev&&prev.uid===m.uid&&ms(m.at)-ms(prev.at)<5*60e3&&!m.reply;
       const rx=Object.entries(m.react||{}).reduce((a,[who,e])=>{(a[e]||=[]).push(who);return a},{});
       const reply=m.reply?`<button class="dreply" data-jump="${esc(m.reply.id)}"><span class="ri">↩</span><span data-rname="${esc(m.reply.uid)}"></span><span class="rt">${esc(m.reply.text||'Picture')}</span></button>`:'';
       const body=`${reply}${m.text?`<div class="dtext">${fmt(m.text)}${m.edited?' <small class="edited">(edited)</small>':''}</div>`:''}${g?`<img class="gif" src="${g}" alt="GIF">`:''}${mid?`<img class="gif chat-pic" data-media="${mid}"${mediaNow(mid)?` src="${mediaNow(mid)}"`:''} alt="Picture">`:''}`+
         (Object.keys(rx).length?`<div class="dreacts">${Object.entries(rx).map(([e,w])=>`<button data-react="${esc(e)}" class="${w.includes(me.uid)?'mine':''}">${esc(e)} <b>${w.length}</b></button>`).join('')}</div>`:'');
       const tools=m.id?`<div class="dtools"><button data-rx title="React">😊</button><button data-reply title="Reply">↩</button>${m.uid===me.uid&&m.text?'<button data-edit title="Edit">✏️</button>':''}${m.text?'<button data-copy title="Copy text">📋</button>':''}${m.uid===me.uid||(c.type==='room'&&isAdmin())?'<button data-del title="Delete">🗑</button>':''}</div>`:'';
-      const at=` data-mid="${m.id||''}"`;const mineC=m.uid===me.uid?' me-msg':'';
+      const at=` data-mid="${m.id||''}" data-k="${m.id||i}"`;const mineC=m.uid===me.uid?' me-msg':'';
       return grouped?`<div class="dmsg grouped${mineC}"${at}>${tools}<span class="dtime">${new Date(ms(m.at)).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>"<div class="dbody">${body}</div></div>`
         :`<div class="dmsg${mineC}"${at}>${tools}<div class="dav" data-user="${m.uid}">${pic(u,40,friendIds().includes(m.uid)||m.uid===me.uid?m.uid:null)}</div><div class="dbody"><div class="dhead"><b data-user="${m.uid}">${nameHTML(u)}</b><span class="muted">${when(m.at)}</span></div>${body}</div></div>`}).join('')
-      ||`<div class="sysmsg">${c.type==='room'?'No messages yet. Say hi 👋':'This is the start of your private chat. Only you two can read it.'}</div>`;
+      ||`<div class="sysmsg">${c.type==='room'?'No messages yet. Say hi 👋':'This is the start of your private chat. Only you two can read it.'}</div>`);
     box.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>showUser(b.dataset.user));
     box.querySelectorAll('[data-rname]').forEach(el=>getUser(el.dataset.rname).then(u=>el.textContent=u.name||'Someone'));
     bindMsgTools(p,c);

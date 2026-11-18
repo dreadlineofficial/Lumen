@@ -32,31 +32,42 @@ function buttonHTML(it,s=state(it),big){const c=big?' big':'';
   const ok=coins()>=s.cost;return`<button class="${ok?'btn-acc':''}${c}" data-buy="${it.id}" ${ok?'':'disabled'}>${ok?'Buy':'Need ✦ '+fmt(s.cost-coins())}</button>`}
 
 /* ---------- previews on your own profile ---------- */
-const meBase=()=>({...(prof||{}),name:prof?.name||'You'});
-function preview(it,{size='small',as=''}={}){const c=L.cloud,me=meBase(),slot=SLOT[it.type],u={...me,[slot]:it.id};
+// your own look, minus your buddy (buddies only show up when you're looking at a buddy)
+const meBase=()=>({...(prof||{}),name:prof?.name||'You',buddy:''});
+const BANNER='linear-gradient(135deg,#4b5cff,#a65cff 55%,#ff8f7a)';
+// a small, fixed-size profile card used in the grid (same layout every time, no squashing)
+function miniCard(u){const c=L.cloud;return`<div class="mini-card">${L.cos.fxLayer(u.fx)}<div class="mc-ban" style="background:${BANNER}"></div><div class="mc-row">${c.pic(u,46)}<div class="mc-name">${c.nameHTML(u,{badges:false})}</div></div><div class="mc-lines"><i></i><i></i></div></div>`}
+function barRow(u,big,key){const c=L.cloud;return`<div class="person${L.cos.plateCls(u.plate)}">${u.buddy?L.cos.buddyCanvas(u.buddy,'bar',key):''}${c.pic(u,big?40:36)}<div class="info"><b>${c.nameHTML(u,{badges:false})}</b><span>🎮 Playing <b>Nightbound</b></span></div></div>`}
+function preview(it,{size='small',as=''}={}){const c=L.cloud,me=meBase(),slot=SLOT[it.type],u={...me,[slot]:it.id},big=size==='big';
   const v=as||({fx:'card',deco:'pic',plate:'bar',nfx:'name',theme:'theme',buddy:'buddy'})[it.type];
-  if(v==='card')return c.card({...u,bio:size==='big'?(me.bio||'This is how your profile card looks to everyone.'):''},{compact:size!=='big'});
-  if(v==='pic')return`<div class="prev-pic">${c.pic(u,size==='big'?150:84)}</div>`;
-  if(v==='bar')return`<div class="prev-bars${size==='big'?' big':''}"><div class="person${L.cos.plateCls(u.plate)}">${L.cos.buddyCanvas(u.buddy,'bar','shop:'+it.id+':bar')}${c.pic(u,40)}<div class="info"><b>${c.nameHTML(u,{badges:false})}</b><span>🎮 Playing <b>Nightbound</b></span></div></div>${size==='big'?`<div class="person${L.cos.plateCls(u.plate)}" style="opacity:.92">${c.pic(u,32)}<div class="info"><b>${c.nameHTML(u,{badges:false})}</b><span>Online</span></div></div>`:''}</div>`;
-  if(v==='name')return`<div class="prev-name${size==='big'?' big':''}">${c.nameHTML(u,{badges:false})}</div>`;
-  if(v==='buddy')return`<div class="buddy-stage${size==='big'?' big':''}">${L.cos.buddyCanvas(it.id,'card','shop:'+it.id+':'+size)}</div>`;
-  if(v==='theme')return`<div class="theme-sw${size==='big'?' big':''}">${it.sw.map((x,i)=>`<div style="background:${i===2?x:`linear-gradient(160deg,${x},${it.sw[2]})`}"></div>`).join('')}</div>`;
+  if(v==='card')return big?c.card({...u,bio:me.bio||'This is how your profile card looks to everyone.'},{preview:true}):miniCard(u);
+  if(v==='pic')return`<div class="prev-pic">${c.pic(u,big?150:78)}</div>`;
+  if(v==='bar')return`<div class="prev-bars${big?' big':''}">${barRow(u,big,'shop:'+it.id+':bar:'+size)}${big?`<div class="person${L.cos.plateCls(u.plate)}" style="opacity:.92">${c.pic(u,32)}<div class="info"><b>${c.nameHTML(u,{badges:false})}</b><span>Online</span></div></div>`:''}</div>`;
+  if(v==='name')return`<div class="prev-name${big?' big':''}">${c.nameHTML(u,{badges:false})}</div>`;
+  if(v==='buddy')return`<div class="buddy-stage${big?' big':''}">${L.cos.buddyCanvas(it.id,'card','shop:'+it.id+':'+size)}</div>`;
+  if(v==='theme')return`<div class="theme-sw${big?' big':''}">${it.sw.map((x,i)=>`<div style="background:${i===2?x:`linear-gradient(160deg,${x},${it.sw[2]})`}"></div>`).join('')}</div>`;
   return''}
 const VIEWS={fx:[['card','Profile card']],deco:[['pic','Picture'],['card','Profile card'],['bar','Profile bar']],plate:[['bar','Profile bar']],nfx:[['name','Name'],['card','Profile card'],['bar','Profile bar']],theme:[['theme','Colours']],buddy:[['buddy','Stage'],['bar','Profile bar'],['card','Profile card']]};
 
 function card(it){const s=state(it);
-  return`<div class="card sitem${s.eq?' equipped':''}${s.prem?' prem prem-'+s.prem:''}"><button class="prev" data-view="${it.id}" title="Preview ${esc(it.name)}">
+  return`<div class="card sitem t-${it.type}${s.eq?' equipped':''}${s.prem?' prem prem-'+s.prem:''}" data-k="${it.id}"><button class="prev" data-view="${it.id}" title="Preview ${esc(it.name)}">
     <span class="tags">${s.eq?'<span class="tag">Equipped</span>':s.own?'<span class="tag">Owned</span>':''}${it.tag==='new'?'<span class="tag t-new">NEW</span>':''}${s.prem?`<span class="tag t-prem">💎 ${TIER_NAME[s.prem]}</span>`:''}${it.type==='buddy'?'<span class="tag t-beta">BETA</span>':''}</span>
-    ${preview(it)}<span class="zoom">⤢ Preview</span></button>
-    <div class="meta"><b>${esc(it.name)}</b><span>${it.uid?`${TYPE_LABEL[it.type]} · by ${esc(cnames[it.uid]||'…')}`:esc(it.desc)}</span><div class="act-row">${priceHTML(it,s)}${buttonHTML(it,s)}</div></div></div>`}
-function grid(list,empty){return`<div class="shop-grid">${list.map(card).join('')||`<p class="muted">${empty||'Nothing here.'}</p>`}</div>`}
+    <span class="prev-in">${preview(it)}</span><span class="zoom">⤢ Preview</span></button>
+    <div class="meta"><span class="kind">${TYPE_LABEL[it.type]||''}${it.uid?` · by ${esc(cnames[it.uid]||'…')}`:''}</span><b>${esc(it.name)}</b><span class="desc">${esc(it.desc||'')}</span><div class="act-row">${priceHTML(it,s)}${buttonHTML(it,s)}</div></div></div>`}
+function grid(list,empty){return`<div class="shop-grid">${list.map(card).join('')||`<p class="muted empty">${empty||'Nothing here.'}</p>`}</div>`}
 const catalog=type=>L.cos.CATALOG.filter(i=>i.type===type).sort((a,b)=>(!!a.tier-!!b.tier)||((b.tag==='new')-(a.tag==='new')));
-
+// aisles inside each department
+const AISLES={fx:[['🎃','Spooky',['fx_blood','fx_bloodrain','fx_eyes','fx_static','fx_hands','fx_claws','fx_flicker','fx_fog','fx_storm']],['🌿','Nature & weather',['fx_snow','fx_sakura','fx_leaves','fx_rain','fx_fireflies','fx_butterflies','fx_ripples','fx_sunrays','fx_lanterns']],
+  ['🌌','Space & light',['fx_stars','fx_galaxy','fx_meteor','fx_aurora','fx_bokeh','fx_glitter']],['🎉','Fun & retro',['fx_confetti','fx_hearts','fx_bubbles','fx_pixel','fx_grid','fx_matrix','fx_embers','fx_sparks']]]};
+function aisles(type,list){const tierL=list.filter(i=>i.tier),rest=list.filter(i=>!i.tier),out=[];
+  if(AISLES[type]){const used=new Set();for(const[i,n,ids]of AISLES[type]){const g=rest.filter(x=>ids.includes(x.id));g.forEach(x=>used.add(x.id));if(g.length)out.push([i,n,g])}const left=rest.filter(x=>!used.has(x.id));if(left.length)out.push(['✨','More',left])}
+  else{const nw=rest.filter(i=>i.tag==='new'),old=rest.filter(i=>i.tag!=='new');if(nw.length)out.push(['🆕','New in',nw]);if(old.length)out.push(['⭐',nw.length?'Classics':'All',old])}
+  if(tierL.length)out.push(['💎','Members only',tierL]);return out}
 /* ---------- bundles ---------- */
 function bundleCard(b,wide){const me=meBase(),u={...me};for(const i of b.items){const it=L.cos.byId[i];if(it&&it.type!=='theme')u[SLOT[it.type]]=i}
   const have=b.items.filter(i=>owned().includes(i)).length,all=have===b.items.length,cost=P().price(b.price),save=Math.round((1-b.price/sumOf(b))*100);
   const btn=!prof?'<button disabled>Sign in</button>':all?`<button data-wearbundle="${b.id}" class="btn-acc">Wear the look</button>`:`<button class="${coins()>=cost?'btn-acc':''}" data-buybundle="${b.id}" ${coins()>=cost?'':'disabled'}>${coins()>=cost?'Buy bundle':'Need ✦ '+fmt(cost-coins())}</button>`;
-  return`<div class="card bundle${wide?' wide':''}" style="--bg:${b.g}"><div class="b-art"><span class="b-save">SAVE ${save}%</span><div class="b-card">${L.cloud.card({...u,bio:''},{compact:true})}</div>${u.plate?`<div class="b-bar">${preview(L.cos.byId[u.plate])}</div>`:''}</div>
+  return`<div class="card bundle${wide?' wide':''}" data-k="${b.id}" style="--bg:${b.g}"><div class="b-art"><span class="b-save">SAVE ${save}%</span><div class="b-card">${miniCard(u)}</div>${u.plate?`<div class="b-bar"><div class="prev-bars">${barRow(u,false,'')}</div></div>`:''}</div>
     <div class="meta"><b>${b.emoji} ${esc(b.name)}</b><span>${esc(b.desc)}</span>
       <div class="b-items">${b.items.map(i=>{const it=L.cos.byId[i];return`<button class="chip${owned().includes(i)?' have':''}" data-view="${i}">${owned().includes(i)?'✓ ':''}${esc(it?.name||i)}</button>`}).join('')}</div>
       <div class="act-row"><span class="price">${all?'All owned':`✦ ${fmt(cost)} <s>${fmt(sumOf(b))}</s>`}</span>${btn}</div>${have&&!all?`<small class="muted">You own ${have} of ${b.items.length}. The rest come with the bundle.</small>`:''}</div></div>`}
@@ -97,32 +108,60 @@ function premiumPage(){const me=meBase(),demo={...me,nfx:'nfx_gold',fx:'fx_goldd
     <form class="row code-form" data-redeem><input placeholder="LITE-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false"><button class="btn-gold">Redeem</button></form></section>
   </div>`}
 
-/* ---------- pages ---------- */
-function home(){const fresh=L.cos.CATALOG.filter(i=>i.tag==='new'),picks=['fx_galaxy','deco_flame','plate_holo','nfx_fire','fx_aurora','theme_synthwave'].map(i=>L.cos.byId[i]).filter(Boolean);
-  const pop=citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0)).slice(0,4);
+/* ---------- the store: departments on the left, aisles and a toolbar on the right ---------- */
+const NAV=[['Discover',[['home','🛍','Featured'],['premium','💎','Lumen Lite'],['bundles','🎁','Bundles'],['new','🆕','New arrivals']]],
+  ['Departments',[['fx','✨','Profile effects'],['deco','💫','Decorations'],['plate','🎴','Nameplates'],['nfx','🔤','Name effects'],['theme','🎨','Themes'],['buddy','🧸','Buddies','BETA']]],
+  ['Community',[['creator','🛠','Creator shop']]],['Yours',[['owned','🎒','Owned']]]];
+const DEPT={fx:'Profile effects',deco:'Decorations',plate:'Nameplates',nfx:'Name effects',theme:'Themes',buddy:'Buddies',creator:'Creator shop',owned:'Owned',new:'New arrivals'};
+const DEPT_SUB={fx:'Animated layers that play across your whole profile card.',deco:'Frames and extras around your profile picture, shown everywhere.',plate:'The animated background of your profile bar in lists and the sidebar.',nfx:'Make your name itself move, glow and shine.',theme:'A new colour scheme for all of Lumen.',buddy:'3D characters that live on your profile bar and card. Buying one needs Lumen Lite.',creator:'Made by Lumen creators and checked by the Lumen team. Creators keep 90% of every sale.',owned:'Everything you own or can wear. Equip anything in one tap.',new:'Fresh this week.'};
+let q='',sort='featured',filt='all';
+const count=k=>k==='owned'?ownedList().length:k==='creator'?citems.length:k==='new'?L.cos.CATALOG.filter(i=>i.tag==='new').length:k==='bundles'?BUN().length:L.cos.CATALOG.filter(i=>i.type===k).length;
+function ownedList(){return[...L.cos.CATALOG.filter(i=>owned().includes(i.id)||(i.tier&&P().wears(i.id)===true)),...citems.filter(i=>owned().includes(i.id)||(prof&&i.uid===prof.uid))]}
+function deptList(){return tab==='creator'?citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0)):tab==='owned'?ownedList():tab==='new'?L.cos.CATALOG.filter(i=>i.tag==='new'):catalog(tab).filter(i=>i.type!=='buddy'||L.cos.BUDDIES_ON)}
+function shaped(list){let l=list;const qq=q.trim().toLowerCase();if(qq)l=l.filter(i=>(i.name+' '+(i.desc||'')).toLowerCase().includes(qq));
+  if(filt==='notowned')l=l.filter(i=>!state(i).own);else if(filt==='owned')l=l.filter(i=>state(i).own);else if(filt==='afford')l=l.filter(i=>{const st=state(i);return!st.own&&!st.prem&&st.cost<=coins()});
+  const pr=i=>i.tier?1e9:state(i).cost;
+  if(sort==='low')l=l.slice().sort((a,b)=>pr(a)-pr(b));else if(sort==='high')l=l.slice().sort((a,b)=>(b.tier?-1:state(b).cost)-(a.tier?-1:state(a).cost));else if(sort==='az')l=l.slice().sort((a,b)=>a.name.localeCompare(b.name));else if(sort==='new')l=l.slice().sort((a,b)=>(b.tag==='new')-(a.tag==='new'));
+  return l}
+function navHTML(){return NAV.map(([h,items])=>`<div class="sn-h">${h}</div>`+items.filter(([k])=>k!=='buddy'||L.cos.BUDDIES_ON).map(([k,i,l,x])=>`<button data-t="${k}" class="sn${tab===k?' on':''}${k==='premium'?' sn-prem':''}"><span class="sn-i">${i}</span><span class="sn-l">${l}</span>${x?`<em>${x}</em>`:k==='premium'||k==='home'?'':`<small>${count(k)}</small>`}</button>`).join('')).join('')}
+function toolbarHTML(){return`<div class="st-head"><div><h2>${DEPT[tab]||''}</h2><p class="muted">${DEPT_SUB[tab]||''}</p></div></div>
+  <div class="st-tools"><label class="st-search"><span>🔎</span><input id="shopQ" placeholder="Search ${esc((DEPT[tab]||'').toLowerCase())}" value="${esc(q)}" autocomplete="off"></label>
+    <select id="shopSort" title="Sort"><option value="featured">Sort: Featured</option><option value="new">Newest first</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option><option value="az">Name: A to Z</option></select>
+    <div class="st-chips">${[['all','All'],['notowned','Not owned'],['owned','Owned'],['afford','I can afford']].map(([k,l])=>`<button data-f="${k}" class="${filt===k?'on':''}">${l}</button>`).join('')}</div></div>`}
+function deptBody(){const list=shaped(deptList());if(tab==='creator')list.forEach(i=>{if(!cnames[i.uid])L.cloud?.getUser(i.uid).then(u=>{if(!cnames[i.uid]){cnames[i.uid]=u.name||'a creator';render()}})});
+  const empty=q?`Nothing matches “${esc(q)}”.`:tab==='owned'?'Nothing yet. Claim your Glow and treat yourself.':tab==='creator'?'No creator items yet. Lumen creators can make them on their Creator page.':'Nothing here.';
+  const beta=tab==='buddy'?`<div class="banner beta-note">🧪 <b>Buddies are in beta.</b> They live on your profile bar and card, and only show while you have Lumen Lite, Pro or Ultimate. Pick where yours stands in <b>Profile</b>.</div>`:'';
+  if(sort!=='featured'||q||filt!=='all'||['creator','owned','new'].includes(tab))return beta+`<p class="st-count">${list.length} item${list.length===1?'':'s'}</p>`+grid(list,empty);
+  return beta+aisles(tab,list).map(([i,n,g])=>`<section class="aisle" data-k="a-${n}"><div class="aisle-h"><h3>${i} ${n}</h3><span>${g.length}</span></div>${grid(g)}</section>`).join('')||grid([],empty)}
+function home(){const fresh=L.cos.CATALOG.filter(i=>i.tag==='new').slice(0,8),picks=['fx_galaxy','deco_flame','plate_holo','nfx_fire','fx_aurora','theme_synthwave','deco_halo','fx_lanterns'].map(i=>L.cos.byId[i]).filter(Boolean);
+  const pop=citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0)).slice(0,4),cheap=L.cos.CATALOG.filter(i=>!i.tier&&i.price&&i.price<=250).slice(0,4);
+  const tiles=[['fx','✨','Profile effects','#3b1a78,#7a2b9e'],['deco','💫','Decorations','#5a1a3a,#ff5c8a'],['plate','🎴','Nameplates','#062a52,#1aa0d8'],['nfx','🔤','Name effects','#3a2600,#e8a920'],['theme','🎨','Themes','#04140c,#2fd67a'],['buddy','🧸','Buddies','#2b0b3f,#7c4dff']].filter(t=>t[0]!=='buddy'||L.cos.BUDDIES_ON);
   return`<button class="lite-banner" data-gotab="premium">${L.cos.fxLayer('fx_golddust')}<span class="lb-copy"><span class="ph-kicker">✦ NEW · LUMEN PREMIUM</span><b>Your name, in <span class="gold-text">liquid gold</span>.</b><span>Lumen Lite: 10% off everything, +5% Glow, 10 MB uploads, pictures in chat and 5,000 Glow to start.</span></span><span class="lb-name">${L.cloud.nameHTML({...meBase(),nfx:'nfx_gold',tier:'lite',tierUntil:new Date(Date.now()+864e5)})}</span><span class="lb-go">See Lite →</span></button>
-  <div class="shop-sec"><div class="sec-h"><h2>New arrivals</h2><button data-gotab="fx">All effects →</button></div>${grid(fresh)}</div>
-  <div class="shop-sec"><div class="sec-h"><h2>Bundles</h2><button data-gotab="bundles">All bundles →</button></div><div class="bundle-row">${BUN().slice(0,3).map(b=>bundleCard(b)).join('')}</div></div>
-  <div class="shop-sec"><div class="sec-h"><h2>Staff picks</h2></div>${grid(picks)}</div>
-  ${pop.length?`<div class="shop-sec"><div class="sec-h"><h2>Popular from creators</h2><button data-gotab="creator">Creator shop →</button></div>${grid(pop)}</div>`:''}`}
-function creatorPage(){const list=citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0));
-  list.forEach(i=>{if(!cnames[i.uid])L.cloud?.getUser(i.uid).then(u=>{cnames[i.uid]=u.name||'a creator';render()})});
-  return`<div class="shop-cr-intro card"><b>🛠 Made by Lumen creators</b><span class="muted">Profile effects, decorations and nameplates made by the community and checked by the Lumen team. Creators keep 90% of every sale.${prof?'':' Sign in to buy.'}</span></div>`+grid(list,'No creator items yet. Lumen creators can make them on their Creator page.')}
-function ownedPage(){const cat=L.cos.CATALOG.filter(i=>owned().includes(i.id)||(i.tier&&P().wears(i.id)===true)),cr=citems.filter(i=>owned().includes(i.id)||(prof&&i.uid===prof.uid));
-  return grid([...cat,...cr],'Nothing yet. Claim your Glow and treat yourself.')}
+  <div class="dept-tiles">${tiles.map(([k,i,l,g])=>`<button class="dept-tile" data-gotab="${k}" style="--g:linear-gradient(135deg,${g})"><span>${i}</span><b>${l}</b><small>${count(k)} items</small></button>`).join('')}</div>
+  <div class="shop-sec"><div class="sec-h"><h2>🆕 New arrivals</h2><button data-gotab="new">See all →</button></div>${grid(fresh)}</div>
+  <div class="shop-sec"><div class="sec-h"><h2>🎁 Bundles</h2><button data-gotab="bundles">All bundles →</button></div><div class="bundle-row">${BUN().slice(0,3).map(b=>bundleCard(b)).join('')}</div></div>
+  <div class="shop-sec"><div class="sec-h"><h2>⭐ Staff picks</h2></div>${grid(picks)}</div>
+  <div class="shop-sec"><div class="sec-h"><h2>🪙 Under ✦ 250</h2></div>${grid(cheap)}</div>
+  ${pop.length?`<div class="shop-sec"><div class="sec-h"><h2>🛠 Popular from creators</h2><button data-gotab="creator">Creator shop →</button></div>${grid(pop)}</div>`:''}`}
 
 function render(){const box=$('#shopGrid');if(!box)return;
   $('#glowBal').textContent=fmt(coins());
   const nc=nextClaim(),ready=!nc||Date.now()>=nc,cb=$('#claimBtn'),b=P().bonus(prof?.lastClaim?150:500);
   cb.disabled=!prof||!ready;cb.textContent=!prof?'Sign in to earn Glow':!prof.lastClaim?`🎁 Claim ${fmt(b)} welcome Glow`:ready?`🎁 Claim daily +${b}`:`Next reward in ${Math.ceil((nc-Date.now())/36e5)}h`;
-  const t=P().top();$('#shopPlan').innerHTML=t?`<span class="ptag ptag-${t}">${t.toUpperCase()}</span> 10% off · +5% Glow`:'';
-  $('#shopTabs').innerHTML=TABS.filter(([k])=>k!=='buddy'||L.cos.BUDDIES_ON).map(([k,i,l,x])=>`<button data-t="${k}" class="${tab===k?'on':''}${k==='premium'?' t-prem':''}"><span>${i}</span>${l}${x?`<em>${x}</em>`:''}</button>`).join('');
-  box.className='shop-page shop-'+tab;
-  box.innerHTML=tab==='home'?home():tab==='premium'?premiumPage():tab==='bundles'?`<p class="sub" style="margin:0 0 16px">Whole looks for less. Bundles give you every piece at once, cheaper than buying them one by one.</p><div class="bundle-row">${BUN().map(b=>bundleCard(b,true)).join('')}</div>`
-    :tab==='creator'?creatorPage():tab==='owned'?ownedPage()
-    :tab==='buddy'?`<div class="banner beta-note">🧪 <b>Buddies are in beta.</b> 3D characters that live on your profile bar and card. Buying one needs Lumen Lite (or Pro / Ultimate). They may change while we work on them.</div>`+grid(catalog('buddy'))
-    :grid(catalog(tab));
-  bind(box);if(openId)openItem(openId,true)}
+  const t=P().top(),ph=t?`<span class="ptag ptag-${t}">${t.toUpperCase()}</span> 10% off · +5% Glow`:'';if($('#shopPlan')._h!==ph){$('#shopPlan').innerHTML=ph;$('#shopPlan')._h=ph}
+  $('#shopTabs').style.display='none';
+  if(!box.querySelector('.store-nav')){box.className='store';box.innerHTML='<aside class="store-nav" id="storeNav"></aside><div class="store-main"><div id="storeTop"></div><div id="storeBody"></div></div>'}
+  L.morph($('#storeNav'),navHTML());
+  const dept=!['home','premium','bundles'].includes(tab),top=$('#storeTop');
+  if(top.dataset.t!==tab){top.dataset.t=tab;top.innerHTML=dept?toolbarHTML():'';if(dept){$('#shopSort').value=sort;bindTools()}}
+  else if(dept)top.querySelectorAll('[data-f]').forEach(x=>x.classList.toggle('on',x.dataset.f===filt));
+  const body=$('#storeBody'),html=tab==='home'?home():tab==='premium'?premiumPage():tab==='bundles'?`<div class="st-head"><div><h2>Bundles</h2><p class="muted">Whole looks for less. Every piece at once, cheaper than buying them one by one.</p></div></div><div class="bundle-row">${BUN().map(b=>bundleCard(b,true)).join('')}</div>`:deptBody();
+  // only what changed is redrawn, so effects and buddies in the grid keep playing smoothly
+  if(body.dataset.t!==tab){body.dataset.t=tab;body.innerHTML=html}else if(body._h!==html)L.morph(body,html);body._h=html;
+  box.dataset.tab=tab;bind(box);if(openId)openItem(openId,true)}
+function bindTools(){const qi=$('#shopQ');let t=0;qi.oninput=()=>{clearTimeout(t);t=setTimeout(()=>{q=qi.value;render()},120)};
+  $('#shopSort').onchange=e=>{sort=e.target.value;render()};
+  $$('#storeTop [data-f]').forEach(b=>b.onclick=()=>{filt=b.dataset.f;render()})}
 function bind(root){
   root.querySelectorAll('[data-buy]').forEach(b=>b.onclick=e=>{e.stopPropagation();buy(b.dataset.buy)});
   root.querySelectorAll('[data-equip]').forEach(b=>b.onclick=e=>{e.stopPropagation();equip(b.dataset.equip,true)});
@@ -134,12 +173,12 @@ function bind(root){
   root.querySelectorAll('[data-wearbundle]').forEach(b=>b.onclick=()=>wearBundle(b.dataset.wearbundle));
   root.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>{$('#'+b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'center'});$('#'+b.dataset.scroll+' input')?.focus({preventScroll:true})});
   root.querySelectorAll('form[data-redeem]').forEach(f=>f.onsubmit=e=>{e.preventDefault();redeem(f.querySelector('input'),f.querySelector('button'))})}
-function go(t){closeItem();tab=t;render();$('#shopTabs')?.scrollIntoView({behavior:'smooth',block:'start'})}
+function go(t,stay){closeItem();if(t!==tab){q='';filt='all';sort='featured'}tab=t;render();if(!stay)$('#shopGrid')?.scrollIntoView({behavior:'smooth',block:'start'})}
 
 /* ---------- the listing: click any item to see it big, on your own profile ---------- */
 function openItem(id,refresh){const it=getItem(id);if(!it)return;const vs=VIEWS[it.type]||[['card','Profile card']];if(!refresh||openId!==id)view=vs[0][0];openId=id;const s=state(it);
   const bs=bundlesWith(id);const by=it.uid?` · by ${esc(cnames[it.uid]||'a creator')}`:'';
-  $('#itemCard').innerHTML=`<button class="il-x" data-close aria-label="Close">✕</button><div class="il">
+  const ih=`<button class="il-x" data-close aria-label="Close">✕</button><div class="il">
     <div class="il-stage il-${it.type}${s.prem?' prem-'+s.prem:''}">${vs.length>1?`<div class="il-views">${vs.map(([k,l])=>`<button data-iv="${k}" class="${view===k?'on':''}">${l}</button>`).join('')}</div>`:''}
       <div class="il-show il-v-${view}">${preview(it,{size:'big',as:view})}</div><span class="il-hint">Previewing on <b>your</b> profile</span></div>
     <div class="il-info"><span class="il-type">${TYPE_LABEL[it.type]||'Item'}${by}</span><h2>${esc(it.name)}</h2>
@@ -150,6 +189,7 @@ function openItem(id,refresh){const it=getItem(id);if(!it)return;const vs=VIEWS[
         ${buttonHTML(it,s,true)}</div>
       ${bs.map(b=>`<button class="il-bundle" data-gotab="bundles"><span>${b.emoji}</span><span><b>Part of ${esc(b.name)}</b><small>${b.items.length} items for ✦ ${fmt(P().price(b.price))}, save ${Math.round((1-b.price/sumOf(b))*100)}%</small></span><span>→</span></button>`).join('')}
     </div></div>`;
+  const ic=$('#itemCard');if(refresh&&ic._id===id+view){if(ic._h!==ih)L.morph(ic,ih)}else ic.innerHTML=ih;ic._h=ih;ic._id=id+view;
   const m=$('#itemModal');m.classList.add('on');bind($('#itemCard'));
   $('#itemCard').querySelectorAll('[data-iv]').forEach(b=>b.onclick=()=>{view=b.dataset.iv;openItem(id,true)})}
 function closeItem(){openId=null;$('#itemModal')?.classList.remove('on')}
@@ -206,7 +246,7 @@ function celebrate(c){const g=c.grants||{},k=g.ultimate?'ultimate':g.pro?'pro':g
   const el=document.createElement('div');el.className='prem-celebrate';el.innerHTML=`${L.cos.fxLayer(k==='ultimate'?'fx_nebula':k==='pro'?'fx_circuit':k==='upgrade'?'fx_prism':'fx_golddust')}<div class="pc-box"><span class="ptag ptag-${k==='upgrade'?'up':k==='ultAdmin'?'ultimate':k}">${k==='upgrade'?'UPGRADE':k==='ultAdmin'?'ULTIMATE':k.toUpperCase()}</span><h2>Welcome to ${name}</h2><p>${c.glow?`✦ ${fmt(c.glow)} Glow added. `:''}Your perks are on. Head to your profile to try the new options${k==='ultAdmin'?'':', or wear your members-only effects'}.</p><button class="btn-gold big">Let's go</button></div>`;
   document.body.appendChild(el);el.querySelector('button').onclick=()=>{el.remove();go('premium')};el.onclick=e=>{if(e.target===el)el.remove()}}
 
-$('#shopTabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b){closeItem();tab=b.dataset.t;render()}};
+$('#shopGrid').addEventListener('click',e=>{const b=e.target.closest('.store-nav [data-t]');if(b)go(b.dataset.t,true)});
 $('#claimBtn').onclick=claim;
 $('#codeForm').onsubmit=e=>{e.preventDefault();redeem($('#codeIn'),$('#codeForm button'))};
 L.shopGo=t=>{L.go?.('shop');go(t)};

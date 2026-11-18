@@ -236,8 +236,12 @@ function detach(cv){const i=insts.get(cv);if(!i)return;insts.delete(cv);io.unobs
 
 /* brain: idle → wander → do something → idle */
 function think(inst,dt){const k=inst.kind,a=inst.actor;inst.timer-=dt;k.moving=inst.state==='walk';
+  const bxs=inst.cv.dataset.bx,pin=!inst.card&&bxs!==undefined&&bxs!==''&&+bxs>=0?(+bxs/100*2-1)*inst.half:null;
+  // a chosen spot: walk there (or, if it moved a long way, appear there), then stay put and do things
+  if(pin!==null&&inst.state==='idle'&&Math.abs(a.position.x-pin)>.02){if(inst.pinAt===undefined)a.position.x=pin;else{inst.target=pin;inst.dir=Math.sign(pin-a.position.x)||1;k.dir=inst.dir;inst.state='walk';inst.sp=0;k.walkStart?.()}}
+  inst.pinAt=pin;
   if(inst.state==='idle'){a.rotation.y=angLerp(a.rotation.y,k.faceYaw,dt*3);
-    if(inst.timer<=0){if(Math.random()<(k.walkChance??.55)&&inst.half>.1){inst.target=rnd(-inst.half,inst.half);if(Math.abs(inst.target-a.position.x)<.08)inst.target=-a.position.x;inst.dir=Math.sign(inst.target-a.position.x)||1;k.dir=inst.dir;inst.state='walk';inst.sp=0;k.walkStart?.()}
+    if(inst.timer<=0){if(pin===null&&Math.random()<(k.walkChance??.55)&&inst.half>.1){inst.target=rnd(-inst.half,inst.half);if(Math.abs(inst.target-a.position.x)<.08)inst.target=-a.position.x;inst.dir=Math.sign(inst.target-a.position.x)||1;k.dir=inst.dir;inst.state='walk';inst.sp=0;k.walkStart?.()}
       else{const names=Object.keys(k.actions),tot=names.reduce((a,n)=>a+(k.actions[n].w??1),0);let r=Math.random()*tot,n=names[0];for(const x of names){r-=k.actions[x].w??1;if(r<=0){n=x;break}}inst.act=k.actions[n];inst.actT=0;inst.state='act';inst.act.start?.(inst);inst.timer=inst.act.dur}}}
   else if(inst.state==='walk'){a.rotation.y=angLerp(a.rotation.y,k.walkFacing(inst.dir),dt*6);inst.sp=lerp(inst.sp||0,Math.min(k.speed,Math.abs(inst.target-a.position.x)*3+.02),Math.min(1,dt*4));a.position.x+=inst.dir*inst.sp*dt;k.walkTick?.(dt,inst.t);
     if((inst.target-a.position.x)*inst.dir<=0){a.position.x=inst.target;inst.state='idle';inst.timer=k.calm?rnd(3,6):rnd(1,3.5);k.walkStop?.()}}
