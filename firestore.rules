@@ -47,6 +47,7 @@ service cloud.firestore {
             && ((ol == null && nc == oc + 500)
              || (ol != null && request.time > ol + duration.value(20, 'h') && nc == oc + 150)))
         || (no == oo && nl == ol && earnOk(o, n, oc, nc))
+        || (no == oo && nl == ol && redeemOk(o, n, oc, nc))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo)
             && n.get('lastBuy', '') in prices() && no.hasAny([n.lastBuy]) && !oo.hasAny([n.lastBuy])
             && nc == oc - prices()[n.lastBuy] && nc >= 0);
@@ -54,6 +55,15 @@ service cloud.firestore {
 
     // Collecting Glow from a post: 50 per new paid-out view, 150 per new paid-out comment,
     // checked against the post's counters before and after the same batched write.
+    // Redeeming a Glow code: + exactly the code's amount, paired with this account's one-time redemption record
+    function codePath(c) { return /databases/$(database)/documents/codes/$(c); }
+    function redeemOk(o, n, oc, nc) {
+      let c = n.get('lastCode', '');
+      return c != '' && c != o.get('lastCode', '')
+        && !exists(/databases/$(database)/documents/codes/$(c)/used/$(uid()))
+        && existsAfter(/databases/$(database)/documents/codes/$(c)/used/$(uid()))
+        && nc == oc + get(codePath(c)).data.amount;
+    }
     function earnOk(o, n, oc, nc) {
       let pid = n.get('lastEarn', '');
       let pb = get(postPath(pid)).data;
@@ -84,6 +94,25 @@ service cloud.firestore {
     match /bans/{userId} {
       allow read: if signedIn();
       allow write: if isAdmin();
+    }
+    // Glow codes: the admin makes them; anyone can redeem a code once, until it runs out
+    match /codes/{code} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.amount is int && request.resource.data.amount > 0 && request.resource.data.amount <= 100000000
+        && request.resource.data.maxUses is int && request.resource.data.maxUses >= 1 && request.resource.data.uses == 0;
+      allow delete: if isAdmin();
+      // one more use, paired with this account's redemption record
+      allow update: if active() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses'])
+        && request.resource.data.uses == resource.data.uses + 1 && request.resource.data.uses <= resource.data.maxUses
+        && !exists(/databases/$(database)/documents/codes/$(code)/used/$(uid()))
+        && existsAfter(/databases/$(database)/documents/codes/$(code)/used/$(uid()));
+      match /used/{who} {
+        allow get: if signedIn() && who == uid();
+        allow list: if isAdmin();
+        allow create: if active() && who == uid()
+          && getAfter(codePath(code)).data.uses == get(codePath(code)).data.uses + 1;
+      }
     }
     match /server/{doc} {
       allow read: if signedIn();

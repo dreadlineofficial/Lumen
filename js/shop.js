@@ -42,6 +42,15 @@ async function equip(id,on,quiet){const it=L.cos.byId[id];if(!it)return;const sl
 $('#shopTabs').innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join('');
 $('#shopTabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b){tab=b.dataset.t;render()}};
 $('#claimBtn').onclick=claim;
+async function redeem(e){e.preventDefault();if(!prof)return toast('Sign in first');const code=$('#codeIn').value.trim().toUpperCase().replace(/\s+/g,'');if(!code)return;
+  const {F,D,db,me}=L.cloud;const btn=$('#codeForm button');btn.disabled=true;
+  try{const snap=await F.getDoc(D('codes',code));if(!snap.exists()){toast('That code doesn’t exist');btn.disabled=false;return}const c=snap.data();
+    if((c.uses||0)>=c.maxUses){toast('That code has been used up');btn.disabled=false;return}
+    const usedSnap=await F.getDoc(D('codes',code,'used',me().uid)).catch(()=>null);if(usedSnap?.exists()){toast('You’ve already redeemed this code');btn.disabled=false;return}
+    const b=F.writeBatch(db);b.set(D('codes',code,'used',me().uid),{at:F.serverTimestamp()});b.update(D('codes',code),{uses:F.increment(1)});b.update(D('users',me().uid),{coins:coins()+c.amount,lastCode:code});
+    await b.commit();$('#codeIn').value='';toast(`+${(+c.amount).toLocaleString()} ✦ Glow!`)}
+  catch(err){toast(err.code==='permission-denied'?'That code can’t be redeemed (used up, already used by you, or not active yet)':'Couldn’t redeem: '+err.message)}btn.disabled=false}
+$('#codeForm').onsubmit=redeem;
 const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);prof=p;render()};
 const prevV=L.onView;L.onView=v=>{prevV?.(v);if(v==='shop')render()};
 if(L.cloud)prof=L.cloud.profile();

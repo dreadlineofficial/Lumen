@@ -472,3 +472,9 @@ body.is-banned .composer-bar input,body.is-banned #postText{opacity:.5;pointer-e
   #v-chat #roomList p{display:none}
   .composer-bar{padding-right:78px}
 }
+
+/* admin-only menu item stays hidden for everyone else, whatever the layout settings say */
+#navAdmin[style*='none']{display:none!important}
+
+.code-form{margin-left:auto;gap:6px}.code-form input{border-radius:999px;padding:10px 16px;width:230px;font-family:'JetBrains Mono',monospace;letter-spacing:.03em}
+@media(max-width:760px){.code-form{margin-left:0;width:100%}.code-form input{flex:1;width:auto}}

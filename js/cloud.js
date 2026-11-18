@@ -336,8 +336,9 @@ function listenServer(){unsubs.push(F.onSnapshot(D('server','config'),s=>{const 
 let allUsers=[],adminQ='';
 function startAdmin(){$('#navAdmin').style.display=isAdmin()?'':'none';if(!isAdmin())return;
   unsubs.push(F.onSnapshot(F.query(C('users'),F.orderBy('nameLower'),F.limit(500)),s=>{allUsers=s.docs.map(d=>({uid:d.id,...d.data()}));renderAdmin()}));
-  unsubs.push(F.onSnapshot(C('bans'),s=>{bannedSet=new Set(s.docs.map(d=>d.id));renderAdmin()}))}
-let bannedSet=new Set();
+  unsubs.push(F.onSnapshot(C('bans'),s=>{bannedSet=new Set(s.docs.map(d=>d.id));renderAdmin()}));
+  unsubs.push(F.onSnapshot(C('codes'),s=>{glowCodes=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAdmin()},()=>{}))}
+let bannedSet=new Set(),glowCodes=[];
 function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
   const chans=serverChannels||rooms();
   const list=allUsers.filter(u=>!adminQ||u.nameLower?.includes(adminQ)||u.uid.toLowerCase().includes(adminQ));
@@ -345,6 +346,9 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
    <div class="two" style="align-items:start"><div class="card"><h2>Accounts</h2><input id="admQ" placeholder="Search name or ID" value="${esc(adminQ)}" style="margin:10px 0">
      <div class="list adm-users">${list.map(u=>`<div class="person${bannedSet.has(u.uid)?' banned':''}">${pic(u,38)}<div class="info"><input class="adm-name" data-uid="${u.uid}" value="${esc(u.name||'')}" maxlength="24"><span class="muted" style="font-size:11px">✦ ${(+u.coins||0).toLocaleString()} · ${u.uid}${bannedSet.has(u.uid)?' · banned':''}${u.uid===ADMIN_UID?' · admin':''}</span></div>
        <button class="ib" data-gift="${u.uid}" title="Gift Glow">🎁</button>${u.uid===ADMIN_UID?'':`<button class="ib" data-admdm="${u.uid}" title="Message">💬</button>${bannedSet.has(u.uid)?`<button class="ib" data-unban="${u.uid}" title="Unban">↩</button>`:`<button class="ib" data-ban="${u.uid}" title="Delete profile and ban">⛔</button>`}`}</div>`).join('')||'<p class="muted">No accounts found.</p>'}</div></div>
+   <div class="card"><h2>✦ Glow codes</h2><p class="muted" style="font-size:13px">Make a code worth any amount. People redeem it in the Shop, once each, until it runs out.</p>
+     <form class="row" id="mkCode" style="margin:10px 0;flex-wrap:wrap"><input id="codeAmt" type="number" min="1" placeholder="Glow amount" style="flex:1;min-width:120px"><input id="codeUses" type="number" min="1" value="1" title="How many people can use it" style="width:90px"><button class="btn-acc">Generate</button></form>
+     <div class="list">${glowCodes.map(c=>`<div class="person"><div class="info"><b style="font-family:'JetBrains Mono',monospace;letter-spacing:.04em">${esc(c.id)}</b><span>✦ ${(+c.amount).toLocaleString()} · used ${c.uses}/${c.maxUses}</span></div><button class="ib" data-copycode="${esc(c.id)}" title="Copy">📋</button><button class="ib" data-delcode="${esc(c.id)}" title="Delete">✕</button></div>`).join('')||'<p class="muted" style="font-size:13px">No codes yet.</p>'}</div></div>
    <div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
      <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div></div>`;
   $('#admQ').oninput=e=>{adminQ=e.target.value.trim().toLowerCase();const pos=e.target.selectionStart;renderAdmin();const q=$('#admQ');q.focus();q.setSelectionRange(pos,pos)};
@@ -357,10 +361,15 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
     try{const fresh=await F.getDoc(D('users',b.dataset.gift));const next=Math.min(1e9,(+fresh.data()?.coins||0)+amt);await F.updateDoc(D('users',b.dataset.gift),{coins:next});toast(`Gifted ✦ ${amt.toLocaleString()} to ${u?.name||'them'}`)}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-unban]').forEach(b=>b.onclick=async()=>{try{await F.deleteDoc(D('bans',b.dataset.unban));toast('Unbanned')}catch(e){toast(e.message)}});
   box.querySelectorAll('[data-rmch]').forEach(b=>b.onclick=()=>saveChannels(chans.filter(c=>c!==b.dataset.rmch)));
+  $('#mkCode').onsubmit=async e=>{e.preventDefault();const amount=Math.floor(+$('#codeAmt').value),maxUses=Math.max(1,Math.floor(+$('#codeUses').value||1));if(!(amount>0))return toast('Enter how much Glow the code is worth');
+    const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint8Array(12));const raw=[...r].map(x=>A[x%A.length]).join('');const code=`LUMEN-${raw.slice(0,4)}-${raw.slice(4,8)}-${raw.slice(8)}`;
+    try{await F.setDoc(D('codes',code),{amount,maxUses,uses:0,at:F.serverTimestamp()});try{await navigator.clipboard.writeText(code)}catch{}toast(`Code ${code} made and copied`)}catch(err){adminErr(err)}};
+  box.querySelectorAll('[data-copycode]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copycode);toast('Copied')}catch{prompt('Copy this code',b.dataset.copycode)}});
+  box.querySelectorAll('[data-delcode]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this code? Nobody else can redeem it after this.'))return;try{await F.deleteDoc(D('codes',b.dataset.delcode))}catch(err){adminErr(err)}});
   $('#addCh').onsubmit=e=>{e.preventDefault();const c=$('#newCh').value.trim().toLowerCase().replace(/[^\w-]/g,'').slice(0,30);if(!c)return;if(chans.includes(c))return toast('Already exists');saveChannels([...chans,c])}}
 function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. Re-publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).':e.message)}
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={F,D,me:()=>me,profile:()=>myProfile,card,pic,nameHTML};
+L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML};
 L.onCloudReady?.();

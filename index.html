@@ -5,18 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
 <meta name="lumen-app" content="1">
-<title>Lumen</title>
+<title>Learning Portal</title>
+<script>document.documentElement.classList.add('booting');setTimeout(function(){document.documentElement.classList.remove('booting')},4000)</script>
+<style>html.booting,html.booting body{background:#f6f8fc!important}html.booting body>*:not(#study){visibility:hidden!important}html.booting #study{display:block}</style>
 <script>
 /* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
-window.LUMEN_VERSION='2026-11-18c';
+window.LUMEN_VERSION='2026-11-18d';
 (function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
 </script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261118c">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261118c">
+<link rel="stylesheet" href="css/app.css?v=20261118d">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261118d">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -51,10 +53,10 @@ window.LUMEN_VERSION='2026-11-18c';
         <div class="bw-bar">
           <button class="ib" id="bwBack" title="Back">‹</button><button class="ib" id="bwFwd" title="Forward">›</button><button class="ib" id="bwReload" title="Reload">↻</button><button class="ib" id="bwHome" title="Home">⌂</button>
           <form class="bw-url" id="bwForm"><span id="bwLock">🔍</span><input id="bwIn" placeholder="Search or type an address" autocomplete="off" spellcheck="false"></form>
-          <button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open in a cloaked tab: it opens as about:blank, so this page's address isn't saved in your browser history">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
+          <button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open outside Lumen: in a cloaked tab when the site allows it (not saved in history), otherwise in a normal new tab">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
         </div>
         <div class="bw-note" id="bwNote">🔒 Pages you open here load inside Lumen, so they don't show up in your browser's history (only Lumen does). Your network, school filter or a signed-in Google account can still keep their own records. <a href="#" id="bwNoteX">Got it</a></div>
-        <div class="bw-hint" id="bwHint" style="display:none">Page blank or “refused to connect”? This site blocks being shown inside other sites. <a href="#" id="bwHintCloak">Open it in a cloaked tab</a> (cloaked tabs aren't saved in your history) · <a href="#" id="bwHintX">dismiss</a></div>
+        <div class="bw-hint" id="bwHint" style="display:none">Page blank or “refused to connect”? This site blocks being shown inside other sites (inside Lumen or a cloaked tab). <a href="#" id="bwHintCloak">Open it in a new tab</a> · <a href="#" id="bwHintX">dismiss</a></div>
         <div class="bw-body" id="bwBody"></div>
       </div>
     </section>
@@ -111,7 +113,7 @@ window.LUMEN_VERSION='2026-11-18c';
 
     <section class="view" id="v-shop">
       <h1>The <span class="serif iri">shop.</span></h1><p class="sub">Spend ✦ Glow on effects for your profile card, picture, name and profile bar, or a whole new look for Lumen. Claim free Glow every day.</p>
-      <div class="shop-head"><span class="glow-bal"><span class="g">✦</span><span id="glowBal">0</span> Glow</span><button class="claim" id="claimBtn">🎁 Claim</button></div>
+      <div class="shop-head"><span class="glow-bal"><span class="g">✦</span><span id="glowBal">0</span> Glow</span><button class="claim" id="claimBtn">🎁 Claim</button><form class="row code-form" id="codeForm"><input id="codeIn" placeholder="Have a code? LUMEN-…" autocomplete="off" spellcheck="false"><button>Redeem</button></form></div>
       <div class="shop-tabs" id="shopTabs"></div>
       <div class="shop-grid" id="shopGrid"></div>
     </section>
@@ -193,7 +195,7 @@ window.LUMEN_VERSION='2026-11-18c';
           <li><b>Safe page:</b> where Panic sends you. <i>Disguise this visit in history</i> renames Lumen's history entry (for example to "Google Classroom") before leaving.</li>
           <li><b>Close the tab:</b> browsers only let a site close tabs it opened itself. Use <b>Stealth launch</b> (Disguise card) once, and Panic can then close the tab.</li>
           <li><b>Tab title and icon:</b> make the tab look like Docs, Classroom or Google.</li>
-          <li><b>Lumen's Web tab</b> doesn't add the pages you visit to your browser history (only Lumen itself appears). Your network, school filter or a signed-in Google account can still keep their own records.</li></ul></details>
+          <li><b>Lumen's Web tab</b> doesn't add the pages you visit to your browser history. Only Lumen itself appears, listed as <b>Learning Portal</b>. Your network, school filter or a signed-in Google account can still keep their own records.</li></ul></details>
         <details><summary>⏰ Timed cover pages and the Return-key extension</summary><ul>
           <li>Pick times (for example a lesson) and a page. During those times, Panic and Swap show that page instead.</li>
           <li><b>Essay</b>, <b>worksheet</b>, Google, Wikipedia and Desmos show inside Lumen; press Panic again to come back.</li>
@@ -201,7 +203,7 @@ window.LUMEN_VERSION='2026-11-18c';
         <details><summary>🎮 Games and 🌐 the Web tab</summary><ul>
           <li><b>Games:</b> click a card to play. <b>Add a game</b> takes a link or an HTML file from your device (files stay in this browser only).</li>
           <li><b>Web:</b> a browser inside Lumen with tabs. Searches use Google. YouTube has its own page with Home, Shorts and search; videos play inside Lumen.</li>
-          <li>Many big sites refuse to load inside other sites. If a page stays blank, press <b>⧉ Open cloaked</b>.</li></ul></details>
+          <li>Many big sites (most Google pages, ManageBac, Instagram…) refuse to load inside other sites, both inside Lumen and in a cloaked tab. Press <b>⧉</b>: sites that allow it open in a cloaked tab (not saved in your history); the rest open in a normal new tab.</li></ul></details>
         <details><summary>💬 Chat, friends and posts</summary><ul>
           <li><b>Chat:</b> public channels everyone can read. <b>Friends:</b> search people, send requests, and chat privately. Only you two can read private chats.</li>
           <li>Green dot = online, yellow = idle (Lumen in a background tab), grey = offline.</li>
@@ -209,6 +211,7 @@ window.LUMEN_VERSION='2026-11-18c';
           <li><b>Posts:</b> share text and an image. People can like ❤️ and comment.</li></ul></details>
         <details><summary>✦ Glow, the Shop and your profile</summary><ul>
           <li>Claim <b>500 Glow</b> the first time and <b>150 Glow</b> every day in the <b>Shop</b>.</li>
+          <li><b>Glow codes:</b> got a code (LUMEN-…)? Type it into <b>Redeem</b> at the top of the Shop. Each code works once per person.</li>
           <li><b>Earn from posts:</b> every view from someone else = 50 Glow (up to 2 per person per day), every comment from someone else = 150 Glow. Collect it in <b>Posts → My analytics</b>.</li>
           <li>Spend it on profile effects, avatar decorations, nameplates, name effects and themes. Bought items appear in <b>Owned</b>; equip or unequip any time.</li>
           <li><b>Profile:</b> banner, picture, name style, status, about me, links, and what friends can see you doing.</li></ul></details>
@@ -368,13 +371,13 @@ window.LUMEN_VERSION='2026-11-18c';
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261118c"></script>
-<script src="js/study.js?v=20261118c"></script>
-<script src="js/app.js?v=20261118c"></script>
-<script src="js/cosmetics.js?v=20261118c"></script>
-<script src="js/rich.js?v=20261118c"></script>
-<script src="js/browser.js?v=20261118c"></script>
-<script type="module" src="js/cloud.js?v=20261118c"></script>
-<script type="module" src="js/shop.js?v=20261118c"></script>
+<script src="js/config.js?v=20261118d"></script>
+<script src="js/study.js?v=20261118d"></script>
+<script src="js/app.js?v=20261118d"></script>
+<script src="js/cosmetics.js?v=20261118d"></script>
+<script src="js/rich.js?v=20261118d"></script>
+<script src="js/browser.js?v=20261118d"></script>
+<script type="module" src="js/cloud.js?v=20261118d"></script>
+<script type="module" src="js/shop.js?v=20261118d"></script>
 </body>
 </html>
