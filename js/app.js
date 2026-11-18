@@ -278,10 +278,11 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-18k',items:[
-  ['🎯','Place it your way','Creators can use a GIF or a photo for shop items, and set exactly where and how it appears: fill, repeat or place, with size, position and opacity.','creator'],
-  ['✦','Creators keep 90%','Lumen creators now keep 90% of every shop sale.','shop'],
-  ['🖼','Frame your game cover','Zoom and drag your game cover to choose which part shows on the cards.'],
+const NEWS={id:'2026-11-18l',items:[
+  ['🔓','Paid games','Creators can set a price to unlock their games and keep 90% of every unlock.','games'],
+  ['✏️','Edit live listings','Creators can change names, descriptions, prices and placement without going back through review.','creator'],
+  ['👕','Wear your own creations','Creators can equip their own approved shop items for free.','shop'],
+  ['🎞','Bigger GIFs','Creator GIFs can now be up to 4 MB.'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');

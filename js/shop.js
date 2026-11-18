@@ -38,12 +38,18 @@ function renderCreator(grid){const list=citems.slice().sort((a,b)=>(b.sales||0)-
   list.forEach(i=>{if(!cnames[i.uid])L.cloud?.getUser(i.uid).then(u=>{cnames[i.uid]=u.name||'a creator';render()})});
   grid.innerHTML=`<div class="shop-cr-intro card"><b>🛠 Made by Lumen creators</b><span class="muted">Profile effects, decorations and nameplates made by the community and checked by the admin. Creators keep 90% of every sale.${prof?'':' Sign in to buy.'}</span></div>`+
    (list.map(it=>{const own=owned().includes(it.id),eq=prof&&prof[SLOT[it.type]]===it.id,mine=prof&&it.uid===prof.uid;
-    const btn=!prof?`<button disabled>Sign in</button>`:eq?`<button data-unequip="${it.id}">Unequip</button>`:own?`<button class="btn-acc" data-equip="${it.id}">Equip</button>`:mine?'<button disabled>Your item</button>':`<button class="${coins()>=it.price?'btn-acc':''}" data-buy="${it.id}" ${coins()>=it.price?'':'disabled'}>Buy</button>`;
+    const btn=!prof?`<button disabled>Sign in</button>`:eq?`<button data-unequip="${it.id}">Unequip</button>`:own?`<button class="btn-acc" data-equip="${it.id}">Equip</button>`:mine?`<button class="btn-acc" data-ownequip="${it.id}">Equip (free)</button>`:`<button class="${coins()>=it.price?'btn-acc':''}" data-buy="${it.id}" ${coins()>=it.price?'':'disabled'}>Buy</button>`;
     return`<div class="card sitem${eq?' equipped':''}"><div class="prev">${eq?'<span class="tag">Equipped</span>':own?'<span class="tag">Owned</span>':''}${preview(it)}</div>
       <div class="meta"><b>${esc(it.name)}</b><span>${TYPE_LABEL[it.type]} · by ${esc(cnames[it.uid]||'…')}${it.desc?' · '+esc(it.desc):''}</span><div class="act-row"><span class="price">${own?'':'✦ '+it.price}</span>${btn}</div></div></div>`}).join('')||'<p class="muted">No creator items yet. Lumen creators can make them on their Creator page.</p>');
   grid.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>buy(b.dataset.buy));
   grid.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>equip(b.dataset.equip,true));
+  grid.querySelectorAll('[data-ownequip]').forEach(b=>b.onclick=()=>equipOwn(b.dataset.ownequip));
   grid.querySelectorAll('[data-unequip]').forEach(b=>b.onclick=()=>equip(b.dataset.unequip,false))}
+/* creators wear their own approved items for free */
+async function equipOwn(id){if(!prof)return;const it=getItem(id)||{id,type:(await L.cloud.F.getDoc(L.cloud.D('shopItems',id))).data()?.type,name:'Your item'};
+  if(prof[SLOT[it.type]]===id)return equip(id,false);
+  try{if(!owned().includes(id))await upd({owned:[...owned(),id],lastBuy:id});await upd({[SLOT[it.type]]:id});toast(`${it.name||'Item'} equipped`)}catch(e){toast('Couldn’t equip: '+(e.code==='permission-denied'?'it has to be approved first':e.message))}}
+L.equipOwn=equipOwn;
 function listenCreator(){cunsub?.();cunsub=null;citems=[];if(!prof||!L.cloud)return;const {F,db}=L.cloud;
   cunsub=F.onSnapshot(F.query(F.collection(db,'shopItems'),F.where('status','==','approved')),s=>{citems=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{})}
 L.shopItem=getItem;

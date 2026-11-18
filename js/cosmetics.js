@@ -78,7 +78,7 @@ const CID=/^c_[A-Za-z0-9]{8,24}$/;const custom=new Map();
 const IMG=/^data:image\/(gif|png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
 function ensure(id){if(!CID.test(id)||custom.has(id))return;custom.set(id,null);
   const go=()=>{const c=window.Lumen.cloud;if(!c?.F||!c.me?.()){setTimeout(()=>{custom.delete(id)},4000);return}
-    c.F.getDoc(c.D('shopImgs',id)).then(s=>{const d=s.data();if(!d||!IMG.test(d.data||''))return;addRule(id,d.data,d)}).catch(()=>custom.delete(id))};
+    c.F.getDoc(c.D('shopImgs',id)).then(async s=>{const d=s.data();if(!d)return;if(d.parts>0&&d.parts<=8)d.data=(await Promise.all([...Array(d.parts).keys()].map(i=>c.F.getDoc(c.D('shopImgs',id,'parts',String(i))).then(x=>x.data()?.d||'')))).join('');if(!IMG.test(d.data||''))return;addRule(id,d.data,d)}).catch(()=>custom.delete(id))};
   window.Lumen.cloud?go():setTimeout(go,1500)}
 const num=(v,d,a,b)=>{v=Math.round(+v);return Number.isFinite(v)?Math.min(b,Math.max(a,v)):d};
 /* placement: mode fill (cover, zoomable), tile (repeating pattern) or place (free size and position); x/y in %, scale in %, opacity in % */
