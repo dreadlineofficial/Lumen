@@ -36,7 +36,7 @@ function render(){const grid=$('#shopGrid');if(!grid)return;
 /* creator-made items: only in this tab */
 function renderCreator(grid){const list=citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0));
   list.forEach(i=>{if(!cnames[i.uid])L.cloud?.getUser(i.uid).then(u=>{cnames[i.uid]=u.name||'a creator';render()})});
-  grid.innerHTML=`<div class="shop-cr-intro card"><b>🛠 Made by Lumen creators</b><span class="muted">Profile effects, decorations and nameplates made by the community and checked by the admin. Creators get half of every sale.${prof?'':' Sign in to buy.'}</span></div>`+
+  grid.innerHTML=`<div class="shop-cr-intro card"><b>🛠 Made by Lumen creators</b><span class="muted">Profile effects, decorations and nameplates made by the community and checked by the admin. Creators keep 90% of every sale.${prof?'':' Sign in to buy.'}</span></div>`+
    (list.map(it=>{const own=owned().includes(it.id),eq=prof&&prof[SLOT[it.type]]===it.id,mine=prof&&it.uid===prof.uid;
     const btn=!prof?`<button disabled>Sign in</button>`:eq?`<button data-unequip="${it.id}">Unequip</button>`:own?`<button class="btn-acc" data-equip="${it.id}">Equip</button>`:mine?'<button disabled>Your item</button>':`<button class="${coins()>=it.price?'btn-acc':''}" data-buy="${it.id}" ${coins()>=it.price?'':'disabled'}>Buy</button>`;
     return`<div class="card sitem${eq?' equipped':''}"><div class="prev">${eq?'<span class="tag">Equipped</span>':own?'<span class="tag">Owned</span>':''}${preview(it)}</div>

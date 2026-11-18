@@ -278,10 +278,10 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-18j',items:[
-  ['🛠','Creator shop items','Lumen creators can now make profile effects, decorations and nameplates. Find them in Shop → Creator.','shop'],
-  ['🖼','Bigger game covers','Creators can upload game covers up to 3 MB.'],
-  ['🟢','Join Nightbound lobbies','When someone hosts a Nightbound lobby, a Join button shows on the Hub and in your friends list.','hub'],
+const NEWS={id:'2026-11-18k',items:[
+  ['🎯','Place it your way','Creators can use a GIF or a photo for shop items, and set exactly where and how it appears: fill, repeat or place, with size, position and opacity.','creator'],
+  ['✦','Creators keep 90%','Lumen creators now keep 90% of every shop sale.','shop'],
+  ['🖼','Frame your game cover','Zoom and drag your game cover to choose which part shows on the cards.'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');

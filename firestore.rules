@@ -78,7 +78,7 @@ service cloud.firestore {
         && nc == oc + 20 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
         && nc > oc;
     }
-    // Creator shop items: buying one costs exactly its price; the creator later collects half of each sale
+    // Creator shop items: buying one costs exactly its price; the creator later collects 90% of each sale
     function itemPath(i) { return /databases/$(database)/documents/shopItems/$(i); }
     function creatorBuyOk(n, oc, nc, no, oo) {
       let id = n.get('lastBuy', '');
@@ -162,7 +162,11 @@ service cloud.firestore {
     function projectOk(d) {
       return d.type in ['game', 'site'] && d.title is string && d.title.size() >= 2 && d.title.size() <= 60
         && d.url is string && d.url.size() <= 500 && d.url.matches('^https://.*')
-        && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 900000;
+        && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 900000
+        && d.get('ix', 50) is int && d.get('ix', 50) >= 0 && d.get('ix', 50) <= 100
+        && d.get('iy', 50) is int && d.get('iy', 50) >= 0 && d.get('iy', 50) <= 100
+        && d.get('iz', 100) is int && d.get('iz', 100) >= 100 && d.get('iz', 100) <= 400
+        && d.get('ar', 160) is int && d.get('ar', 160) >= 5 && d.get('ar', 160) <= 2000;
     }
     function counters() { return ['minutes', 'mentions', 'upReviews', 'paidMin', 'paidMent', 'paidRev', 'lastMention', 'lastReview']; }
     match /projects/{id} {
@@ -176,7 +180,7 @@ service cloud.firestore {
         && d().get('featured', false) == false && projectOk(d()) && !d().keys().hasAny(counters());
       // a creator's edit goes back into review (counters can't be touched)
       allow update: if active() && isCreator() && o().uid == uid()
-        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'status', 'at'])
+        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'ix', 'iy', 'iz', 'ar', 'status', 'at'])
         && d().status == 'pending' && projectOk(d());
       allow update: if isAdmin() && projectOk(d()) && d().status in ['pending', 'approved', 'rejected'];
       allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
@@ -241,8 +245,9 @@ service cloud.firestore {
     function itemOk(d) {
       return d.type in ['fx', 'deco', 'plate'] && d.name is string && d.name.size() >= 2 && d.name.size() <= 30
         && d.get('desc', '') is string && d.get('desc', '').size() <= 120
-        && d.price is int && d.price >= 50 && d.price <= 5000 && d.price % 10 == 0 && d.cut is int && d.cut * 2 == d.price
-        && d.mode in ['fill', 'tile'];
+        && d.price is int && d.price >= 50 && d.price <= 5000 && d.price % 10 == 0 && d.cut is int
+        && (d.cut * 10 == d.price * 9 || d.cut * 2 == d.price)
+        && d.mode in ['fill', 'tile', 'place'];
     }
     match /shopItems/{id} {
       function d() { return request.resource.data; }
@@ -265,12 +270,20 @@ service cloud.firestore {
       allow update: if active() && o().uid == uid() && keys().hasOnly(['paidEarned']) && d().paidEarned == o().get('earned', 0);
       allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
     }
+    // where and how a creator's image sits: position and size in %, opacity in %
+    function placeOk(d) {
+      return d.get('x', 50) is int && d.get('x', 50) >= 0 && d.get('x', 50) <= 100
+        && d.get('y', 50) is int && d.get('y', 50) >= 0 && d.get('y', 50) <= 100
+        && d.get('scale', 100) is int && d.get('scale', 100) >= 10 && d.get('scale', 100) <= 400
+        && d.get('op', 100) is int && d.get('op', 100) >= 10 && d.get('op', 100) <= 100;
+    }
     match /shopImgs/{id} {
       allow read: if signedIn();
       allow create, update: if active() && request.resource.data.uid == uid()
-        && request.resource.data.keys().hasOnly(['uid', 'data', 'mode', 'type'])
+        && request.resource.data.keys().hasOnly(['uid', 'data', 'mode', 'type', 'x', 'y', 'scale', 'op'])
         && request.resource.data.data is string && request.resource.data.data.size() < 950000
-        && request.resource.data.data.matches('^data:image/gif;base64,.*')
+        && request.resource.data.data.matches('^data:image/(gif|png|webp|jpeg);base64,.*')
+        && placeOk(request.resource.data)
         && getAfter(itemPath(id)).data.uid == uid() && getAfter(itemPath(id)).data.status == 'pending';
       allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
     }

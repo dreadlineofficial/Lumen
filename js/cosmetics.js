@@ -74,16 +74,25 @@ const R=(a,b)=>a+Math.random()*(b-a);
 const css=o=>Object.entries(o).map(([k,v])=>`${k}:${v}`).join(';');
 
 /* creator-made items (id "c_…"): a transparent GIF stored in shopImgs/{id}, loaded once and turned into a CSS rule */
-const CID=/^c_[A-Za-z0-9]{8,24}$/;const custom=new Map();let cstyle=null;
+const CID=/^c_[A-Za-z0-9]{8,24}$/;const custom=new Map();
+const IMG=/^data:image\/(gif|png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
 function ensure(id){if(!CID.test(id)||custom.has(id))return;custom.set(id,null);
   const go=()=>{const c=window.Lumen.cloud;if(!c?.F||!c.me?.()){setTimeout(()=>{custom.delete(id)},4000);return}
-    c.F.getDoc(c.D('shopImgs',id)).then(s=>{const d=s.data();if(!d||!/^data:image\/gif;base64,[A-Za-z0-9+/=]+$/.test(d.data||''))return;addRule(id,d.data,d.mode)}).catch(()=>custom.delete(id))};
+    c.F.getDoc(c.D('shopImgs',id)).then(s=>{const d=s.data();if(!d||!IMG.test(d.data||''))return;addRule(id,d.data,d)}).catch(()=>custom.delete(id))};
   window.Lumen.cloud?go():setTimeout(go,1500)}
-function addRule(id,data,mode){custom.set(id,{mode});if(!cstyle){cstyle=document.createElement('style');cstyle.id='creatorCos';document.head.appendChild(cstyle)}
-  const u=`url("${data}")`,fill=mode==='tile'?`background-image:${u};background-repeat:repeat;background-size:auto`:`background-image:${u};background-repeat:no-repeat;background-size:cover;background-position:center`;
-  cstyle.appendChild(document.createTextNode(`.cfx-${id}{${fill}}.cdeco-${id}{background-image:${u}}.cplate-${id}::before{background:${u} center/cover no-repeat!important}`))}
-/* preview an uploaded GIF before it's saved */
-function previewRule(id,data,mode){custom.delete(id);addRule(id,data,mode)}
+const num=(v,d,a,b)=>{v=Math.round(+v);return Number.isFinite(v)?Math.min(b,Math.max(a,v)):d};
+/* placement: mode fill (cover, zoomable), tile (repeating pattern) or place (free size and position); x/y in %, scale in %, opacity in % */
+function ruleCSS(id,data,o={}){const u=`url("${data}")`,m=['fill','tile','place'].includes(o.mode)?o.mode:'fill',x=num(o.x,50,0,100),y=num(o.y,50,0,100),op=num(o.op,100,10,100)/100;
+  const s=num(o.scale,m==='tile'?33:100,10,400);
+  const fx=m==='tile'?`background-repeat:repeat;background-size:${s}% auto;background-position:${x}% ${y}%`
+    :m==='place'?`background-repeat:no-repeat;background-size:${s}% auto;background-position:${x}% ${y}%`
+    :`background-repeat:no-repeat;background-size:cover;background-position:${x}% ${y}%;transform:scale(${Math.max(1,s/100)});transform-origin:${x}% ${y}%`;
+  const plate=m==='place'?`${u} ${x}% ${y}%/${s}% auto no-repeat`:`${u} ${x}% ${y}%/cover no-repeat`;
+  return`.cfx-${id}{background-image:${u};${fx};opacity:${op}}.cdeco-${id}{background-image:${u};background-size:${s}% auto;background-position:${x}% ${y}%;background-repeat:no-repeat;opacity:${op}}.cplate-${id}::before{background:${plate}!important;opacity:${(op*.85).toFixed(2)}}`}
+const rules=new Map();
+function addRule(id,data,o){custom.set(id,{mode:o?.mode});let el=rules.get(id);if(!el){el=document.createElement('style');el.dataset.cos=id;document.head.appendChild(el);rules.set(id,el)}el.textContent=ruleCSS(id,data,o||{})}
+/* live preview while a creator edits (replaces the rule each time) */
+function previewRule(id,data,o){addRule(id,data,typeof o==='string'?{mode:o}:o)}
 
 /* profile effect layer */
 function fxLayer(id){if(CID.test(id||'')){ensure(id);return`<div class="fxl cfx cfx-${id}" aria-hidden="true"></div>`}if(!byId[id]||byId[id].type!=='fx')return'';const n=id.slice(3);let p='';

@@ -230,6 +230,6 @@ canvas.buddy{position:absolute;pointer-events:none;z-index:0}
 
 /* creator-made items (transparent GIFs) */
 .fxl.cfx{z-index:3}
-.pic .deco.cdeco{inset:-22%;border-radius:0;background-size:contain;background-repeat:no-repeat;background-position:center}
+.pic .deco.cdeco{inset:-22%;border-radius:0}
 .plate.cplate::before{animation:none;-webkit-mask:none;mask:none;opacity:.85}
 .plate.cplate::after{display:none}
