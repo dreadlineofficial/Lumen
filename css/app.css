@@ -669,3 +669,34 @@ body.in-portal.bw-mini #v-web,body.in-portal.bw-stretch #bw{visibility:hidden}
 .cs-prev{user-select:none}
 @media(max-width:760px){.pl-ed{grid-template-columns:1fr}}
 .hprice{position:absolute;left:8px;top:8px;font-style:normal;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,215,106,.92);color:#2a1d00;text-shadow:none}
+
+/* ===== chat: message tools, replies, reactions, pictures ===== */
+.dmsg{position:relative}
+.dtools{position:absolute;top:-6px;right:10px;display:none;gap:2px;padding:3px;border-radius:10px;background:rgba(22,22,32,.95);box-shadow:0 6px 18px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08);z-index:3}
+.dmsg:hover .dtools,.dmsg:focus-within .dtools{display:flex}
+.dtools button{padding:4px 7px;font-size:13px;border-radius:7px;background:none;box-shadow:none}.dtools button:hover{background:rgba(255,255,255,.1);transform:none}
+.dreply{display:flex;align-items:center;gap:6px;max-width:100%;margin:0 0 4px;padding:3px 8px 3px 6px;border-radius:8px;background:rgba(255,255,255,.05);box-shadow:inset 2px 0 0 var(--acc,#9fb4ff);font-size:12px;color:var(--mute);text-align:left}
+.dreply:hover{transform:none;background:rgba(255,255,255,.09)}
+.dreply span[data-rname]{font-weight:700;color:var(--text)}.dreply .rt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dreacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.dreacts button{padding:2px 8px;font-size:13px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:none}.dreacts button b{font-size:11px;font-weight:600}
+.dreacts button.mine{background:rgba(124,77,255,.28);box-shadow:inset 0 0 0 1px rgba(160,130,255,.6)}
+.rx-pop{position:absolute;top:18px;right:10px;display:flex;gap:2px;padding:4px;border-radius:999px;background:rgba(22,22,32,.97);box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:5}
+.rx-pop button{font-size:20px;padding:4px 6px;background:none;box-shadow:none}.rx-pop button:hover{transform:scale(1.25)}
+.reply-bar:not(:empty){display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;margin:0 0 6px;border-radius:10px;background:rgba(124,77,255,.14);font-size:12.5px}
+.reply-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.edited{color:var(--mute);font-size:10.5px}
+.chat-pic{max-width:min(360px,100%);max-height:320px;border-radius:12px;display:block;margin-top:4px;background:rgba(255,255,255,.05);min-height:60px;min-width:80px;object-fit:contain}
+.dmsg.flash{animation:msg-flash 1.4s}
+@keyframes msg-flash{0%,60%{background:rgba(124,77,255,.25)}100%{background:transparent}}
+img[data-media]:not([src]){visibility:hidden}
+/* Labs */
+.labs-card .chk{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.pcard.tilting{transition:transform .12s ease-out;will-change:transform}
+body.lab-fade .view.on{animation:lab-fade .35s ease-out}
+@keyframes lab-fade{from{opacity:0;transform:translateY(8px)}}
+body.lab-bubbles .dmsg.me-msg{flex-direction:row-reverse;text-align:right}
+body.lab-bubbles .dmsg.me-msg .dbody{display:flex;flex-direction:column;align-items:flex-end}
+body.lab-bubbles .dmsg.me-msg .dtext{background:linear-gradient(135deg,rgba(124,77,255,.35),rgba(80,140,255,.25));padding:7px 12px;border-radius:14px 14px 4px 14px;display:inline-block}
+body.lab-bubbles .dmsg.me-msg .dhead{flex-direction:row-reverse}
+body.lab-bubbles .dmsg.me-msg .dtools{right:auto;left:10px}

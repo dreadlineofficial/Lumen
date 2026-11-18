@@ -278,11 +278,11 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-18l',items:[
-  ['🔓','Paid games','Creators can set a price to unlock their games and keep 90% of every unlock.','games'],
-  ['✏️','Edit live listings','Creators can change names, descriptions, prices and placement without going back through review.','creator'],
-  ['👕','Wear your own creations','Creators can equip their own approved shop items for free.','shop'],
-  ['🎞','Bigger GIFs','Creator GIFs can now be up to 4 MB.'],
+const NEWS={id:'2026-11-18n',items:[
+  ['💎','Lumen Lite is here','A gold LITE tag, a Liquid Gold name, 10 MB animated pictures, pictures in chat, 10% off the shop, +5% Glow and 5,000 Glow to start. Plus Upgrade, Pro and Ultimate.','shop'],
+  ['🛍','A brand-new Shop','Featured picks, bundles, 13 new effects and name effects, and a big preview of every item on your own profile.','shop'],
+  ['↩️','Reply, react, edit, delete','Hover any message to reply to it, react, edit or delete it.','friends'],
+  ['🧸','Buddies are back (beta)','3D buddies return for Lite members, and Ted is a lot calmer now.'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');

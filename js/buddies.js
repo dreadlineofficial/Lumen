@@ -43,9 +43,13 @@ function fallbackBottle(){const g=new T.Group(),glass=new T.MeshPhysicalMaterial
   g.add(mesh(new T.CylinderGeometry(.014,.014,.045,20),glass,[0,.0225,0]));g.add(mesh(new T.CylinderGeometry(.006,.014,.014,20),glass,[0,.052,0]));g.add(mesh(new T.CylinderGeometry(.006,.006,.018,16),glass,[0,.068,0]));return g}
 async function makeTed(inst){const [gltf,props]=await Promise.all([loadTed(),loadProps()]);const root=T.cloneSkinned(gltf.scene);
   root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;if(o.material){o.material=o.material.clone();o.material.roughness=Math.max(.75,o.material.roughness??.8)}}});
-  const mixer=new T.AnimationMixer(root),A={};for(const n of['walk_cycle','sit_phone','beer'])A[n]=mixer.clipAction(gltf.animations.find(a=>a.name===n));
+  // keep him in place: the clips' own root sliding (x/z) is locked to the first frame, so loops don't make him jump
+  const clips={};for(const n of['walk_cycle','sit_phone','beer']){const c=gltf.animations.find(a=>a.name===n).clone();
+    for(const tr of c.tracks){if(!/\.position$/.test(tr.name))continue;const bone=tr.name.split('.')[0];const o=root.getObjectByName(bone);if(o&&o.parent&&o.parent.isBone)continue;
+      const v=tr.values,x0=v[0],z0=v[2];for(let i=0;i<v.length;i+=3){v[i]=x0;v[i+2]=z0}}clips[n]=c}
+  const mixer=new T.AnimationMixer(root),A={};for(const n of['walk_cycle','sit_phone','beer'])A[n]=mixer.clipAction(clips[n]);
   A.sit_phone.setLoop(T.LoopOnce);A.sit_phone.clampWhenFinished=true;A.beer.setLoop(T.LoopOnce);A.beer.clampWhenFinished=true;
-  const idle=mixer.clipAction(gltf.animations.find(a=>a.name==='beer').clone());idle.play();idle.paused=true;idle.time=0;let cur=idle;
+  const idle=mixer.clipAction(clips.beer.clone());idle.play();idle.paused=true;idle.time=0;let cur=idle;
   const fade=(to,d=.35)=>{if(to===cur)return;to.reset();to.play();if(to===idle){to.paused=true;to.time=0}cur.crossFadeTo(to,d,false);cur=to};
   const B=n=>root.getObjectByName(n);const mouthB=B('mouth')||B('jaw')||B('head');const handR=B('handR'),handL=B('handL'),head=B('head'),armL=B('upper_armL'),armR=B('upper_armR');
   // props: the beer bottle and phone from the accessories model, with drawn fallbacks
@@ -62,16 +66,20 @@ async function makeTed(inst){const [gltf,props]=await Promise.all([loadTed(),loa
   const chair=chairMesh();chair.visible=phone.visible=bottle.visible=false;
   const holder=new T.Group();holder.add(root);root.scale.setScalar(.85);inst.scene.add(chair,phone,bottle);
   const v=new T.Vector3(),hv=new T.Vector3(),lv=new T.Vector3(),Z=new T.Vector3(0,0,1),qa=new T.Quaternion();
-  let prop=null,chairT=0,chairOn=false,spread=.3;
-  return{obj:holder,top:.44,speed:.09,walkChance:.28,
+  let prop=null,chairT=0,chairOn=false,spread=.3,lookT=-1;
+  // bones we adjust by hand are reset to the animation's pose every frame, so the tweaks never pile up (that was the odd arm waving)
+  const baseL=armL.quaternion.clone(),baseR=armR.quaternion.clone(),baseH=head.quaternion.clone(),qy=new T.Quaternion(),Y=new T.Vector3(0,1,0),X=new T.Vector3(1,0,0);
+  return{obj:holder,top:.44,speed:.08,walkChance:.22,calm:true,
     walkStart(){fade(A.walk_cycle,.25)},walkStop(){fade(idle,.3)},
     walkFacing:d=>d>0?-.55:-(Math.PI-.55),faceYaw:0,
     actions:{
       sit:{w:3,yaw:.55,dur:A.sit_phone.getClip().duration+.2,start(){chairOn=true;chair.position.set(holder.position.x,0,0);fade(A.sit_phone,.3);prop=phone;phone.visible=true},end(){chairOn=false;phone.visible=false;prop=null;fade(idle,.4)}},
       drink:{w:2.4,yaw:1.05,dur:A.beer.getClip().duration,start(){fade(A.beer,.3);prop=bottle;bottle.visible=true},end(){bottle.visible=false;prop=null;fade(idle,.3)}},
-      look:{w:.6,dur:3,tick(t){holder.rotation.y=Math.sin(t*1.6)*.45}},
+      look:{w:.8,dur:3.2,start(){lookT=0},tick(t){lookT=t},end(){lookT=-1}},
     },
-    update(dt,t,inst){mixer.update(dt);
+    update(dt,t,inst){armL.quaternion.copy(baseL);armR.quaternion.copy(baseR);head.quaternion.copy(baseH);mixer.update(dt);baseL.copy(armL.quaternion);baseR.copy(armR.quaternion);baseH.copy(head.quaternion);
+      // calm idle: slow breathing nod, and a gentle look around (head only) instead of spinning the whole body
+      if(!prop&&inst.state!=='walk'){const look=lookT>=0?Math.sin(Math.min(1,lookT/3.2)*Math.PI)*Math.sin(lookT*1.1)*.5:0;head.quaternion.multiply(qy.setFromAxisAngle(Y,look+Math.sin(t*.45)*.06)).multiply(qy.setFromAxisAngle(X,Math.sin(t*1.2)*.025))}
       // keep his paws out of his tummy: open the upper arms a little after each animation frame
       const drinkingNow=prop===bottle&&handR.getWorldPosition(v).y>.23;spread=lerp(spread,inst.state==='walk'?.12:drinkingNow?.05:inst.act&&prop===phone?.26:.34,Math.min(1,dt*5));
       armL.quaternion.multiply(qa.setFromAxisAngle(Z,-spread));armR.quaternion.multiply(qa.setFromAxisAngle(Z,spread));
@@ -219,7 +227,7 @@ async function attach(cv){if(insts.has(cv))return;const id=cv.dataset.buddy,key=
   if(!inst.kind||!insts.has(cv)){insts.delete(cv);return}
   inst.actor=inst.kind.obj;if(id!=='buddy_ted'){inst.actor.children[0].scale.multiplyScalar(1.5);inst.kind.top*=1.5;inst.kind.speed*=1.3}inst.scene.add(inst.actor);inst.top=inst.kind.top;inst.shadow.scale.setScalar(id==='buddy_ted'?1:1.2);
   inst.cam=new T.OrthographicCamera(-1,1,1,-1,.01,20);inst.cam.position.set(0,.55,3);inst.cam.lookAt(0,.2,0);
-  layout(inst);inst.actor.position.x=rnd(-inst.half*.6,inst.half*.6);inst.actor.rotation.y=inst.kind.faceYaw}
+  layout(inst);const hs=[...String(key||id)].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7);inst.actor.position.x=inst.card?0:((Math.abs(hs)%1000)/1000-.5)*inst.half*1.2;inst.actor.rotation.y=inst.kind.faceYaw}
 function layout(inst){const r=inst.cv.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);const w=Math.max(2,Math.round(r.width*dpr)),h=Math.max(2,Math.round(r.height*dpr));
   if(inst.cv.width!==w||inst.cv.height!==h){inst.cv.width=w;inst.cv.height=h}
   const viewH=inst.card?.62:.56,aspect=w/h,c=inst.cam;c.top=viewH*.62;c.bottom=-viewH*.38;c.left=-viewH*aspect/2;c.right=viewH*aspect/2;c.updateProjectionMatrix();
@@ -232,9 +240,9 @@ function think(inst,dt){const k=inst.kind,a=inst.actor;inst.timer-=dt;k.moving=i
     if(inst.timer<=0){if(Math.random()<(k.walkChance??.55)&&inst.half>.1){inst.target=rnd(-inst.half,inst.half);if(Math.abs(inst.target-a.position.x)<.08)inst.target=-a.position.x;inst.dir=Math.sign(inst.target-a.position.x)||1;k.dir=inst.dir;inst.state='walk';inst.sp=0;k.walkStart?.()}
       else{const names=Object.keys(k.actions),tot=names.reduce((a,n)=>a+(k.actions[n].w??1),0);let r=Math.random()*tot,n=names[0];for(const x of names){r-=k.actions[x].w??1;if(r<=0){n=x;break}}inst.act=k.actions[n];inst.actT=0;inst.state='act';inst.act.start?.(inst);inst.timer=inst.act.dur}}}
   else if(inst.state==='walk'){a.rotation.y=angLerp(a.rotation.y,k.walkFacing(inst.dir),dt*6);inst.sp=lerp(inst.sp||0,Math.min(k.speed,Math.abs(inst.target-a.position.x)*3+.02),Math.min(1,dt*4));a.position.x+=inst.dir*inst.sp*dt;k.walkTick?.(dt,inst.t);
-    if((inst.target-a.position.x)*inst.dir<=0){a.position.x=inst.target;inst.state='idle';inst.timer=rnd(1,3.5);k.walkStop?.()}}
+    if((inst.target-a.position.x)*inst.dir<=0){a.position.x=inst.target;inst.state='idle';inst.timer=k.calm?rnd(3,6):rnd(1,3.5);k.walkStop?.()}}
   else if(inst.state==='act'){inst.actT+=dt;a.rotation.y=angLerp(a.rotation.y,inst.act.yaw??k.faceYaw,dt*4);inst.act.tick?.(inst.actT,inst);
-    if(inst.timer<=0){inst.act.end?.(inst);inst.act=null;inst.state='idle';inst.timer=rnd(1.5,4)}}
+    if(inst.timer<=0){inst.act.end?.(inst);inst.act=null;inst.state='idle';inst.timer=k.calm?rnd(3,7):rnd(1.5,4)}}
   inst.shadow.position.x=a.position.x;inst.shadow.scale.setScalar(1-Math.min(.5,a.position.y*3));
   k.update?.(dt,inst.t,inst);
   for(const s of inst.fx.slice()){s.userData.life-=dt;s.position.y+=s.userData.vy*dt;s.material.opacity=Math.min(1,s.userData.life);if(s.userData.life<=0){inst.scene.remove(s);s.material.map.dispose();s.material.dispose();inst.fx.splice(inst.fx.indexOf(s),1)}}}

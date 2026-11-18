@@ -11,7 +11,24 @@ service cloud.firestore {
           || (exists(fs(b)) && get(fs(b)).data.status == 'accepted');
     }
     // the admin account (control panel, can message anyone, moderate)
-    function isAdmin() { return signedIn() && uid() == 'P1z4pyemPiZqpS65YBTdzI469yO2'; }
+    function isOwner() { return signedIn() && uid() == 'P1z4pyemPiZqpS65YBTdzI469yO2'; }
+    // Lumen premium: subs/{uid} holds an end date for each plan (written only by redeeming a premium code)
+    function subPath(u) { return /databases/$(database)/documents/subs/$(u); }
+    function subOf(u) { return exists(subPath(u)) ? get(subPath(u)).data : {}; }
+    function liveTs(s, k) { return s.get(k, null) != null && s[k] > request.time; }
+    function isLiteU(u) { let s = subOf(u); return liveTs(s, 'lite') || liveTs(s, 'pro') || liveTs(s, 'ultimate'); }
+    function isLite() { return signedIn() && isLiteU(uid()); }
+    function isUpgrade() { return signedIn() && liveTs(subOf(uid()), 'upgrade'); }
+    function isPro() { return signedIn() && (liveTs(subOf(uid()), 'pro') || liveTs(subOf(uid()), 'ultimate')); }
+    function isUlt() { return signedIn() && liveTs(subOf(uid()), 'ultimate'); }
+    // Pro members, and Ultimate members with a current admin renewal, share the control panel (the owner keeps the economy)
+    function isStaff() { let s = subOf(uid()); return liveTs(s, 'pro') || (liveTs(s, 'ultimate') && liveTs(s, 'ultAdmin')); }
+    function isAdmin() { return isOwner() || (signedIn() && isStaff()); }
+    // how many 900 KB pieces a creator item or profile picture may use: 4 MB free, 10 MB Lite, 15 MB Upgrade
+    function maxParts() { return isUpgrade() ? 24 : isLite() ? 16 : 8; }
+    // a 10/15 MB GIF or photo (avatar, banner, chat picture) stored in pieces in media/{id}
+    function mediaRef(v) { return v is string && v.matches('^media:[A-Za-z0-9]{16,30}$'); }
+    function ownMedia(v) { return getAfter(/databases/$(database)/documents/media/$(v.split(':')[1])).data.uid == uid(); }
     function adminId() { return 'P1z4pyemPiZqpS65YBTdzI469yO2'; }
     // banned accounts can read but not post, chat or change anything
     function active() { return signedIn() && !exists(/databases/$(database)/documents/bans/$(uid())); }
@@ -20,22 +37,72 @@ service cloud.firestore {
     function okImage(v) { return v is string && v.size() < 900000 && (v == '' || v.matches('^(https://|data:image/).*')); }
 
     // Shop prices: must match js/cosmetics.js
-    function prices() { return {'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_blood': 500, 'fx_bloodrain': 450, 'fx_eyes': 450, 'fx_static': 400, 'fx_hands': 450, 'fx_claws': 400, 'fx_flicker': 350, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
+    function prices() { return {'nfx_ice': 300, 'nfx_toxic': 300, 'nfx_glitch': 400, 'nfx_wave': 350, 'nfx_sparkle': 350, 'nfx_shadow': 250, 'nfx_retro': 350, 'nfx_candy': 300, 'fx_bokeh': 350, 'fx_butterflies': 400, 'fx_sunrays': 350, 'fx_ripples': 300, 'fx_sparks': 400, 'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_blood': 500, 'fx_bloodrain': 450, 'fx_eyes': 450, 'fx_static': 400, 'fx_hands': 450, 'fx_claws': 400, 'fx_flicker': 350, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
     function profileOk(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 24
         && d.nameLower == d.name.lower()
         && d.get('bio', '').size() <= 300
-        && okImage(d.get('avatar', '')) && d.get('avatar', '').size() < 120000;
+        && ((okImage(d.get('avatar', '')) && d.get('avatar', '').size() < 120000) || (mediaRef(d.get('avatar', '')) && isLite()))
+        && (!mediaRef(d.get('banner', '')) || isLite());
+    }
+    // the tier tag on your profile must match your plan; premium-only profile options need a plan
+    function tierOk(d) {
+      let s = existsAfter(subPath(uid())) ? getAfter(subPath(uid())).data : {};
+      return (d.get('tier', '') == '' || (d.tier in ['lite', 'pro', 'ultimate'] && s.get(d.tier, null) == d.get('tierUntil', 0)))
+        && (d.get('up', false) == false || s.get('upgrade', null) == d.get('upUntil', 0))
+        && (!(d.get('nameFont', '') in ['script', 'pixel', 'gothic', 'wide']) || isLite())
+        && (d.get('cardBorder', '') in ['', 'none'] || isLite())
+        && (!(d.get('cardStyle', '') in ['aurora', 'holo', 'midnight']) || isLite());
+    }
+    // premium-only cosmetics: worn for free while the plan is active, never sold
+    function liteItems() { return ['nfx_gold', 'fx_golddust', 'deco_laurel']; }
+    function upItems() { return ['fx_prism', 'deco_prism', 'plate_prism', 'nfx_prism']; }
+    function proItems() { return ['fx_circuit', 'deco_proorbit', 'plate_pro', 'nfx_pro']; }
+    function ultItems() { return ['fx_nebula', 'deco_crownhalo', 'plate_ult', 'nfx_ult']; }
+    function wearOk(own, v) {
+      return v == '' || own.hasAny([v]) || (v in liteItems() && isLite()) || (v in upItems() && isUpgrade())
+        || (v in proItems() && isPro()) || (v in ultItems() && isUlt());
     }
     // anything you equip must be something you own
     function equipOk(d) {
       let own = d.get('owned', []);
-      return (d.get('fx', '') == '' || own.hasAny([d.get('fx', '')]))
-        && (d.get('deco', '') == '' || own.hasAny([d.get('deco', '')]))
-        && (d.get('plate', '') == '' || own.hasAny([d.get('plate', '')]))
-        && (d.get('nfx', '') == '' || own.hasAny([d.get('nfx', '')]))
-        && (d.get('theme', '') == '' || own.hasAny([d.get('theme', '')]))
-        && (d.get('buddy', '') == '' || own.hasAny([d.get('buddy', '')]));
+      return wearOk(own, d.get('fx', '')) && wearOk(own, d.get('deco', '')) && wearOk(own, d.get('plate', ''))
+        && wearOk(own, d.get('nfx', '')) && wearOk(own, d.get('theme', '')) && wearOk(own, d.get('buddy', ''));
+    }
+    // a price: the full amount, or 10% off with Lite (prices are multiples of 10)
+    function payOk(oc, nc, p) { return nc >= 0 && (nc == oc - p || (isLite() && nc * 10 == oc * 10 - p * 9)); }
+    // a payout: the exact amount, or up to 5% more with Lite
+    function bonusOk(oc, nc, x) { return nc == oc + x || (isLite() && nc >= oc + x && (nc - oc) * 20 <= x * 21); }
+    function bundles() { return {
+      'bundle_horror': {'items': ['fx_bloodrain', 'fx_eyes', 'fx_flicker', 'deco_glitch'], 'price': 1200},
+      'bundle_cozy': {'items': ['fx_snow', 'fx_lanterns', 'plate_forest', 'theme_ember'], 'price': 900},
+      'bundle_neon': {'items': ['fx_grid', 'deco_neon', 'plate_vapor', 'nfx_neon', 'theme_synthwave'], 'price': 1200},
+      'bundle_dream': {'items': ['fx_sakura', 'deco_halo', 'plate_sakura', 'theme_sakura'], 'price': 850},
+      'bundle_space': {'items': ['fx_galaxy', 'fx_meteor', 'plate_galaxy', 'deco_orbit'], 'price': 1150},
+      'bundle_names': {'items': ['nfx_ice', 'nfx_toxic', 'nfx_glitch', 'nfx_sparkle'], 'price': 1000}
+    }; }
+    function bundleOk(n, oc, nc, no, oo) {
+      let id = n.get('lastBuy', '');
+      let all = bundles();
+      return id in all && no.hasAll(all[id].items)
+        && no.toSet().difference(oo.toSet()).difference(all[id].items.toSet()).size() == 0
+        && no.size() > oo.size() && payOk(oc, nc, all[id].price);
+    }
+    // one catalog item at its price (buddies need Lite); the price list is built once
+    function catalogBuyOk(n, oc, nc, no, oo) {
+      let id = n.get('lastBuy', '');
+      let pr = prices();
+      return id in pr && no.hasAny([id]) && !oo.hasAny([id])
+        && payOk(oc, nc, pr[id]) && (!id.matches('^buddy_.*') || isLite());
+    }
+    // a premium code with Glow (Lite, Pro, Ultimate): + exactly its Glow, once per code
+    function pcodePath(c) { return /databases/$(database)/documents/pcodes/$(c); }
+    function premiumGlowOk(o, n, oc, nc) {
+      let c = n.get('lastPCode', '');
+      return c != '' && c != o.get('lastPCode', '')
+        && !exists(/databases/$(database)/documents/pcodes/$(c)/used/$(uid()))
+        && existsAfter(/databases/$(database)/documents/pcodes/$(c)/used/$(uid()))
+        && get(pcodePath(c)).data.get('glow', 0) > 0 && nc == oc + get(pcodePath(c)).data.glow;
     }
     // Glow can only change through the daily reward or a purchase at the listed price
     function economyOk(o, n) {
@@ -44,18 +111,19 @@ service cloud.firestore {
       let ol = o.get('lastClaim', null); let nl = n.get('lastClaim', null);
       return (nc == oc && no == oo && nl == ol)
         || (no == oo && nl == request.time
-            && ((ol == null && nc == oc + 500)
-             || (ol != null && request.time > ol + duration.value(20, 'h') && nc == oc + 150)))
+            && ((ol == null && bonusOk(oc, nc, 500))
+             || (ol != null && request.time > ol + duration.value(20, 'h') && bonusOk(oc, nc, 150))))
+        || (no == oo && nl == ol && premiumGlowOk(o, n, oc, nc))
+        || (nl == ol && no.hasAll(oo) && n.get('lastBuy', '').matches('^bundle_[a-z]+$') && bundleOk(n, oc, nc, no, oo))
+        || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo) && catalogBuyOk(n, oc, nc, no, oo))
         || (no == oo && nl == ol && earnOk(o, n, oc, nc))
         || (no == oo && nl == ol && redeemOk(o, n, oc, nc))
         || (no == oo && nl == ol && projEarnOk(o, n, oc, nc))
         || (no == oo && nl == ol && itemEarnOk(o, n, oc, nc))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo) && creatorBuyOk(n, oc, nc, no, oo))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo) && gameBuyOk(n, oc, nc, no, oo))
-        || (nl == ol && nc == oc && no.size() == oo.size() + 1 && no.hasAll(oo) && ownItemOk(n, no, oo))
-        || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo)
-            && n.get('lastBuy', '') in prices() && no.hasAny([n.lastBuy]) && !oo.hasAny([n.lastBuy])
-            && nc == oc - prices()[n.lastBuy] && nc >= 0);
+        || (nl == ol && nc == oc && no.size() == oo.size() + 1 && no.hasAll(oo) && ownItemOk(n, no, oo));
+
     }
 
     // Collecting Glow from a post: 50 per new paid-out view, 150 per new paid-out comment,
@@ -77,8 +145,8 @@ service cloud.firestore {
       let pb = get(projPath(pid)).data;
       let pa = getAfter(projPath(pid)).data;
       return pid != '' && pa.uid == uid()
-        && nc == oc + 20 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
-             + (pa.get('paidSold', 0) - pb.get('paidSold', 0))
+        && bonusOk(oc, nc, 20 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
+             + (pa.get('paidSold', 0) - pb.get('paidSold', 0)))
         && nc > oc;
     }
     // Creator shop items: buying one costs exactly its price; the creator later collects 90% of each sale
@@ -87,7 +155,7 @@ service cloud.firestore {
       let id = n.get('lastBuy', '');
       return id.matches('^c_[A-Za-z0-9]{8,24}$') && no.hasAny([id]) && !oo.hasAny([id])
         && get(itemPath(id)).data.status == 'approved' && get(itemPath(id)).data.uid != uid()
-        && nc == oc - get(itemPath(id)).data.price && nc >= 0
+        && payOk(oc, nc, get(itemPath(id)).data.price)
         && getAfter(itemPath(id)).data.get('sales', 0) == get(itemPath(id)).data.get('sales', 0) + 1;
     }
     // unlocking a paid game: exactly its price, paired with the game's sale counter (owned gets "p_<game id>")
@@ -96,7 +164,7 @@ service cloud.firestore {
       let pid = id.split('_')[1];
       return id.matches('^p_[A-Za-z0-9]{10,40}$') && no.hasAny([id]) && !oo.hasAny([id])
         && get(projPath(pid)).data.status == 'approved' && get(projPath(pid)).data.uid != uid() && get(projPath(pid)).data.get('price', 0) > 0
-        && nc == oc - get(projPath(pid)).data.price && nc >= 0
+        && payOk(oc, nc, get(projPath(pid)).data.price)
         && getAfter(projPath(pid)).data.get('sales', 0) == get(projPath(pid)).data.get('sales', 0) + 1;
     }
     // creators equip their own approved shop items for free
@@ -109,14 +177,14 @@ service cloud.firestore {
       let id = n.get('lastItem', '');
       let pb = get(itemPath(id)).data;
       let pa = getAfter(itemPath(id)).data;
-      return id != '' && pa.uid == uid() && nc == oc + (pa.get('paidEarned', 0) - pb.get('paidEarned', 0)) && nc > oc;
+      return id != '' && pa.uid == uid() && bonusOk(oc, nc, pa.get('paidEarned', 0) - pb.get('paidEarned', 0)) && nc > oc;
     }
     function earnOk(o, n, oc, nc) {
       let pid = n.get('lastEarn', '');
       let pb = get(postPath(pid)).data;
       let pa = getAfter(postPath(pid)).data;
       return pid != '' && pa.uid == uid()
-        && nc == oc + 50 * (pa.get('paidViews', 0) - pb.get('paidViews', 0)) + 150 * (pa.get('paidComments', 0) - pb.get('paidComments', 0))
+        && bonusOk(oc, nc, 50 * (pa.get('paidViews', 0) - pb.get('paidViews', 0)) + 150 * (pa.get('paidComments', 0) - pb.get('paidComments', 0)))
         && nc > oc;
     }
 
@@ -127,28 +195,28 @@ service cloud.firestore {
         && request.resource.data.get('coins', 0) == 0 && request.resource.data.get('owned', []).size() == 0
         && !('lastClaim' in request.resource.data) && equipOk(request.resource.data);
       allow update: if signedIn() && uid() == userId && profileOk(request.resource.data)
-        && economyOk(resource.data, request.resource.data) && equipOk(request.resource.data);
+        && economyOk(resource.data, request.resource.data) && equipOk(request.resource.data) && tierOk(request.resource.data);
       // admin: gift Glow to anyone (including themselves)
-      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins', 'gift'])
+      allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins', 'gift'])
         && request.resource.data.coins is int && request.resource.data.coins >= 0 && request.resource.data.coins <= 1000000000;
       // admin: rename anyone
-      allow update: if isAdmin() && profileOk(request.resource.data)
+      allow update: if isAdmin() && profileOk(request.resource.data) && (userId != adminId() || isOwner())
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'nameLower']);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && userId != adminId();
     }
 
     // Bans and the server's channel list: only the admin writes these
     match /bans/{userId} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow write: if isAdmin() && userId != adminId();
     }
     // Glow codes: the admin makes them; anyone can redeem a code once, until it runs out
     match /codes/{code} {
       allow get: if signedIn();
-      allow list: if isAdmin();
-      allow create: if isAdmin() && request.resource.data.amount is int && request.resource.data.amount > 0 && request.resource.data.amount <= 100000000
+      allow list: if isOwner();
+      allow create: if isOwner() && request.resource.data.amount is int && request.resource.data.amount > 0 && request.resource.data.amount <= 100000000
         && request.resource.data.maxUses is int && request.resource.data.maxUses >= 1 && request.resource.data.uses == 0;
-      allow delete: if isAdmin();
+      allow delete: if isOwner();
       // one more use, paired with this account's redemption record
       allow update: if active() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses'])
         && request.resource.data.uses == resource.data.uses + 1 && request.resource.data.uses <= resource.data.maxUses
@@ -161,6 +229,73 @@ service cloud.firestore {
           && getAfter(codePath(code)).data.uses == get(codePath(code)).data.uses + 1;
       }
     }
+    // ---------- Lumen premium ----------
+    // premium codes: the owner makes them; each grants plans for a number of days, once per person, until it runs out
+    function plansOk(g) {
+      return g.keys().hasOnly(['lite', 'upgrade', 'pro', 'ultimate', 'ultAdmin']) && g.size() >= 1
+        && g.values().hasOnly([30, 90, 180, 365, 730, 36500]);
+    }
+    match /pcodes/{code} {
+      allow get: if signedIn();
+      allow list, delete: if isOwner();
+      allow create: if isOwner() && plansOk(request.resource.data.grants) && request.resource.data.glow in [0, 5000]
+        && request.resource.data.maxUses is int && request.resource.data.maxUses >= 1 && request.resource.data.uses == 0;
+      allow update: if active() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses'])
+        && request.resource.data.uses == resource.data.uses + 1 && request.resource.data.uses <= resource.data.maxUses
+        && !exists(/databases/$(database)/documents/pcodes/$(code)/used/$(uid()))
+        && existsAfter(/databases/$(database)/documents/pcodes/$(code)/used/$(uid()));
+      match /used/{who} {
+        allow get: if signedIn() && who == uid();
+        allow list: if isOwner();
+        allow create: if active() && who == uid()
+          && getAfter(pcodePath(code)).data.uses == get(pcodePath(code)).data.uses + 1;
+      }
+    }
+    // your plans: extended only by redeeming a premium code (each plan's end date moves forward by the code's days, ±10 min)
+    function planStep(o, n, k, g) {
+      let base = (o.get(k, null) != null && o[k] > request.time) ? o[k] : request.time;
+      return (k in g)
+        ? (n.get(k, null) is timestamp && n[k] >= base + duration.value(g[k], 'd') - duration.value(10, 'm') && n[k] <= base + duration.value(g[k], 'd') + duration.value(10, 'm'))
+        : n.get(k, null) == o.get(k, null);
+    }
+    match /subs/{userId} {
+      allow read: if signedIn();
+      allow create, update: if active() && uid() == userId
+        && request.resource.data.keys().hasOnly(['lite', 'upgrade', 'pro', 'ultimate', 'ultAdmin', 'lastCode'])
+        && !exists(/databases/$(database)/documents/pcodes/$(request.resource.data.lastCode)/used/$(uid()))
+        && existsAfter(/databases/$(database)/documents/pcodes/$(request.resource.data.lastCode)/used/$(uid()))
+        && planStep(resource == null ? {} : resource.data, request.resource.data, 'lite', get(pcodePath(request.resource.data.lastCode)).data.grants)
+        && planStep(resource == null ? {} : resource.data, request.resource.data, 'upgrade', get(pcodePath(request.resource.data.lastCode)).data.grants)
+        && planStep(resource == null ? {} : resource.data, request.resource.data, 'pro', get(pcodePath(request.resource.data.lastCode)).data.grants)
+        && planStep(resource == null ? {} : resource.data, request.resource.data, 'ultimate', get(pcodePath(request.resource.data.lastCode)).data.grants)
+        && planStep(resource == null ? {} : resource.data, request.resource.data, 'ultAdmin', get(pcodePath(request.resource.data.lastCode)).data.grants);
+      // the owner can grant or remove plans by hand
+      allow write: if isOwner();
+    }
+    // big pictures (profile and chat): one record plus up to 24 pieces of 900 KB, never edited; you can't list them
+    function mediaPartsOk(kind, p) {
+      return (kind in ['avatar', 'banner'] && isLite() && p <= maxParts())
+        || (kind == 'chat' && isLite() && p <= (isUpgrade() ? 8 : 2));
+    }
+    match /media/{id} {
+      allow get: if signedIn();
+      allow create: if active() && id.matches('^[A-Za-z0-9]{16,30}$') && request.resource.data.uid == uid()
+        && request.resource.data.keys().hasOnly(['uid', 'kind', 'data', 'parts', 'at'])
+        && request.resource.data.kind in ['avatar', 'banner', 'chat']
+        && request.resource.data.data is string && request.resource.data.data.size() < 950000
+        && request.resource.data.parts is int && request.resource.data.parts >= 0
+        && mediaPartsOk(request.resource.data.kind, request.resource.data.parts)
+        && (request.resource.data.data.matches('^data:image/(gif|png|webp|jpeg);base64,.*') || (request.resource.data.data == '' && request.resource.data.parts >= 2));
+      allow delete: if signedIn() && (resource.data.uid == uid() || isAdmin());
+      match /parts/{n} {
+        allow get: if signedIn();
+        allow create: if active() && n.matches('^[0-9]{1,2}$') && getAfter(/databases/$(database)/documents/media/$(id)).data.uid == uid()
+          && int(n) < getAfter(/databases/$(database)/documents/media/$(id)).data.parts
+          && request.resource.data.keys().hasOnly(['d']) && request.resource.data.d is string && request.resource.data.d.size() <= 900000;
+        allow delete: if signedIn() && (get(/databases/$(database)/documents/media/$(id)).data.uid == uid() || isAdmin());
+      }
+    }
+
     // ---------- Lumen Creators ----------
     function appPath(u) { return /databases/$(database)/documents/creatorApps/$(u); }
     function isCreator() { return isAdmin() || (signedIn() && exists(appPath(uid())) && get(appPath(uid())).data.status == 'approved'); }
@@ -329,14 +464,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['uid', 'data', 'parts', 'mode', 'type', 'x', 'y', 'scale', 'op'])
         && request.resource.data.data is string && request.resource.data.data.size() < 950000
         && (request.resource.data.data.matches('^data:image/(gif|png|webp|jpeg);base64,.*')
-            || (request.resource.data.data == '' && request.resource.data.get('parts', 0) is int && request.resource.data.get('parts', 0) >= 2 && request.resource.data.get('parts', 0) <= 8))
+            || (request.resource.data.data == '' && request.resource.data.get('parts', 0) is int && request.resource.data.get('parts', 0) >= 2 && request.resource.data.get('parts', 0) <= maxParts()))
         && placeOk(request.resource.data)
         && getAfter(itemPath(id)).data.uid == uid();
       allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
       // big pictures (up to a 4 MB GIF) are split into up to 8 pieces of 900 KB; a new picture needs review
       match /parts/{n} {
         allow read: if signedIn();
-        allow create, update: if active() && n.matches('^[0-7]$') && getAfter(itemPath(id)).data.uid == uid()
+        allow create, update: if active() && n.matches('^[0-9]{1,2}$') && int(n) < maxParts() && getAfter(itemPath(id)).data.uid == uid()
           && (getAfter(itemPath(id)).data.status == 'pending' || isAdmin())
           && request.resource.data.keys().hasOnly(['d']) && request.resource.data.d is string && request.resource.data.d.size() <= 900000;
         allow delete: if signedIn() && (!exists(itemPath(id)) || get(itemPath(id)).data.uid == uid() || isAdmin());
@@ -421,6 +556,19 @@ service cloud.firestore {
       allow delete: if signedIn() && uid() in resource.data.users;
     }
 
+    // a reply quotes a short piece of the message it answers
+    function replyOk(d) { return d.get('reply', null) == null || (d.reply is map && d.reply.keys().hasOnly(['id', 'uid', 'text'])
+      && d.reply.id is string && d.reply.id.size() <= 40 && d.reply.uid is string && d.reply.get('text', '') is string && d.reply.get('text', '').size() <= 140); }
+    // your own message: fix the text (marked as edited)
+    function msgEditOk() { return resource.data.uid == uid() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited'])
+      && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 1000 && request.resource.data.edited == request.time; }
+    // one reaction per person per message, stored under your own id
+    function reactOk() { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['react'])
+      && request.resource.data.react is map && request.resource.data.react.size() <= 60
+      && request.resource.data.react.diff(resource.data.get('react', {})).affectedKeys().hasOnly([uid()])
+      && (!(uid() in request.resource.data.react) || (request.resource.data.react[uid()] is string && request.resource.data.react[uid()].size() <= 16)); }
+    function chatMediaOk(d) { return d.get('media', '') == '' || (d.media is string && d.media.matches('^[A-Za-z0-9]{16,30}$')
+      && get(/databases/$(database)/documents/media/$(d.media)).data.uid == uid() && get(/databases/$(database)/documents/media/$(d.media)).data.kind == 'chat'); }
     // Private chats: only the two friends in the chat.
     match /dms/{pair}/messages/{msg} {
       function members() { return pair.split('_'); }
@@ -430,9 +578,10 @@ service cloud.firestore {
         && (friends(other()) || isAdmin() || other() == adminId())
         && request.resource.data.uid == uid()
         && request.resource.data.text is string && request.resource.data.text.size() <= 1000
-        && okImage(request.resource.data.get('gif', ''))
+        && okImage(request.resource.data.get('gif', '')) && chatMediaOk(request.resource.data) && replyOk(request.resource.data)
         && request.resource.data.at == request.time;
-      allow update, delete: if false;
+      allow update: if active() && uid() in members() && (msgEditOk() || reactOk());
+      allow delete: if signedIn() && uid() in members() && resource.data.uid == uid();
     }
 
     // Public rooms.
@@ -441,8 +590,9 @@ service cloud.firestore {
       allow create: if active() && room.size() <= 32
         && request.resource.data.uid == uid()
         && request.resource.data.text is string && request.resource.data.text.size() <= 1000
-        && okImage(request.resource.data.get('gif', ''))
+        && okImage(request.resource.data.get('gif', '')) && chatMediaOk(request.resource.data) && replyOk(request.resource.data)
         && request.resource.data.at == request.time;
+      allow update: if active() && (msgEditOk() || reactOk());
       allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
     }
 

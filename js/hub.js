@@ -60,10 +60,10 @@ async function gameLink(p){if(p.url)return p.url;if(linkCache.has(p.id))return l
 async function launch(key){const it=findItem(key);if(!it)return toast('That isn’t available any more');
   if(!unlocked(it)){openGame(key);return toast(`Unlock ${it.title} first (✦ ${fmtN(it.price)})`)}
   const url=await gameLink(it);if(!url)return toast('Couldn’t open this game');play(key);L.openView(url,it.title,{kind:'game',label:it.title,key});startTimer(key)}
-async function unlockGame(key){const it=findItem(key),prof=C().profile();if(!it||!prof)return toast('Sign in first');const coins=+prof.coins||0;
-  if(coins<it.price)return toast(`You need ✦ ${fmtN(it.price)} Glow (you have ${fmtN(coins)})`);
-  if(!confirm(`Unlock ${it.title} for ✦ ${fmtN(it.price)}? You keep it forever.`))return;
-  const {F,D,db}=C();const b=F.writeBatch(db);b.update(D('users',me),{coins:coins-it.price,owned:[...(prof.owned||[]),key],lastBuy:key});b.update(D('projects',it.id),{sales:F.increment(1),sold:F.increment(it.cut),lastBuyer:me});
+async function unlockGame(key){const it=findItem(key),prof=C().profile();if(!it||!prof)return toast('Sign in first');const coins=+prof.coins||0;const cost=L.plan?.price(it.price)??it.price;
+  if(coins<cost)return toast(`You need ✦ ${fmtN(cost)} Glow (you have ${fmtN(coins)})`);
+  if(!confirm(`Unlock ${it.title} for ✦ ${fmtN(cost)}${cost<it.price?' (Lite 10% off)':''}? You keep it forever.`))return;
+  const {F,D,db}=C();const b=F.writeBatch(db);b.update(D('users',me),{coins:coins-cost,owned:[...(prof.owned||[]),key],lastBuy:key});b.update(D('projects',it.id),{sales:F.increment(1),sold:F.increment(it.cut),lastBuyer:me});
   try{await b.commit();toast(`${it.title} unlocked! 🎉`);setTimeout(renderGamePage,300)}catch(e){toast('Couldn’t unlock: '+(e.code==='permission-denied'?'try again in a moment':e.message))}}
 
 /* ---------- Hub page ---------- */
@@ -190,7 +190,7 @@ function shopSection(){const f=shopEdit||{};const modes=CTYPES[shopType][3];
       <label>Type</label><div class="seg" id="csType">${Object.entries(CTYPES).map(([k,[i,l]])=>`<button type="button" data-ct="${k}" class="${shopType===k?'on':''}">${i} ${l}</button>`).join('')}</div>
       <p class="muted" style="font-size:12.5px;margin:8px 0 0">${CTYPES[shopType][2]}</p>
       <label>Picture</label><div class="seg" id="csSrc"><button type="button" data-src="gif" class="${shopSrc==='gif'?'on':''}">🎞 Animated GIF</button><button type="button" data-src="photo" class="${shopSrc==='photo'?'on':''}">🖼 Photo</button></div>
-      <p class="muted" style="font-size:12px;margin:6px 0 0">${shopSrc==='gif'?'A GIF with a transparent background, up to 4 MB.':'A PNG, JPG or WebP up to 3 MB. PNGs keep their transparent background; Lumen shrinks big photos to fit.'}</p>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">${shopSrc==='gif'?`A GIF with a transparent background, up to ${L.plan?.uploadMB()||4} MB.`:`A PNG, JPG or WebP up to ${Math.max(3,L.plan?.uploadMB()||3)} MB. PNGs keep their transparent background${L.plan?.lite()?'':'; Lumen shrinks big photos to fit'}.`}${L.plan?.lite()?' <span class="ptag ptag-lite">LITE</span>':''}</p>
       <div class="row" style="margin-top:8px"><button type="button" id="csFileBtn">${shopSrc==='gif'?'🎞 Choose GIF':'🖼 Choose photo'}</button><input type="file" id="csFile" accept="${shopSrc==='gif'?'image/gif':'image/png,image/jpeg,image/webp'}" hidden><span class="muted" id="csFileName" style="font-size:12px">${shopImg?(shopEdit&&!shopEdit._new?'Current picture':'✓ Picture ready'):''}</span></div>
       <label>Name</label><input id="csName" maxlength="30" value="${esc(f.name||'')}" placeholder="Neon rain">
       <label>Short description (optional)</label><input id="csDesc" maxlength="120" value="${esc(f.desc||'')}">
@@ -219,7 +219,7 @@ function bindShop(box){
   $('#csFileBtn').onclick=()=>$('#csFile').click();
   $('#csFile').onchange=async e=>{const fl=e.target.files[0];if(!fl)return;let d;
     if(shopSrc==='gif'){const info=await gifInfo(fl);if(!info.ok)return toast(info.why);if(!info.transparent)return toast('That GIF has no transparent background. Export it with transparency (e.g. ezgif.com → Effects → Transparency), or switch to Photo.');
-      if(fl.size>4*1024*1024)return toast(`That GIF is ${(fl.size/1048576).toFixed(1)} MB. The limit is 4 MB (try fewer frames or a smaller size).`);d=await readURL(fl)}
+      const mb=L.plan?.uploadMB()||4;if(fl.size>mb*1024*1024)return toast(`That GIF is ${(fl.size/1048576).toFixed(1)} MB. Your limit is ${mb} MB${mb<15?(mb<10?' (Lumen Lite raises it to 10 MB)':' (Upgrade raises it to 15 MB)'):''}.`);d=await readURL(fl)}
     else{d=await photoFrom(fl);if(!d)return}
     keepForm();shopImg=d;if(shopEdit)shopEdit._new=true;renderCreator();$('#csFileName')&&($('#csFileName').textContent='✓ '+fl.name)};
   $('#csSave').onclick=saveItem;$('#csCancel')?.addEventListener('click',()=>{shopEdit=null;shopImg=null;formKeep=null;pl=plDefault(shopType,CTYPES[shopType][3][0]);renderCreator()});
@@ -227,12 +227,12 @@ function bindShop(box){
     shopEdit={...it};shopType=it.type;shopImg=d.data||null;shopSrc=/^data:image\/gif/.test(d.data||'')?'gif':'photo';formKeep=null;
     pl={mode:it.mode||'fill',x:d.x??50,y:d.y??50,scale:d.scale??(it.mode==='tile'?33:100),op:d.op??100};renderCreator();$('.cr-shop')?.scrollIntoView({behavior:'smooth'})});
   box.querySelectorAll('[data-cseq]').forEach(b=>b.onclick=async()=>{await L.equipOwn?.(b.dataset.cseq);renderCreator()});
-  box.querySelectorAll('[data-csdel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this shop item? People who bought it keep it in their list but it stops showing.'))return;const {F,D,db}=C();const bt=F.writeBatch(db);bt.delete(D('shopItems',b.dataset.csdel));bt.delete(D('shopImgs',b.dataset.csdel));for(let i=0;i<8;i++)bt.delete(D('shopImgs',b.dataset.csdel,'parts',String(i)));try{await bt.commit();toast('Deleted')}catch(e){toast(e.message)}});
+  box.querySelectorAll('[data-csdel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this shop item? People who bought it keep it in their list but it stops showing.'))return;const {F,D,db}=C();const bt=F.writeBatch(db);bt.delete(D('shopItems',b.dataset.csdel));bt.delete(D('shopImgs',b.dataset.csdel));for(let i=0;i<24;i++)bt.delete(D('shopImgs',b.dataset.csdel,'parts',String(i)));try{await bt.commit();toast('Deleted')}catch(e){toast(e.message)}});
   if(formKeep){for(const [k,v] of Object.entries(formKeep)){const el=$(k);if(el)el.value=v}formKeep=null}}
 // the form re-renders when the type/picture/mode changes: keep what was typed
 const PART=900000;let formKeep=null;const keepForm=()=>{formKeep={'#csName':$('#csName')?.value,'#csDesc':$('#csDesc')?.value,'#csPrice':$('#csPrice')?.value}};
-async function photoFrom(file){if(file.size>3*1024*1024){toast('Pick a photo smaller than 3 MB');return null}if(!/^image\/(png|jpeg|webp)$/.test(file.type)){toast('Use a PNG, JPG or WebP photo');return null}
-  const d=await readURL(file);if(d.length<880000)return d;
+async function photoFrom(file){const mb=Math.max(3,L.plan?.uploadMB()||3);if(file.size>mb*1024*1024){toast(`Pick a photo smaller than ${mb} MB`);return null}if(!/^image\/(png|jpeg|webp)$/.test(file.type)){toast('Use a PNG, JPG or WebP photo');return null}
+  const d=await readURL(file);if(d.length<(L.plan?.lite()?L.plan.maxParts()*PART:880000))return d;
   let img;try{img=await createImageBitmap(file)}catch{toast('That photo couldn’t be read');return null}
   for(const [max,q] of [[1400,.9],[1200,.85],[1000,.8],[800,.75],[640,.7]]){const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
     c.getContext('2d').drawImage(img,0,0,c.width,c.height);let out=c.toDataURL('image/webp',q);if(!out.startsWith('data:image/webp'))out=c.toDataURL(file.type==='image/jpeg'?'image/jpeg':'image/png',q);if(out.length<880000)return out}
@@ -245,12 +245,13 @@ async function saveItem(){const {F,D,db}=C();const name=$('#csName').value.trim(
   const r=v=>Math.round(v);const b=F.writeBatch(db);const base={name:name.slice(0,30),desc:desc.slice(0,120),price,cut:price*9/10,mode,at:F.serverTimestamp()};
   if(!big)b.update(D('shopItems',id),base);
   else{const data={...base,type:shopType,status:isAdmin()?'approved':'pending'};if(shopEdit)b.update(D('shopItems',id),data);else b.set(D('shopItems',id),{...data,uid:me})}
-  // a Firestore record holds at most 1 MB, so a big picture is split into pieces (shopImgs/{id}/parts/0…7)
-  const parts=shopImg.length>PART?Math.ceil(shopImg.length/PART):0;if(parts>8){$('#csSave').disabled=false;return toast('That picture is too big')}
+  // a Firestore record holds at most 1 MB, so a big picture is split into pieces (shopImgs/{id}/parts/0…23); 8 pieces per write
+  const parts=shopImg.length>PART?Math.ceil(shopImg.length/PART):0;if(parts>(L.plan?.maxParts()||8)){$('#csSave').disabled=false;return toast('That picture is too big for your plan')}
+  const later=[];
   const place={mode,type:shopType,x:r(pl.x),y:r(pl.y),scale:Math.max(10,Math.min(400,r(pl.scale))),op:Math.max(10,Math.min(100,r(pl.op)))};
   if(!big&&!shopEdit._new){const cur=(await F.getDoc(D('shopImgs',id))).data()||{};b.set(D('shopImgs',id),{...cur,...place,uid:me})}
-  else{b.set(D('shopImgs',id),{uid:me,data:parts?'':shopImg,...(parts?{parts}:{}),...place});for(let i=0;i<parts;i++)b.set(D('shopImgs',id,'parts',String(i)),{d:shopImg.slice(i*PART,(i+1)*PART)})}
-  $('#csSave').disabled=true;try{await b.commit();toast(!big?'Saved: your changes are live':isAdmin()?'Published to the Shop':shopEdit?'Saved: back in review':'Submitted for review');L.cos.previewRule(id,shopImg,{...pl,mode});shopEdit=null;shopImg=null;formKeep=null;pl=plDefault(shopType,CTYPES[shopType][3][0]);renderCreator()}
+  else{b.set(D('shopImgs',id),{uid:me,data:parts?'':shopImg,...(parts?{parts}:{}),...place});for(let i=0;i<parts;i++)(i<8?b:(later[(i>>3)-1]||=F.writeBatch(db))).set(D('shopImgs',id,'parts',String(i)),{d:shopImg.slice(i*PART,(i+1)*PART)})}
+  $('#csSave').disabled=true;try{await b.commit();for(const x of later){toast('Uploading… '+Math.round(100*(later.indexOf(x)+1)/(later.length+1))+'%');await x.commit()}toast(!big?'Saved: your changes are live':isAdmin()?'Published to the Shop':shopEdit?'Saved: back in review':'Submitted for review');L.cos.previewRule(id,shopImg,{...pl,mode});shopEdit=null;shopImg=null;formKeep=null;pl=plDefault(shopType,CTYPES[shopType][3][0]);renderCreator()}
   catch(e){toast('Couldn’t save: '+(e.code==='permission-denied'?'Firebase refused it (re-publish the latest rules?)':e.message));$('#csSave').disabled=false}}
 
 async function apply(){const about=$('#crAbout').value.trim();if(about.length<10)return toast('Tell the admin a little about what you’ll make');
@@ -324,11 +325,12 @@ function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{
       hideTrend:!$('#hbTrend').checked,hideTop:!$('#hbTop').checked,hidePosts:!$('#hbPosts').checked,hideNew:!$('#hbNew').checked,pinned:$$('[data-pinbox]').filter(c=>c.checked).map(c=>c.dataset.pinbox)},'Hub saved');return}}
 async function saveHub(data,msg){try{await C().F.setDoc(C().D('server','hub'),data,{merge:true});if(msg)toast(msg)}catch(e){toast(e.code==='permission-denied'?'Firebase refused this. Re-publish the latest firestore.rules.':e.message)}}
 async function collect(){const {F,D,db}=C();const btn=$('#crCollect');btn.disabled=true;let got=0;
-  for(const p of myProjects.filter(p=>unpaid(p)>0)){const amt=unpaid(p);const b=F.writeBatch(db);
+  const bonus=x=>L.plan?.bonus(x)??x;
+  for(const p of myProjects.filter(p=>unpaid(p)>0)){const amt=bonus(unpaid(p));const b=F.writeBatch(db);
     b.update(D('projects',p.id),{paidMin:p.minutes||0,paidMent:p.mentions||0,paidRev:p.upReviews||0,paidSold:p.sold||0});
     b.update(D('users',me),{coins:(+C().profile()?.coins||0)+got+amt,lastProj:p.id});
     try{await b.commit();got+=amt}catch(e){toast(e.code==='permission-denied'?'Couldn’t collect yet (new plays just came in, or the rules need re-publishing). Try again.':e.message);break}}
-  for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){const amt=it.earned-(it.paidEarned||0);const b=F.writeBatch(db);
+  for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){const amt=bonus(it.earned-(it.paidEarned||0));const b=F.writeBatch(db);
     b.update(D('shopItems',it.id),{paidEarned:it.earned});b.update(D('users',me),{coins:(+C().profile()?.coins||0)+got+amt,lastItem:it.id});
     try{await b.commit();got+=amt}catch(e){toast(e.code==='permission-denied'?'Couldn’t collect yet (a sale just came in). Try again.':e.message);break}}
   if(got)toast(`+${fmtN(got)} ✦ Glow collected`);renderCreator()}
@@ -396,7 +398,7 @@ async function renderGamePage(){const box=$('#gpBox');const it=gpKey&&findItem(g
     <div class="gp-hero card"><div class="gp-art" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}</div>
       <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'Lumen original'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}
         <div class="gp-stats"><span>▶ <b>${fmtN(plays[gpKey]||0)}</b> plays</span>${it.uid?`<span>⏱ <b>${fmtN(it.minutes||0)}</b> min played</span><span>💬 <b>${fmtN(it.mentions||0)}</b> mentions</span>`:''}<span>👍 <b>${reviews.length?pct+'%':'–'}</b> of ${fmtN(reviews.length)} review${reviews.length===1?'':'s'}</span>${trend[gpKey]?`<span>📈 <b>${fmtN(trend[gpKey])}</b> this week</span>`:''}</div>
-        <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px">${unlocked(it)?'<button class="btn-acc gp-play" id="gpPlay">▶ Play now</button>':`<button class="btn-acc gp-play" id="gpUnlock">🔓 Unlock for ✦ ${fmtN(it.price)}</button>`}<button id="gpMention" title="Write a post about it">✍️ Post about it</button></div></div></div>
+        <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px">${unlocked(it)?'<button class="btn-acc gp-play" id="gpPlay">▶ Play now</button>':`<button class="btn-acc gp-play" id="gpUnlock">🔓 Unlock for ✦ ${fmtN(L.plan?.price(it.price)??it.price)}${L.plan?.lite()?' <s style="opacity:.6">'+fmtN(it.price)+'</s>':''}</button>`}<button id="gpMention" title="Write a post about it">✍️ Post about it</button></div></div></div>
     <div class="gp-grid"><div class="card"><h2>Reviews</h2>
       ${reviews.length?`<div class="gp-bar"><span style="width:${pct}%"></span></div><p class="muted" style="font-size:13px;margin:6px 0 14px">${up} recommend it · ${reviews.length-up} don't</p>`:''}
       ${!me?'<div class="banner">Sign in to write a review.</div>':own?'<div class="banner">This is your game. Reviews from players show up here, and every positive one earns you ✦ 50 Glow.</div>':
