@@ -602,3 +602,40 @@ a.gmention:hover{background:rgba(124,92,255,.38)}
 .tdots{display:inline-flex;gap:3px}.tdots i{width:5px;height:5px;border-radius:50%;background:var(--mute);animation:tdot 1.2s infinite}
 .tdots i:nth-child(2){animation-delay:.15s}.tdots i:nth-child(3){animation-delay:.3s}
 @keyframes tdot{0%,60%,100%{transform:none;opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+
+/* ---------- Web tab size: normal / custom / stretch / minimized ---------- */
+body.bw-custom #v-web.on{justify-content:center;align-items:center}
+body.bw-custom.bw-normal #bw{flex:none;width:var(--bww);height:var(--bwh)}
+.bw{position:relative}
+.bw-grip{position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;z-index:4;touch-action:none;background:linear-gradient(135deg,transparent 50%,rgba(255,255,255,.35) 50%,rgba(255,255,255,.35) 58%,transparent 58%,transparent 70%,rgba(255,255,255,.35) 70%,rgba(255,255,255,.35) 78%,transparent 78%);border-bottom-right-radius:inherit}
+body.bw-stretch .bw-grip{display:none}
+body.bw-dragging{user-select:none;cursor:grabbing}body.bw-dragging iframe{pointer-events:none}
+.bw-minibar{display:none;align-items:center;gap:4px;padding:6px 6px 6px 12px;cursor:grab;touch-action:none;background:rgba(255,255,255,.08);flex:none}
+.bw-mini-t{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bw-minibar .ib{width:28px;height:28px;font-size:13px}
+.bw-sizemenu{position:absolute;top:96px;right:12px;z-index:6;width:min(300px,calc(100% - 24px));padding:16px;border-radius:18px;background:rgba(22,22,32,.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--line);box-shadow:0 30px 60px -20px #000;display:flex;flex-direction:column;gap:6px}
+.bw-sizemenu[hidden]{display:none}
+.bw-sizemenu label{font-size:12.5px;color:var(--mute);margin-top:8px;display:flex;justify-content:space-between}
+.bw-sizemenu input[type=range]{padding:0;border:0;background:none;accent-color:var(--acc)}
+.bw-sizemenu p{font-size:12px;margin:8px 0 0;line-height:1.45}
+.bw-sizemenu .seg button{flex:1;padding:8px 6px;font-size:12.5px}
+/* stretch: the browser covers the whole window (the study key and panic still work on top) */
+body.bw-stretch #v-web.on{animation:none}
+body.bw-stretch #v-web.on #bw{position:fixed;inset:10px;z-index:30;width:auto;height:auto;flex:none}
+/* minimized: a floating window over the rest of Lumen */
+body.bw-mini #v-web{display:block!important;position:fixed;inset:auto;width:0;height:0;padding:0;margin:0;overflow:visible;z-index:30;animation:none}
+body.bw-mini #bw{position:fixed;left:var(--mx);top:var(--my);width:var(--mw);height:var(--mh);z-index:30;border-radius:18px;box-shadow:0 30px 70px -15px #000,0 0 0 1px rgba(255,255,255,.14)}
+body.bw-mini .bw-minibar{display:flex}
+body.bw-mini #bwTabs,body.bw-mini .bw-bar,body.bw-mini .bw-note,body.bw-mini .bw-hint,body.bw-mini #bwSizeMenu{display:none!important}
+body.in-portal.bw-mini #v-web,body.in-portal.bw-stretch #bw{visibility:hidden}
+
+/* ---------- Nightbound lobbies ---------- */
+.nbl-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:6px}
+#gpLobbies .nbl-list{grid-template-columns:1fr}
+.nbl{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:18px;background:linear-gradient(120deg,rgba(47,214,122,.13),rgba(179,32,30,.14));border:1px solid rgba(47,214,122,.35)}
+.nbl-live{width:10px;height:10px;border-radius:50%;background:#2fd67a;flex:none;box-shadow:0 0 0 0 rgba(47,214,122,.7);animation:nblive 1.6s infinite}
+@keyframes nblive{70%{box-shadow:0 0 0 9px rgba(47,214,122,0)}100%{box-shadow:0 0 0 0 rgba(47,214,122,0)}}
+.nbl-i{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.nbl-i small{color:var(--mute);font-size:12px}
+.nbl .btn-acc{padding:8px 18px}
+#ghLobbies .hsec{margin-top:10px}
+.nb-join{padding:2px 10px;font-size:11.5px;border-radius:999px;margin-left:4px;background:#2fd67a;color:#06130b;font-weight:700;border:0;vertical-align:middle}

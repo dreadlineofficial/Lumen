@@ -237,7 +237,7 @@ async function renderGamePage(){const box=$('#gpBox');const it=gpKey&&findItem(g
   const others=allGames().filter(g=>g.key!==gpKey).sort((a,b)=>(trend[b.key]||0)-(trend[a.key]||0)||(plays[b.key]||0)-(plays[a.key]||0)).slice(0,4);
   const us=await Promise.all(reviews.map(r=>C().getUser(r.uid)));const creator=it.uid?await C().getUser(it.uid):null;
   if(findItem(gpKey)!==null&&gpKey!==(it.key))return;
-  const draft=$('#gpText')?.value;
+  const draft=$('#gpText')?.value;box.dataset.key=gpKey;
   box.innerHTML=`<button class="gp-back" data-goto="games">‹ Game hub</button>
     <div class="gp-hero card"><div class="gp-art" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}</div>
       <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'Lumen original'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}

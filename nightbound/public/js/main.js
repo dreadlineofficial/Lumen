@@ -2102,6 +2102,10 @@ else if (!profile.seen.grannyTrailer) setTimeout(() => { if (!session && !lobby)
 
 startBG();
 requestAnimationFrame(loop);
+// Lumen (the hub this game is embedded in) shows a Join button to others while you host a lobby
+setInterval(() => { try { if (window.parent !== window) { const c = lobby ? lobbyCaps() : null;
+  window.parent.postMessage({ nbLumen: 1, state: session ? 'match' : lobby ? (lobby.fn ? 'fortnight' : 'lobby') : 'menu', code: lobby && !lobby.inGame ? lobby.code : null, host: !!(lobby && lobby.isHost),
+    n: lobby ? lobby.players.length : 0, max: lobby ? (lobby.gm === 'bedwars' ? 16 : c.k + c.s) : 0, mode: lobby ? lobby.mode : null, gm: lobby ? lobby.gm : null }, '*'); } } catch (e) {} }, 2000);
 const qj = new URLSearchParams(location.search).get('join');
 if (qj) { openPanel('p-online', 'Online Match'); $('join-code').value = qj.toUpperCase(); setTimeout(() => doJoin(qj), 300); }
 // ---------- email updates (Buttondown newsletter) ----------

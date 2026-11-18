@@ -245,6 +245,19 @@ service cloud.firestore {
       allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40 && request.resource.data.get('pinned', []).size() <= 30;
     }
 
+    // Nightbound lobbies you're hosting (so others on Lumen can join); only you write yours
+    match /lobbies/{userId} {
+      allow read: if signedIn();
+      allow create, update: if active() && uid() == userId
+        && request.resource.data.keys().hasOnly(['code', 'n', 'max', 'name', 'at'])
+        && request.resource.data.code is string && request.resource.data.code.matches('^[A-Z0-9]{3,12}$')
+        && request.resource.data.n is int && request.resource.data.n >= 1 && request.resource.data.n <= 16
+        && request.resource.data.max is int && request.resource.data.max >= 1 && request.resource.data.max <= 16
+        && request.resource.data.name is string && request.resource.data.name.size() <= 24
+        && request.resource.data.at == request.time;
+      allow delete: if (signedIn() && uid() == userId) || isAdmin();
+    }
+
     // "… is typing": rooms are public; a private chat's typing doc only for its two people.
     // You can only set your own entry, to "now" or to nothing.
     match /typing/{key} {

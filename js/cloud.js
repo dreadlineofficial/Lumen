@@ -45,6 +45,7 @@ function nameHTML(u,{badges=true}={}){const c1=okColor(u.nameC1||u.color),c2=okC
   const b=badges&&u.badges?`<span class="ubadges">${esc(graphemes(u.badges).filter(x=>x.trim()).slice(0,5).join(''))}</span>`:'';
   return`<span class="uname n-${st} f-${u.nameFont||'sans'}${L.cos?.nfxCls(u.nfx)||''}" style="${style}">${esc(u.name||'Unknown')}</span>${b}`}
 function actText(uid){if(!cfg.seeOthers)return'';const p=presence.get(uid);if(!p?.act||status(uid)==='offline'||!status(uid))return'';const a=p.act;
+  const lb=a.lobby&&/^[A-Z0-9]{3,12}$/.test(a.lobby.code)?a.lobby:null;if(a.kind==='game'&&lb)return`🎮 Hosting a <b>${esc(a.label)}</b> lobby (${+lb.n||1}/${+lb.max||5}) <button class="nb-join" data-nbjoin="${lb.code}">Join</button>`;
   return a.kind==='game'?`🎮 Playing <b>${esc(a.label)}</b>`:a.kind==='youtube'?`▶ Watching <b>YouTube</b>`:a.kind==='web'?`🌐 On <b>${esc(a.label)}</b>`:''}
 
 /* ---------- auth ---------- */
@@ -135,7 +136,7 @@ $('#pResetPw').onclick=async()=>{try{await F.sendPasswordResetEmail(auth,me.emai
 const prevOnView=L.onView;L.onView=v=>{prevOnView?.(v);if(v==='profile'){$('#profSignedOut').style.display=me?'none':'';$('#profWrap').style.display=me?'':'none';if(me)openProfile()}};
 
 /* ---------- presence: online / idle / offline + activity ---------- */
-function myAct(){const a=L.getActivity();if(!cfg.share||!a)return null;if(a.kind==='game'&&!cfg.shareGame)return null;if(a.kind==='youtube'&&!cfg.shareYt)return null;if(a.kind==='web'&&!cfg.shareWeb)return null;return{kind:a.kind,label:String(a.label).slice(0,120)}}
+function myAct(){const a=L.getActivity();if(!cfg.share||!a)return null;if(a.kind==='game'&&!cfg.shareGame)return null;if(a.kind==='youtube'&&!cfg.shareYt)return null;if(a.kind==='web'&&!cfg.shareWeb)return null;const lb=a.kind==='game'&&a.lobby&&/^[A-Z0-9]{3,12}$/.test(a.lobby.code)?{code:a.lobby.code,n:+a.lobby.n||1,max:+a.lobby.max||5}:null;return{kind:a.kind,label:String(a.label).slice(0,120),...(lb?{lobby:lb}:{})}}
 let lastSig='';
 function pushPresence(state){if(!me)return;state=state||(document.visibilityState==='visible'?'online':'idle');const act=state==='offline'?null:myAct();
   F.setDoc(D('presence',me.uid),{seen:F.serverTimestamp(),state,act}).catch(()=>{});lastSig=state+JSON.stringify(act);renderMe()}
@@ -148,7 +149,7 @@ L.onPanic=()=>{if(me)F.setDoc(D('presence',me.uid),{seen:F.serverTimestamp(),sta
 /* ---------- friends ---------- */
 let friendships=[];const presUnsub=new Map();
 const friendIds=()=>friendships.filter(f=>f.status==='accepted').map(f=>f.users.find(x=>x!==me.uid));
-let rerender=null;const soon=()=>{clearTimeout(rerender);rerender=setTimeout(()=>{renderFriends();renderRooms();refreshSides();refreshDmHead()},120)};
+let rerender=null;const soon=()=>{clearTimeout(rerender);rerender=setTimeout(()=>{renderFriends();renderRooms();refreshSides();refreshDmHead();L.onLobbies?.()},120)};
 function listenFriends(){unsubs.push(F.onSnapshot(F.query(C('friendships'),F.where('users','array-contains',me.uid)),s=>{
   friendships=s.docs.map(d=>({id:d.id,...d.data()}));const fr=friendIds();setTimeout(prefetchChats,1500);
   fr.forEach(uid=>{if(!presUnsub.has(uid))presUnsub.set(uid,F.onSnapshot(D('presence',uid),p=>{presence.set(uid,p.data()||{});soon()},()=>{}))});
@@ -411,5 +412,5 @@ function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. 
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};L.openUser=showUser;L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
+L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
 L.onCloudReady?.();

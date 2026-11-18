@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const IN_APP=/LumenApp\//.test(navigator.userAgent);
 const KEY='hub.cfg.v1';
-const DEF={notifPop:true,panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startMode:'study',startUrl:'lumen:doc',hotCorner:true,schedule:[],swapMute:true,
+const DEF={notifPop:true,nbPublic:true,bwMode:'normal',bwW:100,bwH:100,panicAction:'redirect',panicUrl:'https://www.google.com',panicKey:'`',studyKey:'v',swapKey:'b',startMode:'study',startUrl:'lumen:doc',hotCorner:true,schedule:[],swapMute:true,
  navPos:'left',navStyle:'full',density:'comfy',fontScale:'100',radius:'28',blur:'24',anim:true,hiddenNav:[],
  histDisguise:true,histTitle:'Google Classroom',wipe:false,blurPanic:false,grade:'mid',
  title:'Learning Portal',icon:'',portal:'Learning Portal',brand:'Lumen',acc:'#7c5cff',acc2:'#22d3ee',bg:'#06070b',
@@ -248,7 +248,7 @@ addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFo
 
 /* ---------- settings ---------- */
 const FIELDS=['searchEngine','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','jumpLinks','rooms'];
-const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','hotCorner','notifPop'];
+const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','hotCorner','notifPop','nbPublic'];
 function fillSettings(){guideKeys();FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
   $('#navToggles').innerHTML=$$('nav .nav-btn').filter(n=>n.id!=='navAdmin'&&n.id!=='navCreator').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
 // layout controls preview live
@@ -278,11 +278,10 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-18h',items:[
+const NEWS={id:'2026-11-18i',items:[
+  ['🟢','Join Nightbound lobbies','When someone hosts a Nightbound lobby, a Join button shows on the Hub, the Game hub and your friends list.','hub'],
+  ['⤢','Resize the browser','In the Web tab, press ⤢ to stretch the browser, shrink it, or minimize it into a floating window that stays on screen.','web'],
   ['🔔','Notifications','A pop-up and a red dot when someone messages you, likes your post, gifts you Glow or sends a friend request.'],
-  ['💬','Faster chats + typing','Chats open instantly, and you can see when someone is typing.','friends'],
-  ['🎮','The new Game hub','Trending games, search, filters and a page for every game with reviews.','games'],
-  ['✦','Creators earn Glow','20 Glow per minute others play your game, 50 per post that mentions it, 50 per positive review.','hub'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');
