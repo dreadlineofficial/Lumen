@@ -94,7 +94,7 @@ service cloud.firestore {
       allow update: if signedIn() && uid() == userId && profileOk(request.resource.data)
         && economyOk(resource.data, request.resource.data) && equipOk(request.resource.data);
       // admin: gift Glow to anyone (including themselves)
-      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins'])
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins', 'gift'])
         && request.resource.data.coins is int && request.resource.data.coins >= 0 && request.resource.data.coins <= 1000000000;
       // admin: rename anyone
       allow update: if isAdmin() && profileOk(request.resource.data)
@@ -243,6 +243,17 @@ service cloud.firestore {
     match /server/{doc} {
       allow read: if signedIn();
       allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40 && request.resource.data.get('pinned', []).size() <= 30;
+    }
+
+    // "… is typing": rooms are public; a private chat's typing doc only for its two people.
+    // You can only set your own entry, to "now" or to nothing.
+    match /typing/{key} {
+      function okKey() { return key.matches('^r_.{1,32}$') || (key.matches('^d_[^_]+_[^_]+$') && uid() in key.split('_')); }
+      allow read: if signedIn() && okKey();
+      allow create: if active() && okKey() && request.resource.data.keys().hasOnly([uid()])
+        && (request.resource.data[uid()] == request.time || request.resource.data[uid()] == null);
+      allow update: if active() && okKey() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([uid()])
+        && (request.resource.data[uid()] == request.time || request.resource.data[uid()] == null);
     }
 
     // lets people see that the admin messaged them (they aren't friends)

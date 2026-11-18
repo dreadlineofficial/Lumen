@@ -10,15 +10,15 @@
 <style>html.booting,html.booting body{background:#f6f8fc!important}html.booting body>*:not(#study){visibility:hidden!important}html.booting #study{display:block}</style>
 <script>
 /* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
-window.LUMEN_VERSION='2026-11-18f';
+window.LUMEN_VERSION='2026-11-18h';
 (function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
 </script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261118f">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261118f">
+<link rel="stylesheet" href="css/app.css?v=20261118h">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261118h">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -225,6 +225,8 @@ window.LUMEN_VERSION='2026-11-18f';
         <details><summary>🎮 Games and 🌐 the Web tab</summary><ul>
           <li><b>Games</b> is the game hub: search, filter (Trending, Most played, New, Top rated, Creators, Lumen originals) and open any game to see its <b>game page</b> with stats and reviews. Press <b>▶ Play now</b> to play. <b>Your games</b> at the bottom are games you added yourself (a link or an HTML file, kept in this browser only).</li>
           <li><b>Reviews:</b> on a game page, pick 👍 or 👎 and write a few words. One review per person; you can edit your words later but not the thumbs.</li>
+          <li><b>Typing:</b> when a friend is typing in your chat (or anyone in a channel), you'll see “… is typing” above the message box.</li>
+          <li><b>🔔 Notifications:</b> a pop-up and a red dot on the menu when someone messages you, likes your post, sends a friend request or when the admin gifts you Glow. Pop-ups never appear on the Learning Portal or a cover page, and you can turn them off in Settings.</li>
           <li><b>Mention a game:</b> write a game's name in a post and it turns into a 🎮 link to its game page.</li>
           <li><b>Web:</b> a browser inside Lumen with tabs. Searches use Google. <b>⭐ Featured</b> in the toolbar lists websites made by Lumen creators. YouTube has its own page with Home, Shorts and search; videos play inside Lumen.</li>
           <li>Many big sites (most Google pages, ManageBac, Instagram…) refuse to load inside other sites, both inside Lumen and in a cloaked tab. Press <b>⧉</b>: sites that allow it open in a cloaked tab (not saved in your history); the rest open in a normal new tab.</li></ul></details>
@@ -260,6 +262,7 @@ window.LUMEN_VERSION='2026-11-18f';
           <label>Swap key (flips to notes, keeps your game)</label><input id="s_swapKey" readonly>
           
           <label class="chk"><input type="checkbox" id="s_swapMute"> Mute the game while swapped</label>
+          <label class="chk"><input type="checkbox" id="s_notifPop"> Show pop-up notifications (red dots always show; pop-ups never appear on the Learning Portal or a cover page)</label>
           <label class="chk"><input type="checkbox" id="s_hotCorner"> Hot corner: move the mouse to the top-left corner to switch to study mode</label>
           <p class="muted" style="font-size:12px;margin:8px 0 0">Your keys work everywhere in Lumen. While typing, double-tap them. Inside a website opened in the Web tab, the browser sends key presses to that site, so use the hot corner there.</p>
         </div>
@@ -395,14 +398,15 @@ window.LUMEN_VERSION='2026-11-18f';
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261118f"></script>
-<script src="js/study.js?v=20261118f"></script>
-<script src="js/app.js?v=20261118f"></script>
-<script src="js/cosmetics.js?v=20261118f"></script>
-<script src="js/rich.js?v=20261118f"></script>
-<script src="js/browser.js?v=20261118f"></script>
-<script type="module" src="js/cloud.js?v=20261118f"></script>
-<script type="module" src="js/shop.js?v=20261118f"></script>
-<script type="module" src="js/hub.js?v=20261118f"></script>
+<script src="js/config.js?v=20261118h"></script>
+<script src="js/study.js?v=20261118h"></script>
+<script src="js/app.js?v=20261118h"></script>
+<script src="js/cosmetics.js?v=20261118h"></script>
+<script src="js/rich.js?v=20261118h"></script>
+<script src="js/browser.js?v=20261118h"></script>
+<script type="module" src="js/cloud.js?v=20261118h"></script>
+<script type="module" src="js/shop.js?v=20261118h"></script>
+<script type="module" src="js/hub.js?v=20261118h"></script>
+<script type="module" src="js/notify.js?v=20261118h"></script>
 </body>
 </html>

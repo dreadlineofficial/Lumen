@@ -29,7 +29,7 @@ let unsubs=[];const stopAll=()=>{unsubs.forEach(u=>u());unsubs=[];};
 
 /* ---------- users, presence, styled names ---------- */
 const users=new Map(),presence=new Map(),fetchedAt=new Map();
-function getUser(uid,fresh){if(users.has(uid)&&!fresh&&Date.now()-(fetchedAt.get(uid)||0)<60000)return users.get(uid);fetchedAt.set(uid,Date.now());const p=F.getDoc(D('users',uid)).then(s=>s.exists()?{uid,...s.data()}:{uid,name:'Unknown',bio:''}).catch(()=>({uid,name:'Unknown'}));users.set(uid,p);return p}
+function getUser(uid,fresh){if(users.has(uid)&&!fresh){if(Date.now()-(fetchedAt.get(uid)||0)>=60000){fetchedAt.set(uid,Date.now());F.getDoc(D('users',uid)).then(s=>{if(s.exists())users.set(uid,Promise.resolve({uid,...s.data()}))}).catch(()=>{})}return users.get(uid)}fetchedAt.set(uid,Date.now());const p=F.getDoc(D('users',uid)).then(s=>s.exists()?{uid,...s.data()}:{uid,name:'Unknown',bio:''}).catch(()=>({uid,name:'Unknown'}));users.set(uid,p);return p}
 const okColor=(c,d='#d6b8ff')=>/^#[0-9a-f]{6}$/i.test(c||'')?c:d;
 // online | idle | offline | null (unknown: not a friend)
 function status(uid){if(uid===me?.uid)return document.visibilityState==='visible'?'online':'idle';const p=presence.get(uid);if(!p)return null;
@@ -150,7 +150,7 @@ let friendships=[];const presUnsub=new Map();
 const friendIds=()=>friendships.filter(f=>f.status==='accepted').map(f=>f.users.find(x=>x!==me.uid));
 let rerender=null;const soon=()=>{clearTimeout(rerender);rerender=setTimeout(()=>{renderFriends();renderRooms();refreshSides();refreshDmHead()},120)};
 function listenFriends(){unsubs.push(F.onSnapshot(F.query(C('friendships'),F.where('users','array-contains',me.uid)),s=>{
-  friendships=s.docs.map(d=>({id:d.id,...d.data()}));const fr=friendIds();
+  friendships=s.docs.map(d=>({id:d.id,...d.data()}));const fr=friendIds();setTimeout(prefetchChats,1500);
   fr.forEach(uid=>{if(!presUnsub.has(uid))presUnsub.set(uid,F.onSnapshot(D('presence',uid),p=>{presence.set(uid,p.data()||{});soon()},()=>{}))});
   [...presUnsub.keys()].filter(k=>!fr.includes(k)).forEach(k=>{presUnsub.get(k)();presUnsub.delete(k);presence.delete(k)});soon()}));
   unsubs.push(()=>{presUnsub.forEach(u=>u());presUnsub.clear()});
@@ -183,7 +183,7 @@ $('#findForm').onsubmit=async e=>{e.preventDefault();if(!me)return openModal('au
 
 /* ---------- message panes (rooms + DMs) ---------- */
 const rooms=()=>serverChannels||cfg.rooms.split(',').map(s=>s.trim().toLowerCase().replace(/[^\w-]/g,'')).filter(Boolean);
-function mkPane(sel){const el=$(sel);return{el,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
+function mkPane(sel){const el=$(sel);const ty=document.createElement('div');ty.className='typing';el.querySelector('form').before(ty);return{el,ty,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
 const panes={room:mkPane('#roomPane'),dm:mkPane('#dmPane')};
 async function renderRooms(){if(!me)return;const on=friendIds().filter(u=>status(u)!=='offline').sort((a,b)=>rank(a)-rank(b));
   const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${L.cos?.buddyCanvas(u.buddy,'bar',uid+':room')||''}${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
@@ -196,14 +196,20 @@ const convoPath=c=>c.type==='room'?['rooms',c.id,'messages']:['dms',pairId(me.ui
 async function refreshDmHead(){const p=panes.dm;if(p.convo?.type!=='dm')return;const uid=p.convo.id;const u=await getUser(uid);
   p.pt.innerHTML=`${pic(u,28,uid)}<span>${nameHTML(u)}</span>`;const act=actText(uid);p.status.className='status st-'+status(uid);p.status.innerHTML=`<i></i>${act||esc(statusText(uid))}`}
 function openDm(uid){L.go('friends');openConvo(panes.dm,{type:'dm',id:uid});showSide('fr',uid)}
-async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();
-  if(c.type==='room'){p.pt.innerHTML=`<span class="hash">#</span>${esc(c.id)}`;p.status.className='status';p.status.innerHTML='<i></i>Connecting…';renderRooms()}
-  else{await refreshDmHead();renderFriends()}
-  p.input.placeholder=c.type==='room'?`Message #${c.id}`:'Message '+((await getUser(c.id)).name||'');
-  p.msgs.innerHTML='<div class="sysmsg">Loading…</div>';
-  p.unsub=F.onSnapshot(F.query(C(...convoPath(c)),F.orderBy('at','desc'),F.limit(100)),async s=>{
+const msgCache=new Map(),cKey=c=>convoPath(c).join('/');
+async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();p.unsub=null;const key=cKey(c);
+  if(c.type==='room'){p.pt.innerHTML=`<span class="hash">#</span>${esc(c.id)}`;p.status.className='status';p.status.innerHTML='<i></i>Connecting…';renderRooms();p.input.placeholder=`Message #${c.id}`}
+  else{refreshDmHead();renderFriends();p.input.placeholder='Message';getUser(c.id).then(u=>{if(p.convo===c)p.input.placeholder='Message '+(u.name||'')})}
+  const cached=msgCache.get(key);
+  if(cached)drawMsgs(p,c,cached,true);else{p.msgs.dataset.c='';p.msgs.dataset.n=0;p.msgs.innerHTML='<div class="sysmsg">Loading…</div>'}
+  watchTyping(p,c);
+  p.unsub=F.onSnapshot(F.query(C(...convoPath(c)),F.orderBy('at','desc'),F.limit(80)),s=>{
+    const docs=s.docs.map(d=>d.data()).reverse();msgCache.set(key,docs);if(p.convo!==c)return;
     if(c.type==='room'){p.status.className='status ok';p.status.innerHTML='<i></i>Live'}
-    const docs=s.docs.map(d=>d.data()).reverse();const us=await Promise.all(docs.map(m=>getUser(m.uid)));
+    drawMsgs(p,c,docs,false,s.metadata.hasPendingWrites)},
+    e=>{if(p.convo!==c)return;p.status.className='status';p.status.innerHTML='<i></i>No access';p.msgs.innerHTML=`<div class="sysmsg">${esc(e.code==='permission-denied'?'You can only message friends.':e.message)}</div>`});
+  unsubs.push(()=>p.unsub?.())}
+async function drawMsgs(p,c,docs,fromCache,pending){const us=await Promise.all(docs.map(m=>getUser(m.uid)));if(p.convo!==c)return;
     const box=p.msgs,fromBottom=box.scrollHeight-box.scrollTop-box.clientHeight,prevCount=+box.dataset.n||0;
     box.innerHTML=docs.map((m,i)=>{const u=us[i],g=safeImg(m.gif),prev=docs[i-1];
       const grouped=prev&&prev.uid===m.uid&&ms(m.at)-ms(prev.at)<5*60e3;
@@ -215,15 +221,35 @@ async function openConvo(p,c){if(!me)return;p.convo=c;p.unsub?.();
     // new chat or my own message: jump to the end. A new message from someone: glide down to it,
     // unless I've scrolled far up to read older messages, then show a "new message" button instead.
     const switched=box.dataset.c!==JSON.stringify(c),grew=docs.length>prevCount&&!switched;box.dataset.c=JSON.stringify(c);box.dataset.n=docs.length;
-    if(switched||s.metadata.hasPendingWrites)box.scrollTop=box.scrollHeight;
-    else if(grew){if(fromBottom<600){box.scrollTop=box.scrollHeight-box.clientHeight-fromBottom;box.scrollTo({top:box.scrollHeight,behavior:'smooth'})}else showJump(p)}},
-    e=>{p.status.className='status';p.status.innerHTML='<i></i>No access';p.msgs.innerHTML=`<div class="sysmsg">${esc(e.code==='permission-denied'?'You can only message friends.':e.message)}</div>`});
-  unsubs.push(()=>p.unsub?.())}
+    if(switched||pending)box.scrollTop=box.scrollHeight;
+    else if(grew){if(fromBottom<600){box.scrollTop=box.scrollHeight-box.clientHeight-fromBottom;box.scrollTo({top:box.scrollHeight,behavior:'smooth'})}else showJump(p)}}
+// warm the cache for the chats people are most likely to open, so they appear instantly
+let prefetched=false;
+async function prefetchChats(){if(prefetched||!me)return;prefetched=true;const ids=friendIds().sort((a,b)=>rank(a)-rank(b)).slice(0,8);if(inbox.includes(ADMIN_UID)&&me.uid!==ADMIN_UID)ids.unshift(ADMIN_UID);
+  for(const uid of ids){const c={type:'dm',id:uid},key=cKey(c);if(msgCache.has(key))continue;
+    try{const s=await F.getDocs(F.query(C(...convoPath(c)),F.orderBy('at','desc'),F.limit(40)));if(!msgCache.has(key))msgCache.set(key,s.docs.map(d=>d.data()).reverse());s.docs.forEach(d=>getUser(d.data().uid))}catch{}}}
+
+/* ---------- "… is typing" ---------- */
+const typingKey=c=>c.type==='room'?'r_'+c.id:'d_'+pairId(me.uid,c.id);
+let lastTyping=0,typingTo=null;
+function sendTyping(p,on){if(!me||!p.convo||banned)return;const k=typingKey(p.convo);
+  if(on){if(Date.now()-lastTyping<3000&&typingTo===k)return;lastTyping=Date.now();typingTo=k;F.setDoc(D('typing',k),{[me.uid]:F.serverTimestamp()},{merge:true}).catch(()=>{})}
+  else if(typingTo){const t=typingTo;typingTo=null;lastTyping=0;F.setDoc(D('typing',t),{[me.uid]:null},{merge:true}).catch(()=>{})}}
+function watchTyping(p,c){p.tyUnsub?.();clearInterval(p.tyTimer);p.ty.innerHTML='';const seen=new Map();
+  const show=async()=>{const now=Date.now(),who=[...seen].filter(([u,t])=>now-t<6000).map(([u])=>u);if(p.convo!==c)return;
+    if(!who.length){p.ty.innerHTML='';return}const names=(await Promise.all(who.map(getUser))).map(u=>esc(u.name||'Someone'));
+    p.ty.innerHTML=`<span class="tdots"><i></i><i></i><i></i></span><b>${names.length>2?`${names.length} people are`:names.join(' and ')+(names.length>1?' are':' is')}</b> typing…`};
+  const stamp=new Map();
+  p.tyUnsub=F.onSnapshot(D('typing',typingKey(c)),s=>{const d=s.data()||{};for(const u of [...seen.keys()])if(!(u in d)){seen.delete(u);stamp.delete(u)}
+    for(const [u,v] of Object.entries(d)){if(u===me.uid)continue;const t=v?.toMillis?.();if(!t){seen.delete(u);stamp.delete(u);continue}if(stamp.get(u)!==t){stamp.set(u,t);seen.set(u,Date.now())}}
+    show()},()=>{});
+  p.tyTimer=setInterval(show,1000);unsubs.push(()=>{p.tyUnsub?.();clearInterval(p.tyTimer)})}
 function showJump(p){let j=p.el.querySelector('.jump-new');if(!j){j=document.createElement('button');j.className='jump-new';j.textContent='New message ↓';p.el.appendChild(j);
     j.onclick=()=>{p.msgs.scrollTo({top:p.msgs.scrollHeight,behavior:'smooth'});j.remove()};p.msgs.addEventListener('scroll',function f(){if(p.msgs.scrollHeight-p.msgs.scrollTop-p.msgs.clientHeight<80){j.remove();p.msgs.removeEventListener('scroll',f)}})}}
 async function sendMsg(p,text,gif){if(!me){openModal('authModal');return}if(!p.convo)return toast('Pick a chat first');text=(text||'').trim().slice(0,1000);if(!text&&!gif)return;
   try{await F.addDoc(C(...convoPath(p.convo)),{uid:me.uid,text,gif:gif||'',at:F.serverTimestamp()})}catch(e){toast('Not sent: '+e.message)}}
-Object.values(panes).forEach(p=>{p.form.onsubmit=e=>{e.preventDefault();const v=p.input.value;p.input.value='';sendMsg(p,v)};
+Object.values(panes).forEach(p=>{p.form.onsubmit=e=>{e.preventDefault();const v=p.input.value;p.input.value='';sendTyping(p,false);sendMsg(p,v)};
+  p.input.addEventListener('input',()=>sendTyping(p,!!p.input.value.trim()));p.input.addEventListener('blur',()=>sendTyping(p,false));
   p.form.querySelector('[data-gifbtn]').onclick=async()=>{const g=await pickGif();if(g)sendMsg(p,'',g)}});
 const vOn=L.onView;L.onView=v=>{vOn?.(v);if(v==='friends'&&me&&!sideUid.fr)showSide('fr',me.uid)};
 
@@ -372,7 +398,7 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
     const bt=F.writeBatch(db);bt.set(D('bans',b.dataset.ban),{at:F.serverTimestamp(),name:u?.name||''});bt.delete(D('users',b.dataset.ban));try{await bt.commit();toast('Profile deleted and account banned')}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-gift]').forEach(b=>b.onclick=async()=>{const u=allUsers.find(x=>x.uid===b.dataset.gift);const raw=prompt(`How much Glow to gift ${u?.name||'this account'}? (current: ${(+u?.coins||0).toLocaleString()})`,'1000');if(raw===null)return;
     const amt=Math.floor(Number(String(raw).replace(/[^0-9.-]/g,'')));if(!Number.isFinite(amt)||amt<=0)return toast('Enter a positive number');
-    try{const fresh=await F.getDoc(D('users',b.dataset.gift));const next=Math.min(1e9,(+fresh.data()?.coins||0)+amt);await F.updateDoc(D('users',b.dataset.gift),{coins:next});toast(`Gifted ✦ ${amt.toLocaleString()} to ${u?.name||'them'}`)}catch(e){adminErr(e)}});
+    try{const fresh=await F.getDoc(D('users',b.dataset.gift));const next=Math.min(1e9,(+fresh.data()?.coins||0)+amt);await F.updateDoc(D('users',b.dataset.gift),{coins:next,gift:{amount:amt,at:F.serverTimestamp(),id:Date.now().toString(36)+Math.random().toString(36).slice(2,6)}});toast(`Gifted ✦ ${amt.toLocaleString()} to ${u?.name||'them'}`)}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-unban]').forEach(b=>b.onclick=async()=>{try{await F.deleteDoc(D('bans',b.dataset.unban));toast('Unbanned')}catch(e){toast(e.message)}});
   box.querySelectorAll('[data-rmch]').forEach(b=>b.onclick=()=>saveChannels(chans.filter(c=>c!==b.dataset.rmch)));
   if($('#mkCode'))$('#mkCode').onsubmit=async e=>{e.preventDefault();const amount=Math.floor(+$('#codeAmt').value),maxUses=Math.max(1,Math.floor(+$('#codeUses').value||1));if(!(amount>0))return toast('Enter how much Glow the code is worth');
@@ -385,5 +411,5 @@ function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. 
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};L.openUser=showUser;
+L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};L.openUser=showUser;L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
 L.onCloudReady?.();
