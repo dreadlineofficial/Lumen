@@ -16,6 +16,9 @@ Accounts, profiles, friends, private chats, rooms, activity sharing and posts al
 1. Open **Build → Firestore Database → Create database**.
 2. Pick a location near you, then choose **Start in production mode**.
 3. Open the **Rules** tab, delete what's there, and paste in everything from [`firestore.rules`](firestore.rules) in this repo. Click **Publish**.
+   Direct link (for this project): https://console.firebase.google.com/project/lumen-864cf/firestore/rules
+   **Every time Lumen gets a new feature that saves data (Hub, creators, Glow codes…), copy the latest `firestore.rules` and publish it again**, or those features will say "Firebase refused this".
+   Lumen's queries don't need any extra indexes, so you don't need to touch the **Indexes** tab.
    These rules make sure only you can edit your profile, only the two people in a private chat can read it, only friends can see each other's activity, and nobody can post as someone else.
 
 ## 4. Connect the site to Firebase
@@ -86,6 +89,8 @@ In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch 
 - Click **Sign in** at the bottom-left to create an account. Click your name to change your picture, description and privacy settings.
 - **Friends:** search by name, send a request, and accept requests on the Friends page. Click a friend there to open your private chat; their profile shows on the right. A green dot means online, yellow means idle (Lumen open in a background tab), and grey shows when they were last seen.
 - **Activity:** in your profile you choose what friends can see (the game you're playing, the YouTube video you're watching, the site you have open) and whether you see theirs. Study mode and panic always hide your activity.
+- **Hub:** the first page in Lumen. The admin customises it in **Admin → Hub** (headline, colour, announcement, which sections show, featured picks).
+- **Lumen creators:** people apply from the Hub; the admin accepts or rejects them in **Admin → Creators**. Creators submit games and websites from the **Creator** page, and the admin approves, features, hides or deletes them in **Admin → Projects** (built-in games can be hidden there too).
 - **Posts:** write something, add an image if you like, and others can comment with text or GIFs. You can delete your own posts, and comments on them.
 
 ## Free limits

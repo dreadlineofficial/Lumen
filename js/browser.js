@@ -11,6 +11,7 @@ const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch{return'
 
 /* turn whatever was typed into a destination */
 function resolve(input){let u=String(input||'').trim();if(!u||u==='lumen:newtab')return{internal:'newtab'};
+  if(u==='lumen:featured')return{internal:'featured'};
   if(u.startsWith('lumen:search?q='))return{internal:'search',q:decodeURIComponent(u.slice(15))};
   if(u.startsWith('lumen:youtube')){const p=new URLSearchParams(u.split('?')[1]||'');return{internal:'youtube',q:p.get('q')||'',tab:p.get('tab')||'home',pid:p.get('id')||''}}
   // YouTube's own site can't be framed: route home/search pages to Lumen's YouTube page
@@ -35,7 +36,7 @@ function go(t,input,push){const r=resolve(input);const entry={...r,input};
   show(t)}
 function show(t){const e=t.hist[t.idx];$('#bwHint').style.display='none';
   if(e.internal){t.frame.removeAttribute('src');t.frame.src='about:blank';
-    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':({shorts:'Shorts',subs:'Subscriptions',liked:'Liked videos',playlists:'Playlists',playlist:'Playlist'}[e.tab]?({shorts:'Shorts',subs:'Subscriptions',liked:'Liked videos',playlists:'Playlists',playlist:'Playlist'}[e.tab]+' – YouTube'):'YouTube');t.fav=L.favUrl('youtube.com');ytPage(t,e.q,e.tab,e.pid)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
+    if(e.internal==='newtab'){t.title='New tab';t.fav='';newTabPage(t)}else if(e.internal==='featured'){t.title='Featured';t.fav='';if(L.hub)L.hub.featuredPage(t.page,u=>go(t,u,true));else t.page.innerHTML='<p class="muted" style="padding:30px">Loading…</p>'}else if(e.internal==='youtube'){t.title=e.q?e.q+' – YouTube':({shorts:'Shorts',subs:'Subscriptions',liked:'Liked videos',playlists:'Playlists',playlist:'Playlist'}[e.tab]?({shorts:'Shorts',subs:'Subscriptions',liked:'Liked videos',playlists:'Playlists',playlist:'Playlist'}[e.tab]+' – YouTube'):'YouTube');t.fav=L.favUrl('youtube.com');ytPage(t,e.q,e.tab,e.pid)}else{t.title=e.q+' – Search';t.fav='';searchPage(t,e.q)}
     if(t===active)L.setActivity(null)}
   else{t.frame.src=e.url;t.title=e.google?e.q+' – Google':e.yt?'YouTube':host(e.show);t.fav=L.favUrl(host(e.show)||'youtube.com');addRecent(e.show,t.title);
     if(e.yt)ytTitle(t,e.yt);
@@ -174,6 +175,7 @@ $('#bwBack').onclick=()=>{if(active.idx>0){active.idx--;show(active)}};
 $('#bwFwd').onclick=()=>{if(active.idx<active.hist.length-1){active.idx++;show(active)}};
 $('#bwReload').onclick=()=>show(active);
 $('#bwHome').onclick=()=>go(active,'lumen:newtab',true);
+$('#bwFeat').onclick=()=>go(active,'lumen:featured',true);
 const curUrl=()=>{const e=active?.hist[active.idx];return e&&!e.internal?e.show:null};
 $('#bwCloak').onclick=()=>{const u=curUrl();if(u)L.cloak(u,active.title);else toast('Open a page first')};
 $('#bwHintCloak').onclick=e=>{e.preventDefault();$('#bwCloak').click()};
@@ -187,6 +189,6 @@ $('#bwStar').onclick=()=>{const u=curUrl();if(!u)return toast('Open a page first
 L.browser={open(url){L.go('web');const e=active?.hist[active.idx];if(active&&e?.internal==='newtab')go(active,url,true);else newTab(url)},
   pause(m){const f=active?.frame;try{f?.contentWindow.postMessage(JSON.stringify({event:'command',func:m?'pauseVideo':'playVideo',args:[]}),'*')}catch{}},
   wipe(){tabs.slice().forEach(t=>{t.frame.remove();t.page.remove()});tabs=[];active=null;if(cfg.wipe)localStorage.removeItem(HKEY);newTab(null,{focus:false})},
-  refresh(){tabs.forEach(t=>{if(t.hist[t.idx]?.internal==='newtab')newTabPage(t)})}};
+  refresh(){tabs.forEach(t=>{const i=t.hist[t.idx]?.internal;if(i==='newtab')newTabPage(t);else if(i==='featured'&&L.hub)L.hub.featuredPage(t.page,u=>go(t,u,true))})}};
 newTab(null,{focus:false});
 })();

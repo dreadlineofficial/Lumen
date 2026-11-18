@@ -10,22 +10,23 @@
 <style>html.booting,html.booting body{background:#f6f8fc!important}html.booting body>*:not(#study){visibility:hidden!important}html.booting #study{display:block}</style>
 <script>
 /* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
-window.LUMEN_VERSION='2026-11-18d';
+window.LUMEN_VERSION='2026-11-18e';
 (function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
 </script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261118d">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261118d">
+<link rel="stylesheet" href="css/app.css?v=20261118e">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261118e">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
 <div class="app" id="app">
   <nav>
     <div class="logo" id="brand">Lumen</div>
-    <button class="nav-btn on" data-v="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg><span>Games</span></button>
+    <button class="nav-btn on" data-v="hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Hub</span></button>
+    <button class="nav-btn" data-v="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg><span>Games</span></button>
     <button class="nav-btn" data-v="web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span>Web</span></button>
     <button class="nav-btn" data-v="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
     <button class="nav-btn" data-v="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a7 7 0 0 1 14 0v1M17 11a4 4 0 0 0 0-8M23 21v-1a7 7 0 0 0-5-6.7"/></svg><span>Friends</span><em class="badge" id="reqBadge" style="display:none;font-style:normal"></em></button>
@@ -33,6 +34,7 @@ window.LUMEN_VERSION='2026-11-18d';
     <button class="nav-btn" data-v="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg><span>Shop</span></button>
     <button class="nav-btn" data-v="timetable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Timetable</span></button>
     <button class="nav-btn" data-v="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg><span>Profile</span></button>
+    <button class="nav-btn" data-v="creator" id="navCreator" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>Creator</span></button>
     <button class="nav-btn" data-v="admin" id="navAdmin" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 9.5 8 11 4.6-1.5 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg><span>Admin</span></button>
     <button class="nav-btn" data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Settings</span></button>
     <div class="spacer"></div>
@@ -42,7 +44,14 @@ window.LUMEN_VERSION='2026-11-18d';
     <div class="hint">Panic <kbd id="kPanic">`</kbd> · Study <kbd id="kStudy">v</kbd> · Swap <kbd id="kSwap">b</kbd></div>
   </nav>
   <main>
-    <section class="view on" id="v-games">
+    <section class="view on" id="v-hub"><div id="hubBox"></div></section>
+
+    <section class="view" id="v-creator">
+      <h1>Creator <span class="serif iri">dashboard.</span></h1><p class="sub">Publish your own games and websites on Lumen. The admin reviews everything before it goes live.</p>
+      <div id="creatorBox"></div>
+    </section>
+
+    <section class="view" id="v-games">
       <h1>Play <span class="serif iri">anything.</span></h1><p class="sub">Click to play. Press your Swap key to flip to study notes and back without losing your game.</p>
       <div class="grid" id="gameGrid"></div>
     </section>
@@ -53,7 +62,7 @@ window.LUMEN_VERSION='2026-11-18d';
         <div class="bw-bar">
           <button class="ib" id="bwBack" title="Back">‹</button><button class="ib" id="bwFwd" title="Forward">›</button><button class="ib" id="bwReload" title="Reload">↻</button><button class="ib" id="bwHome" title="Home">⌂</button>
           <form class="bw-url" id="bwForm"><span id="bwLock">🔍</span><input id="bwIn" placeholder="Search or type an address" autocomplete="off" spellcheck="false"></form>
-          <button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open outside Lumen: in a cloaked tab when the site allows it (not saved in history), otherwise in a normal new tab">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
+          <button class="bw-feat" id="bwFeat" title="Websites from Lumen creators">⭐ Featured</button><button class="ib" id="bwStar" title="Add to shortcuts">☆</button><button class="ib" id="bwCloak" title="Open outside Lumen: in a cloaked tab when the site allows it (not saved in history), otherwise in a normal new tab">⧉</button><button class="ib" id="bwFull" title="Fullscreen">⛶</button>
         </div>
         <div class="bw-note" id="bwNote">🔒 Pages you open here load inside Lumen, so they don't show up in your browser's history (only Lumen does). Your network, school filter or a signed-in Google account can still keep their own records. <a href="#" id="bwNoteX">Got it</a></div>
         <div class="bw-hint" id="bwHint" style="display:none">Page blank or “refused to connect”? This site blocks being shown inside other sites (inside Lumen or a cloaked tab). <a href="#" id="bwHintCloak">Open it in a new tab</a> · <a href="#" id="bwHintX">dismiss</a></div>
@@ -172,7 +181,7 @@ window.LUMEN_VERSION='2026-11-18d';
     </section>
 
     <section class="view" id="v-admin">
-      <h1>Control <span class="serif iri">panel.</span></h1><p class="sub">Every account on Lumen. Rename people, message anyone without a friend request, remove and ban accounts, and manage the global chat channels.</p>
+      <h1>Control <span class="serif iri">panel.</span></h1><p class="sub">Everything you run on Lumen: accounts, creators, projects, the Hub, Glow codes and chat channels.</p>
       <div id="adminBox"></div>
     </section>
 
@@ -200,9 +209,15 @@ window.LUMEN_VERSION='2026-11-18d';
           <li>Pick times (for example a lesson) and a page. During those times, Panic and Swap show that page instead.</li>
           <li><b>Essay</b>, <b>worksheet</b>, Google, Wikipedia and Desmos show inside Lumen; press Panic again to come back.</li>
           <li><b>Any other site</b> (ManageBac, YouTube, Classroom…) can't be shown inside another site, so it opens for real in your tab. Come back with your browser's <b>Back</b> button, or install the <b>Return-key extension</b> (Settings) so your keys and hot corner bring you back from any site.</li></ul></details>
+        <details><summary>🏠 The Hub and 🛠 Lumen creators</summary><ul>
+          <li><b>Hub</b> is the first page you see in Lumen: the admin's announcements, ⭐ Featured picks, the 🔥 most played games, the 📰 most popular posts this week and ✨ new projects from Lumen creators.</li>
+          <li>Each game or creator website counts one play per person per day.</li>
+          <li><b>Become a Lumen creator:</b> press <b>Apply</b> at the bottom of the Hub and say what you'll make. Once the admin accepts you, a <b>Creator</b> page appears in the menu.</li>
+          <li>On the <b>Creator</b> page, add a game or a website (title, an https:// link, a short description and a cover image). The admin reviews it before it goes live; editing it sends it back for review. Your stats show plays, what's live and what's featured.</li>
+          <li>Approved games appear on the Hub and the Games tab; approved websites appear in <b>Web → ⭐ Featured</b>.</li></ul></details>
         <details><summary>🎮 Games and 🌐 the Web tab</summary><ul>
           <li><b>Games:</b> click a card to play. <b>Add a game</b> takes a link or an HTML file from your device (files stay in this browser only).</li>
-          <li><b>Web:</b> a browser inside Lumen with tabs. Searches use Google. YouTube has its own page with Home, Shorts and search; videos play inside Lumen.</li>
+          <li><b>Web:</b> a browser inside Lumen with tabs. Searches use Google. <b>⭐ Featured</b> in the toolbar lists websites made by Lumen creators. YouTube has its own page with Home, Shorts and search; videos play inside Lumen.</li>
           <li>Many big sites (most Google pages, ManageBac, Instagram…) refuse to load inside other sites, both inside Lumen and in a cloaked tab. Press <b>⧉</b>: sites that allow it open in a cloaked tab (not saved in your history); the rest open in a normal new tab.</li></ul></details>
         <details><summary>💬 Chat, friends and posts</summary><ul>
           <li><b>Chat:</b> public channels everyone can read. <b>Friends:</b> search people, send requests, and chat privately. Only you two can read private chats.</li>
@@ -371,13 +386,14 @@ window.LUMEN_VERSION='2026-11-18d';
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261118d"></script>
-<script src="js/study.js?v=20261118d"></script>
-<script src="js/app.js?v=20261118d"></script>
-<script src="js/cosmetics.js?v=20261118d"></script>
-<script src="js/rich.js?v=20261118d"></script>
-<script src="js/browser.js?v=20261118d"></script>
-<script type="module" src="js/cloud.js?v=20261118d"></script>
-<script type="module" src="js/shop.js?v=20261118d"></script>
+<script src="js/config.js?v=20261118e"></script>
+<script src="js/study.js?v=20261118e"></script>
+<script src="js/app.js?v=20261118e"></script>
+<script src="js/cosmetics.js?v=20261118e"></script>
+<script src="js/rich.js?v=20261118e"></script>
+<script src="js/browser.js?v=20261118e"></script>
+<script type="module" src="js/cloud.js?v=20261118e"></script>
+<script type="module" src="js/shop.js?v=20261118e"></script>
+<script type="module" src="js/hub.js?v=20261118e"></script>
 </body>
 </html>

@@ -114,9 +114,60 @@ service cloud.firestore {
           && getAfter(codePath(code)).data.uses == get(codePath(code)).data.uses + 1;
       }
     }
+    // ---------- Lumen Creators ----------
+    function appPath(u) { return /databases/$(database)/documents/creatorApps/$(u); }
+    function isCreator() { return signedIn() && exists(appPath(uid())) && get(appPath(uid())).data.status == 'approved'; }
+    // applications: you apply (pending); only the admin can approve or reject
+    match /creatorApps/{userId} {
+      allow get: if signedIn() && (uid() == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if active() && uid() == userId && request.resource.data.status == 'pending'
+        && request.resource.data.about is string && request.resource.data.about.size() <= 600
+        && request.resource.data.get('links', '').size() <= 400;
+      // re-apply after a rejection
+      allow update: if active() && uid() == userId && resource.data.status == 'rejected' && request.resource.data.status == 'pending'
+        && request.resource.data.about is string && request.resource.data.about.size() <= 600;
+      allow update, delete: if isAdmin();
+    }
+    // projects: creators submit games and sites; the admin reviews, features, hides and deletes
+    function projectOk(d) {
+      return d.type in ['game', 'site'] && d.title is string && d.title.size() >= 2 && d.title.size() <= 60
+        && d.url is string && d.url.size() <= 500 && d.url.matches('^https://.*')
+        && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 300000;
+    }
+    match /projects/{id} {
+      allow get: if signedIn() && (resource.data.status == 'approved' || resource.data.uid == uid() || isAdmin());
+      allow list: if signedIn() && (resource.data.status == 'approved' || resource.data.uid == uid() || isAdmin());
+      allow create: if active() && isCreator() && request.resource.data.uid == uid() && request.resource.data.status == 'pending'
+        && request.resource.data.get('featured', false) == false && projectOk(request.resource.data);
+      // a creator's edit goes back into review
+      allow update: if active() && isCreator() && resource.data.uid == uid() && request.resource.data.uid == uid()
+        && request.resource.data.status == 'pending' && request.resource.data.get('featured', false) == resource.data.get('featured', false)
+        && projectOk(request.resource.data);
+      allow update: if isAdmin() && projectOk(request.resource.data) && request.resource.data.status in ['pending', 'approved', 'rejected'];
+      allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
+    }
+    // play counts for "Most played": +1 per person per game per day, paired with a play record
+    function playPath(k) { return /databases/$(database)/documents/plays/$(k); }
+    match /plays/{key} {
+      allow read: if signedIn();
+      allow create: if active() && request.resource.data.count == 1
+        && existsAfter(/databases/$(database)/documents/plays/$(key)/by/$(uid() + '_' + today()));
+      allow update: if active() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+        && request.resource.data.count == resource.data.count + 1
+        && !exists(/databases/$(database)/documents/plays/$(key)/by/$(uid() + '_' + today()))
+        && existsAfter(/databases/$(database)/documents/plays/$(key)/by/$(uid() + '_' + today()));
+      allow delete: if isAdmin();
+      match /by/{rec} {
+        allow get: if signedIn() && rec.matches('^' + uid() + '_.*');
+        allow create: if active() && rec == uid() + '_' + today()
+          && getAfter(playPath(key)).data.count == (exists(playPath(key)) ? get(playPath(key)).data.count : 0) + 1;
+      }
+    }
+
     match /server/{doc} {
       allow read: if signedIn();
-      allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40;
+      allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40 && request.resource.data.get('pinned', []).size() <= 30;
     }
 
     // lets people see that the admin messaged them (they aren't friends)

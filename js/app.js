@@ -47,10 +47,10 @@ function applyLayout(){const b=document.body.classList,r=document.documentElemen
   b.toggle('nav-right',cfg.navPos==='right');b.toggle('nav-top',cfg.navPos==='top');b.toggle('nav-icons',cfg.navStyle==='icons'&&cfg.navPos!=='top');
   b.toggle('compact',cfg.density==='compact');b.toggle('anim-off',!cfg.anim);
   r.setProperty('--r',cfg.radius+'px');r.setProperty('--blur',cfg.blur+'px');$('#app').style.zoom=(+cfg.fontScale||100)/100;
-  $$('nav .nav-btn').forEach(n=>{if(n.id==='navAdmin')return;n.style.display=(cfg.hiddenNav||[]).includes(n.dataset.v)?'none':''})}
+  $$('nav .nav-btn').forEach(n=>{if(n.id==='navAdmin'||n.id==='navCreator')return;n.style.display=(cfg.hiddenNav||[]).includes(n.dataset.v)?'none':''})}
 
 /* ---------- navigation ---------- */
-function go(v){if(v==='admin'&&$('#navAdmin').style.display==='none')v='games';$$('.nav-btn').forEach(x=>x.classList.toggle('on',x.dataset.v===v));$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
+function go(v){if(v==='admin'&&$('#navAdmin').style.display==='none')v='hub';$$('.nav-btn').forEach(x=>x.classList.toggle('on',x.dataset.v===v));$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
   if(v==='settings')fillSettings();if(v==='timetable')renderTT();window.Lumen?.onView?.(v)}
 $$('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
@@ -86,12 +86,14 @@ async function playCustom(g){if(g.file){try{const f=await gfile('get',g.id);if(!
     blobUrl=URL.createObjectURL(new Blob([f],{type:'text/html'}));openView(blobUrl,g.name,{kind:'game',label:g.name})}catch{toast('Could not open the game file')}}
   else openView(fixUrl(g.url),g.name,{kind:'game',label:g.name})}
 function renderGames(){
-  const b=BUILTIN.map((g,i)=>`<div class="card game-card" data-b="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${g.poster?'':esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`);
+  const bkey=g=>'b_'+g.name.toLowerCase();
+  const b=BUILTIN.map((g,i)=>window.Lumen?.hub?.builtinHidden(bkey(g))?'':`<div class="card game-card" data-b="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${g.poster?'':esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`);
   const c=(cfg.games||[]).map(g=>{const col=/^#[0-9a-f]{6}$/i.test(g.color)?g.color:'#7c5cff';return`<div class="card game-card" data-c="${esc(g.id)}"><button class="g-del" data-del="${esc(g.id)}" title="Remove">✕</button><div class="game-art" style="background:radial-gradient(circle at 30% 20%,${col},#0b0b12 75%);color:#fff"><span style="font-size:52px;font-style:normal">${esc(g.emoji||'🎮')}</span></div><div class="meta"><b>${esc(g.name)}</b><span>${g.file?'Your file · this device':'Custom link'}</span></div></div>`});
   $('#gameGrid').innerHTML=b.join('')+c.join('')+`<div class="card game-card add-game" id="addGame"><div class="game-art"><span style="font-size:46px;font-style:normal">＋</span></div><div class="meta"><b>Add a game</b><span>A link or an HTML file</span></div></div>`;
-  $$('#gameGrid [data-b]').forEach(e=>e.onclick=()=>{const g=BUILTIN[e.dataset.b];openView(g.url(),g.name,{kind:'game',label:g.name})});
+  $$('#gameGrid [data-b]').forEach(e=>e.onclick=()=>{const g=BUILTIN[e.dataset.b];window.Lumen?.hub?.play(bkey(g));openView(g.url(),g.name,{kind:'game',label:g.name})});
   $$('#gameGrid [data-c]').forEach(e=>e.onclick=ev=>{if(ev.target.closest('[data-del]'))return;playCustom(cfg.games.find(g=>g.id===e.dataset.c))});
   $$('#gameGrid [data-del]').forEach(x=>x.onclick=async()=>{const g=cfg.games.find(g=>g.id===x.dataset.del);if(!confirm(`Remove ${g.name}?`))return;cfg.games=cfg.games.filter(y=>y!==g);save();if(g.file)gfile('del',g.id).catch(()=>{});renderGames()});
+  window.Lumen?.hub?.decorateGames($('#gameGrid'));
   $('#addGame').onclick=()=>{$('#gName').value='';$('#gEmoji').value='';$('#gUrl').value='';$('#gFile').value='';openModal('gameModal');setTimeout(()=>$('#gName').focus(),50)}}
 $$('input[name=gSrc]').forEach(r=>r.onchange=()=>{const f=$('input[name=gSrc]:checked').value==='file';$('#gFileRow').style.display=f?'':'none';$('#gUrlRow').style.display=f?'none':''});
 $('#gFile').onchange=()=>{const f=$('#gFile').files[0];if(f&&!$('#gName').value)$('#gName').value=f.name.replace(/\.html?$/i,'').replace(/[-_]+/g,' ').slice(0,30)};
@@ -249,7 +251,7 @@ addEventListener('blur',()=>{if(cfg.blurPanic)setTimeout(()=>{if(!document.hasFo
 const FIELDS=['searchEngine','navPos','navStyle','density','fontScale','radius','blur','panicAction','panicUrl','histTitle','panicKey','studyKey','swapKey','grade','title','icon','brand','acc','acc2','bg','nbUrl','webLinks','jumpLinks','rooms'];
 const CHECKS=['histDisguise','wipe','blurPanic','swapMute','anim','hotCorner'];
 function fillSettings(){guideKeys();FIELDS.forEach(f=>$('#s_'+f).value=cfg[f]);CHECKS.forEach(f=>$('#s_'+f).checked=cfg[f]);renderSched();$('#fsVal').textContent=cfg.fontScale+'%';
-  $('#navToggles').innerHTML=$$('nav .nav-btn').filter(n=>n.id!=='navAdmin').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
+  $('#navToggles').innerHTML=$$('nav .nav-btn').filter(n=>n.id!=='navAdmin'&&n.id!=='navCreator').map(n=>`<label class="chk" style="margin:0 10px 0 0"><input type="checkbox" data-nav="${n.dataset.v}" ${(cfg.hiddenNav||[]).includes(n.dataset.v)?'':'checked'}> ${n.textContent.trim()}</label>`).join('')}
 // layout controls preview live
 ['navPos','navStyle','density','fontScale','radius','blur'].forEach(f=>$('#s_'+f).addEventListener('input',()=>{cfg[f]=$('#s_'+f).value;$('#fsVal').textContent=cfg.fontScale+'%';applyLayout()}));
 $('#s_anim').addEventListener('change',()=>{cfg.anim=$('#s_anim').checked;applyLayout()});
@@ -277,18 +279,18 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-18d',items:[
+const NEWS={id:'2026-11-18e',items:[
+  ['🏠','Meet the Hub','A new home page: featured picks, the most played games, popular posts and new projects from Lumen creators.','hub'],
+  ['🛠','Become a Lumen creator','Apply from the Hub. Once accepted, publish your own games and websites from the new Creator page.','hub'],
+  ['⭐','Web → Featured','A new Featured button in the Web tab lists websites made by Lumen creators.','web'],
   ['✦','Glow codes','Got a code? Redeem it at the top of the Shop for free Glow.'],
-  ['⚡','Smoother start','Lumen now opens straight onto your Learning Portal with no flash.'],
-  ['⧉','Clearer cloaking','Sites that can be cloaked open in a cloaked tab; sites that refuse open in a normal tab, and Lumen tells you which.'],
-  ['📘','Set up your Learning Portal','Add your classes and notes on the Timetable page so the portal shows the right subject.','timetable'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');
   openModal('newsModal');cfg.seenNews=NEWS.id;save()}
 
 /* shared with cloud.js */
-window.Lumen={IN_APP,showCover,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
+window.Lumen={IN_APP,openView,rerenderGames:renderGames,showCover,NOFRAME,cfg,save,esc,linkify,safeImg,toast,openModal,closeModal,shrinkImage,go,lines,favUrl,ytId,cloak,setActivity,showCover,getActivity:()=>studyOn()||coverOn?null:activity};
 
 /* ---------- boot ---------- */
 applyLook();renderGames();

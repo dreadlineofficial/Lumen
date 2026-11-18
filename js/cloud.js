@@ -130,7 +130,7 @@ $('#pSave').onclick=async()=>{if(!me)return openModal('authModal');formToDraft()
     badges:graphemes(draft.badges).filter(x=>x.trim()).slice(0,5).join(''),ring:pick(draft.ring,['none','solid','gradient','rainbow'],'none'),cardStyle:pick(draft.cardStyle,['glass','tint','gradient','dark'],'glass')};
   cfg.share=$('#pShare').checked;cfg.shareGame=$('#pShareGame').checked;cfg.shareYt=$('#pShareYt').checked;cfg.shareWeb=$('#pShareWeb').checked;cfg.seeOthers=$('#pSeeOthers').checked;save();
   $('#pSave').disabled=true;try{await F.updateDoc(D('users',me.uid),d);pushPresence();renderFriends();toast('Profile saved ✨')}catch(e){toast('Could not save: '+e.message)}$('#pSave').disabled=false};
-$('#pOut').onclick=async()=>{try{await F.setDoc(D('presence',me.uid),{seen:F.serverTimestamp(),state:'offline',act:null})}catch{}await F.signOut(auth);L.go('games')};
+$('#pOut').onclick=async()=>{try{await F.setDoc(D('presence',me.uid),{seen:F.serverTimestamp(),state:'offline',act:null})}catch{}await F.signOut(auth);L.go('hub')};
 $('#pResetPw').onclick=async()=>{try{await F.sendPasswordResetEmail(auth,me.email);toast('Reset email sent to '+me.email)}catch(e){toast(nice(e))}};
 const prevOnView=L.onView;L.onView=v=>{prevOnView?.(v);if(v==='profile'){$('#profSignedOut').style.display=me?'none':'';$('#profWrap').style.display=me?'':'none';if(me)openProfile()}};
 
@@ -258,7 +258,7 @@ const postAgo=t=>ago(ms(t));
 let feedPosts=new Map();
 const VIEW_GLOW=50,COMMENT_GLOW=150;
 function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at','desc'),F.limit(40)),async s=>{
-  const posts=s.docs.map(d=>({id:d.id,...d.data()}));feedPosts=new Map(posts.map(p=>[p.id,p]));const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
+  const posts=s.docs.map(d=>({id:d.id,...d.data()}));feedPosts=new Map(posts.map(p=>[p.id,p]));L.onFeed?.();const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
   $('#feed').innerHTML=posts.map((p,i)=>{const u=us[i],img=safeImg(p.image),sid=fr.includes(p.uid)||p.uid===me.uid?p.uid:null,likes=p.likes||[],liked=likes.includes(me.uid);
     return`<div class="card post" id="p-${p.id}" data-pid="${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div>${isAdmin()&&p.uid!==me.uid?`<button class="ib" data-delpost="${p.id}" title="Remove post (admin)" style="margin-left:auto">🗑</button>`:''}</div>
     ${p.text?`<div class="post-t">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
@@ -333,25 +333,37 @@ function listenServer(){unsubs.push(F.onSnapshot(D('server','config'),s=>{const 
   unsubs.push(F.onSnapshot(C('inbox',me.uid,'from'),s=>{inbox=s.docs.map(d=>d.id);renderFriends()},()=>{}))}
 
 /* ---------- admin control panel ---------- */
-let allUsers=[],adminQ='';
+let allUsers=[],adminQ='',admTab='overview';
+L.onAdminData=()=>{if(['overview','creators','projects','hub'].includes(admTab))renderAdmin()};
 function startAdmin(){$('#navAdmin').style.display=isAdmin()?'':'none';if(!isAdmin())return;
   unsubs.push(F.onSnapshot(F.query(C('users'),F.orderBy('nameLower'),F.limit(500)),s=>{allUsers=s.docs.map(d=>({uid:d.id,...d.data()}));renderAdmin()}));
   unsubs.push(F.onSnapshot(C('bans'),s=>{bannedSet=new Set(s.docs.map(d=>d.id));renderAdmin()}));
   unsubs.push(F.onSnapshot(C('codes'),s=>{glowCodes=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAdmin()},()=>{}))}
 let bannedSet=new Set(),glowCodes=[];
 function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
-  const chans=serverChannels||rooms();
+  if(document.activeElement&&box.contains(document.activeElement)&&document.activeElement.matches('textarea,input:not(#admQ)'))return; // don't wipe a form mid-typing
+  const chans=serverChannels||rooms();const hc=L.hubCounts?.()||{apps:0,queue:0,creators:0,live:0};
   const list=allUsers.filter(u=>!adminQ||u.nameLower?.includes(adminQ)||u.uid.toLowerCase().includes(adminQ));
-  box.innerHTML=`<div class="an-stats"><div class="card an-stat"><span>👥 Accounts</span><b>${allUsers.length}</b></div><div class="card an-stat"><span>🟢 Online friends</span><b>${friendIds().filter(u=>status(u)!=='offline').length}</b></div><div class="card an-stat"><span>⛔ Banned</span><b>${bannedSet.size}</b></div><div class="card an-stat"><span># Channels</span><b>${chans.length}</b></div></div>
-   <div class="two" style="align-items:start"><div class="card"><h2>Accounts</h2><input id="admQ" placeholder="Search name or ID" value="${esc(adminQ)}" style="margin:10px 0">
-     <div class="list adm-users">${list.map(u=>`<div class="person${bannedSet.has(u.uid)?' banned':''}">${pic(u,38)}<div class="info"><input class="adm-name" data-uid="${u.uid}" value="${esc(u.name||'')}" maxlength="24"><span class="muted" style="font-size:11px">✦ ${(+u.coins||0).toLocaleString()} · ${u.uid}${bannedSet.has(u.uid)?' · banned':''}${u.uid===ADMIN_UID?' · admin':''}</span></div>
-       <button class="ib" data-gift="${u.uid}" title="Gift Glow">🎁</button>${u.uid===ADMIN_UID?'':`<button class="ib" data-admdm="${u.uid}" title="Message">💬</button>${bannedSet.has(u.uid)?`<button class="ib" data-unban="${u.uid}" title="Unban">↩</button>`:`<button class="ib" data-ban="${u.uid}" title="Delete profile and ban">⛔</button>`}`}</div>`).join('')||'<p class="muted">No accounts found.</p>'}</div></div>
-   <div class="card"><h2>✦ Glow codes</h2><p class="muted" style="font-size:13px">Make a code worth any amount. People redeem it in the Shop, once each, until it runs out.</p>
+  const TABS=[['overview','📊','Overview'],['users','👥','Users'],['creators','🛠','Creators',hc.apps],['projects','📦','Projects',hc.queue],['hub','🏠','Hub'],['codes','✦','Glow codes'],['channels','#','Channels']];
+  const tabsHTML=`<div class="adm-tabs">${TABS.map(([k,i,l,n])=>`<button data-atab="${k}" class="${admTab===k?'on':''}"><span>${i}</span>${l}${n?`<em>${n}</em>`:''}</button>`).join('')}</div>`;
+  const stat=(i,l,v,go)=>`<button class="card an-stat"${go?` data-atab="${go}"`:''}><span>${i} ${l}</span><b>${(+v||0).toLocaleString()}</b></button>`;
+  const users=`<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h2>Accounts <em class="count">${allUsers.length}</em></h2><input id="admQ" placeholder="Search name or ID" value="${esc(adminQ)}" style="max-width:280px"></div>
+     <div class="list adm-users" style="margin-top:10px">${list.map(u=>`<div class="person${bannedSet.has(u.uid)?' banned':''}">${pic(u,38)}<div class="info"><input class="adm-name" data-uid="${u.uid}" value="${esc(u.name||'')}" maxlength="24"><span class="muted" style="font-size:11px">✦ ${(+u.coins||0).toLocaleString()} · ${u.uid}${bannedSet.has(u.uid)?' · banned':''}${u.uid===ADMIN_UID?' · admin':''}</span></div>
+       <button class="ib" data-gift="${u.uid}" title="Gift Glow">🎁</button>${u.uid===ADMIN_UID?'':`<button class="ib" data-admdm="${u.uid}" title="Message">💬</button>${bannedSet.has(u.uid)?`<button class="ib" data-unban="${u.uid}" title="Unban">↩</button>`:`<button class="ib" data-ban="${u.uid}" title="Delete profile and ban">⛔</button>`}`}</div>`).join('')||'<p class="muted">No accounts match.</p>'}</div></div>`;
+  const codes=`<div class="card"><h2>✦ Glow codes</h2><p class="muted" style="font-size:13px">Make a code worth any amount. People redeem it in the Shop, once each, until it runs out.</p>
      <form class="row" id="mkCode" style="margin:10px 0;flex-wrap:wrap"><input id="codeAmt" type="number" min="1" placeholder="Glow amount" style="flex:1;min-width:120px"><input id="codeUses" type="number" min="1" value="1" title="How many people can use it" style="width:90px"><button class="btn-acc">Generate</button></form>
-     <div class="list">${glowCodes.map(c=>`<div class="person"><div class="info"><b style="font-family:'JetBrains Mono',monospace;letter-spacing:.04em">${esc(c.id)}</b><span>✦ ${(+c.amount).toLocaleString()} · used ${c.uses}/${c.maxUses}</span></div><button class="ib" data-copycode="${esc(c.id)}" title="Copy">📋</button><button class="ib" data-delcode="${esc(c.id)}" title="Delete">✕</button></div>`).join('')||'<p class="muted" style="font-size:13px">No codes yet.</p>'}</div></div>
-   <div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
-     <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div></div>`;
-  $('#admQ').oninput=e=>{adminQ=e.target.value.trim().toLowerCase();const pos=e.target.selectionStart;renderAdmin();const q=$('#admQ');q.focus();q.setSelectionRange(pos,pos)};
+     <div class="list">${glowCodes.map(c=>`<div class="person"><div class="info"><b style="font-family:'JetBrains Mono',monospace;letter-spacing:.04em">${esc(c.id)}</b><span>✦ ${(+c.amount).toLocaleString()} · used ${c.uses}/${c.maxUses}</span></div><button class="ib" data-copycode="${esc(c.id)}" title="Copy">📋</button><button class="ib" data-delcode="${esc(c.id)}" title="Delete">✕</button></div>`).join('')||'<p class="muted">No codes yet.</p>'}</div></div>`;
+  const channels=`<div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
+     <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div>`;
+  const todo=[hc.apps&&[`🛠 ${hc.apps} creator application${hc.apps>1?'s':''} waiting`,'creators'],hc.queue&&[`📦 ${hc.queue} project${hc.queue>1?'s':''} to review`,'projects']].filter(Boolean);
+  const overview=`<div class="an-stats">${stat('👥','Accounts',allUsers.length,'users')}${stat('🟢','Online friends',friendIds().filter(u=>status(u)!=='offline').length)}${stat('⛔','Banned',bannedSet.size,'users')}${stat('🛠','Creators',hc.creators,'creators')}${stat('📦','Live projects',hc.live,'projects')}${stat('✦','Glow codes',glowCodes.length,'codes')}</div>
+     <div class="card"><h2>📥 To do</h2><div class="list">${todo.map(([t,k])=>`<button class="adm-todo" data-atab="${k}">${t}<span>Open →</span></button>`).join('')||'<p class="muted">All caught up. Nothing waiting for you.</p>'}</div></div>
+     <div class="adm-quick">${[['users','👥','Manage accounts','Rename, gift Glow, message, ban'],['hub','🏠','Customise the Hub','Banner, announcement, featured picks'],['projects','📦','Review projects','Approve, feature, hide or delete'],['channels','#','Chat channels','Add and remove global rooms']].map(([k,i,t,d])=>`<button class="card" data-atab="${k}"><span style="font-size:24px">${i}</span><b>${t}</b><span class="muted">${d}</span></button>`).join('')}</div>`;
+  const pane={overview,users,codes,channels}[admTab];
+  box.innerHTML=tabsHTML+`<div class="adm-pane" id="admPane">${pane||''}</div>`;
+  box.querySelectorAll('[data-atab]').forEach(b=>b.onclick=()=>{admTab=b.dataset.atab;renderAdmin();box.scrollIntoView({block:'start'})});
+  if(!pane){L.hub?.renderAdminTab(admTab,$('#admPane'));return}
+  if($('#admQ'))$('#admQ').oninput=e=>{adminQ=e.target.value.trim().toLowerCase();const pos=e.target.selectionStart;renderAdmin();const q=$('#admQ');q.focus();q.setSelectionRange(pos,pos)};
   box.querySelectorAll('.adm-name').forEach(i=>i.onchange=async()=>{const name=i.value.trim().slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');try{await F.updateDoc(D('users',i.dataset.uid),{name,nameLower:name.toLowerCase()});users.delete(i.dataset.uid);toast('Renamed')}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-admdm]').forEach(b=>b.onclick=async()=>{const uid=b.dataset.admdm;try{await F.setDoc(D('inbox',uid,'from',me.uid),{at:F.serverTimestamp()})}catch{}openDm(uid)});
   box.querySelectorAll('[data-ban]').forEach(b=>b.onclick=async()=>{const u=allUsers.find(x=>x.uid===b.dataset.ban);if(!confirm(`Delete ${u?.name||'this account'}'s profile and ban them? They won't be able to post, chat or sign up again with this account.`))return;
@@ -361,15 +373,15 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
     try{const fresh=await F.getDoc(D('users',b.dataset.gift));const next=Math.min(1e9,(+fresh.data()?.coins||0)+amt);await F.updateDoc(D('users',b.dataset.gift),{coins:next});toast(`Gifted ✦ ${amt.toLocaleString()} to ${u?.name||'them'}`)}catch(e){adminErr(e)}});
   box.querySelectorAll('[data-unban]').forEach(b=>b.onclick=async()=>{try{await F.deleteDoc(D('bans',b.dataset.unban));toast('Unbanned')}catch(e){toast(e.message)}});
   box.querySelectorAll('[data-rmch]').forEach(b=>b.onclick=()=>saveChannels(chans.filter(c=>c!==b.dataset.rmch)));
-  $('#mkCode').onsubmit=async e=>{e.preventDefault();const amount=Math.floor(+$('#codeAmt').value),maxUses=Math.max(1,Math.floor(+$('#codeUses').value||1));if(!(amount>0))return toast('Enter how much Glow the code is worth');
+  if($('#mkCode'))$('#mkCode').onsubmit=async e=>{e.preventDefault();const amount=Math.floor(+$('#codeAmt').value),maxUses=Math.max(1,Math.floor(+$('#codeUses').value||1));if(!(amount>0))return toast('Enter how much Glow the code is worth');
     const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint8Array(12));const raw=[...r].map(x=>A[x%A.length]).join('');const code=`LUMEN-${raw.slice(0,4)}-${raw.slice(4,8)}-${raw.slice(8)}`;
     try{await F.setDoc(D('codes',code),{amount,maxUses,uses:0,at:F.serverTimestamp()});try{await navigator.clipboard.writeText(code)}catch{}toast(`Code ${code} made and copied`)}catch(err){adminErr(err)}};
   box.querySelectorAll('[data-copycode]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copycode);toast('Copied')}catch{prompt('Copy this code',b.dataset.copycode)}});
   box.querySelectorAll('[data-delcode]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this code? Nobody else can redeem it after this.'))return;try{await F.deleteDoc(D('codes',b.dataset.delcode))}catch(err){adminErr(err)}});
-  $('#addCh').onsubmit=e=>{e.preventDefault();const c=$('#newCh').value.trim().toLowerCase().replace(/[^\w-]/g,'').slice(0,30);if(!c)return;if(chans.includes(c))return toast('Already exists');saveChannels([...chans,c])}}
+  if($('#addCh'))$('#addCh').onsubmit=e=>{e.preventDefault();const c=$('#newCh').value.trim().toLowerCase().replace(/[^\w-]/g,'').slice(0,30);if(!c)return;if(chans.includes(c))return toast('Already exists');saveChannels([...chans,c])}}
 function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. Re-publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).':e.message)}
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML};
+L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};
 L.onCloudReady?.();
