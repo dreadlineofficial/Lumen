@@ -48,6 +48,7 @@ service cloud.firestore {
              || (ol != null && request.time > ol + duration.value(20, 'h') && nc == oc + 150)))
         || (no == oo && nl == ol && earnOk(o, n, oc, nc))
         || (no == oo && nl == ol && redeemOk(o, n, oc, nc))
+        || (no == oo && nl == ol && projEarnOk(o, n, oc, nc))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo)
             && n.get('lastBuy', '') in prices() && no.hasAny([n.lastBuy]) && !oo.hasAny([n.lastBuy])
             && nc == oc - prices()[n.lastBuy] && nc >= 0);
@@ -63,6 +64,17 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/codes/$(c)/used/$(uid()))
         && existsAfter(/databases/$(database)/documents/codes/$(c)/used/$(uid()))
         && nc == oc + get(codePath(c)).data.amount;
+    }
+    // Collecting creator Glow: 20 per minute other people played the game, 50 per post that mentioned it,
+    // 50 per positive review, checked against the project's paid-out counters before and after the same write.
+    function projPath(id) { return /databases/$(database)/documents/projects/$(id); }
+    function projEarnOk(o, n, oc, nc) {
+      let pid = n.get('lastProj', '');
+      let pb = get(projPath(pid)).data;
+      let pa = getAfter(projPath(pid)).data;
+      return pid != '' && pa.uid == uid()
+        && nc == oc + 20 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
+        && nc > oc;
     }
     function earnOk(o, n, oc, nc) {
       let pid = n.get('lastEarn', '');
@@ -135,26 +147,89 @@ service cloud.firestore {
         && d.url is string && d.url.size() <= 500 && d.url.matches('^https://.*')
         && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 300000;
     }
+    function counters() { return ['minutes', 'mentions', 'upReviews', 'paidMin', 'paidMent', 'paidRev', 'lastMention', 'lastReview']; }
     match /projects/{id} {
+      function d() { return request.resource.data; }
+      function o() { return resource.data; }
+      function keys() { return d().diff(o()).affectedKeys(); }
+      function live() { return o().status == 'approved' && o().type == 'game'; }
       allow get: if signedIn() && (resource.data.status == 'approved' || resource.data.uid == uid() || isAdmin());
       allow list: if signedIn() && (resource.data.status == 'approved' || resource.data.uid == uid() || isAdmin());
-      allow create: if active() && isCreator() && request.resource.data.uid == uid() && request.resource.data.status == 'pending'
-        && request.resource.data.get('featured', false) == false && projectOk(request.resource.data);
-      // a creator's edit goes back into review
-      allow update: if active() && isCreator() && resource.data.uid == uid() && request.resource.data.uid == uid()
-        && request.resource.data.status == 'pending' && request.resource.data.get('featured', false) == resource.data.get('featured', false)
-        && projectOk(request.resource.data);
-      allow update: if isAdmin() && projectOk(request.resource.data) && request.resource.data.status in ['pending', 'approved', 'rejected'];
-      allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
+      allow create: if active() && isCreator() && d().uid == uid() && d().status == 'pending'
+        && d().get('featured', false) == false && projectOk(d()) && !d().keys().hasAny(counters());
+      // a creator's edit goes back into review (counters can't be touched)
+      allow update: if active() && isCreator() && o().uid == uid()
+        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'status', 'at'])
+        && d().status == 'pending' && projectOk(d());
+      allow update: if isAdmin() && projectOk(d()) && d().status in ['pending', 'approved', 'rejected'];
+      allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
+      // someone else played for one more minute (paired with their rate-limited playtime record)
+      allow update: if active() && live() && uid() != o().uid && keys().hasOnly(['minutes'])
+        && d().minutes == o().get('minutes', 0) + 1
+        && getAfter(/databases/$(database)/documents/projects/$(id)/time/$(uid() + '_' + today())).data.m
+           == (exists(/databases/$(database)/documents/projects/$(id)/time/$(uid() + '_' + today())) ? get(/databases/$(database)/documents/projects/$(id)/time/$(uid() + '_' + today())).data.m : 0) + 1;
+      // a new post by someone else mentioned this game (paired with the mention record)
+      allow update: if active() && live() && uid() != o().uid && keys().hasOnly(['mentions', 'lastMention'])
+        && d().mentions == o().get('mentions', 0) + 1
+        && !exists(/databases/$(database)/documents/projects/$(id)/mentions/$(d().lastMention))
+        && existsAfter(/databases/$(database)/documents/projects/$(id)/mentions/$(d().lastMention));
+      // a new positive review by someone else (paired with the review)
+      allow update: if active() && live() && uid() != o().uid && keys().hasOnly(['upReviews', 'lastReview'])
+        && d().upReviews == o().get('upReviews', 0) + 1 && d().lastReview == uid()
+        && !exists(/databases/$(database)/documents/projects/$(id)/reviews/$(uid()))
+        && getAfter(/databases/$(database)/documents/projects/$(id)/reviews/$(uid())).data.up == true;
+      // the creator marks earnings as paid out (the Glow itself is checked in users)
+      allow update: if active() && uid() == o().uid && keys().hasOnly(['paidMin', 'paidMent', 'paidRev'])
+        && d().get('paidMin', 0) == o().get('minutes', 0) && d().get('paidMent', 0) == o().get('mentions', 0) && d().get('paidRev', 0) == o().get('upReviews', 0);
+
+      // playtime: one record per player per game per day; +1 minute at most every 50 seconds, up to 4 hours a day
+      match /time/{rec} {
+        allow get: if signedIn() && rec.matches('^' + uid() + '_.*');
+        allow create: if active() && rec == uid() + '_' + today() && get(projPath(id)).data.uid != uid()
+          && request.resource.data.m == 1 && request.resource.data.at == request.time
+          && getAfter(projPath(id)).data.minutes == get(projPath(id)).data.get('minutes', 0) + 1;
+        allow update: if active() && rec == uid() + '_' + today()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['m', 'at'])
+          && request.resource.data.m == resource.data.m + 1 && request.resource.data.m <= 240
+          && request.resource.data.at == request.time && request.time > resource.data.at + duration.value(50, 's')
+          && getAfter(projPath(id)).data.minutes == get(projPath(id)).data.get('minutes', 0) + 1;
+      }
+      // a post that names the game: one per post, written together with the new post
+      match /mentions/{postId} {
+        allow read: if signedIn();
+        allow create: if active() && !exists(postPath(postId)) && getAfter(postPath(postId)).data.uid == uid()
+          && get(projPath(id)).data.uid != uid() && request.resource.data.uid == uid()
+          && getAfter(projPath(id)).data.mentions == get(projPath(id)).data.get('mentions', 0) + 1;
+      }
+      // reviews: one per person, never by the creator; thumbs up or down can't be changed later
+      match /reviews/{who} {
+        allow read: if signedIn();
+        allow create: if active() && who == uid() && get(projPath(id)).data.uid != uid() && get(projPath(id)).data.status == 'approved'
+          && reviewOk(request.resource.data)
+          && (request.resource.data.up == false
+              || getAfter(projPath(id)).data.upReviews == get(projPath(id)).data.get('upReviews', 0) + 1);
+        allow update: if active() && who == uid() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'at']) && reviewOk(request.resource.data);
+        allow delete: if isAdmin();
+      }
+    }
+    function reviewOk(d) { return d.uid == uid() && d.up is bool && d.text is string && d.text.size() <= 500 && d.at == request.time; }
+    // reviews of Lumen's built-in games
+    match /reviews/{key}/list/{who} {
+      allow read: if signedIn();
+      allow create: if active() && who == uid() && key.matches('^b_[a-z0-9]+$') && reviewOk(request.resource.data);
+      allow update: if active() && who == uid() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'at']) && reviewOk(request.resource.data);
+      allow delete: if isAdmin();
     }
     // play counts for "Most played": +1 per person per game per day, paired with a play record
     function playPath(k) { return /databases/$(database)/documents/plays/$(k); }
     match /plays/{key} {
       allow read: if signedIn();
-      allow create: if active() && request.resource.data.count == 1
+      allow create: if active() && request.resource.data.count == 1 && request.resource.data.keys().hasOnly(['count', 'd' + today()])
+        && request.resource.data.get('d' + today(), 1) == 1
         && existsAfter(/databases/$(database)/documents/plays/$(key)/by/$(uid() + '_' + today()));
-      allow update: if active() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+      allow update: if active() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count', 'd' + today()])
         && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.get('d' + today(), 0) == resource.data.get('d' + today(), 0) + 1
         && !exists(/databases/$(database)/documents/plays/$(key)/by/$(uid() + '_' + today()))
         && existsAfter(/databases/$(database)/documents/plays/$(key)/by/$(uid() + '_' + today()));
       allow delete: if isAdmin();

@@ -253,7 +253,9 @@ $('#postImgBtn').onclick=()=>$('#postImg').click();
 $('#postImg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;postImage=await L.shrinkImage(f,1100,.8);$('#postThumb').src=postImage;$('#postThumb').style.display='';$('#postImgClear').style.display=''};
 $('#postImgClear').onclick=()=>{postImage='';$('#postThumb').style.display='none';$('#postImgClear').style.display='none'};
 $('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=$('#postText').value.trim().slice(0,2000);if(!text&&!postImage)return toast('Write something or add an image');
-  $('#postBtn').disabled=true;try{await F.addDoc(C('posts'),{uid:me.uid,text,image:postImage,at:F.serverTimestamp()});$('#postText').value='';$('#postImgClear').click();toast('Posted')}catch(e){toast('Could not post: '+e.message)}$('#postBtn').disabled=false};
+  $('#postBtn').disabled=true;try{const data={uid:me.uid,text,image:postImage,at:F.serverTimestamp()},ref=F.doc(C('posts')),ment=L.hub?.mentionsIn(text)||[];const b=F.writeBatch(db);b.set(ref,data);
+    for(const id of ment){b.set(D('projects',id,'mentions',ref.id),{uid:me.uid,at:F.serverTimestamp()});b.update(D('projects',id),{mentions:F.increment(1),lastMention:ref.id})}
+    try{await b.commit()}catch(err){if(!ment.length)throw err;await F.setDoc(ref,data)}$('#postText').value='';$('#postImgClear').click();toast('Posted')}catch(e){toast('Could not post: '+e.message)}$('#postBtn').disabled=false};
 const postAgo=t=>ago(ms(t));
 let feedPosts=new Map();
 const VIEW_GLOW=50,COMMENT_GLOW=150;
@@ -263,7 +265,7 @@ function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at'
     return`<div class="card post" id="p-${p.id}" data-pid="${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div>${isAdmin()&&p.uid!==me.uid?`<button class="ib" data-delpost="${p.id}" title="Remove post (admin)" style="margin-left:auto">🗑</button>`:''}</div>
     ${p.text?`<div class="post-t">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
     <div class="post-a"><button class="like${liked?' on':''}" data-like="${p.id}">${liked?'❤️':'🤍'} <span>${likes.length}</span></button><button data-cm="${p.id}">💬 ${p.ecomments?p.ecomments:''} Comments</button><span class="views" title="Views">👁 ${p.views||0}</span>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||'<p class="muted">No posts yet. Be the first!</p>';
-  bindPeople($('#feed'));
+  bindPeople($('#feed'));L.hub?.linkMentions($('#feed'));
   $$('#feed [data-cm]').forEach(b=>b.onclick=()=>toggleCmts(b.dataset.cm));
   $$('#feed [data-like]').forEach(b=>b.onclick=()=>toggleLike(b.dataset.like,b));
   $$('#feed [data-delpost]').forEach(b=>b.onclick=()=>{if(confirm('Delete this post?'))F.deleteDoc(D('posts',b.dataset.delpost)).catch(e=>toast(e.message))});
@@ -383,5 +385,5 @@ function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. 
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};
+L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,feed:()=>feedPosts};L.openUser=showUser;
 L.onCloudReady?.();

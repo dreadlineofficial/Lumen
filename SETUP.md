@@ -90,6 +90,8 @@ In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch 
 - **Friends:** search by name, send a request, and accept requests on the Friends page. Click a friend there to open your private chat; their profile shows on the right. A green dot means online, yellow means idle (Lumen open in a background tab), and grey shows when they were last seen.
 - **Activity:** in your profile you choose what friends can see (the game you're playing, the YouTube video you're watching, the site you have open) and whether you see theirs. Study mode and panic always hide your activity.
 - **Hub:** the first page in Lumen. The admin customises it in **Admin → Hub** (headline, colour, announcement, which sections show, featured picks).
+- **Games:** the Games tab is a game hub with search, filters, trending games and a page per game with reviews. Writing a game's name in a post links to it.
+- **Creator Glow:** creators earn 20 Glow per minute other people play their game (max 4 hours per player per day), 50 per post mentioning it and 50 per positive review. The rules check all of this, so nobody can fake it.
 - **Lumen creators:** people apply from the Hub; the admin accepts or rejects them in **Admin → Creators**. Creators submit games and websites from the **Creator** page, and the admin approves, features, hides or deletes them in **Admin → Projects** (built-in games can be hidden there too).
 - **Posts:** write something, add an image if you like, and others can comment with text or GIFs. You can delete your own posts, and comments on them.
 
