@@ -363,7 +363,7 @@ function listenServer(){unsubs.push(F.onSnapshot(D('server','config'),s=>{const 
 
 /* ---------- admin control panel ---------- */
 let allUsers=[],adminQ='',admTab='overview';
-L.onAdminData=()=>{if(['overview','creators','projects','hub'].includes(admTab))renderAdmin()};
+L.onAdminData=()=>{if(['overview','creators','projects','hub','shop'].includes(admTab))renderAdmin()};
 function startAdmin(){$('#navAdmin').style.display=isAdmin()?'':'none';if(!isAdmin())return;
   unsubs.push(F.onSnapshot(F.query(C('users'),F.orderBy('nameLower'),F.limit(500)),s=>{allUsers=s.docs.map(d=>({uid:d.id,...d.data()}));renderAdmin()}));
   unsubs.push(F.onSnapshot(C('bans'),s=>{bannedSet=new Set(s.docs.map(d=>d.id));renderAdmin()}));
@@ -373,7 +373,7 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
   if(document.activeElement&&box.contains(document.activeElement)&&document.activeElement.matches('textarea,input:not(#admQ)'))return; // don't wipe a form mid-typing
   const chans=serverChannels||rooms();const hc=L.hubCounts?.()||{apps:0,queue:0,creators:0,live:0};
   const list=allUsers.filter(u=>!adminQ||u.nameLower?.includes(adminQ)||u.uid.toLowerCase().includes(adminQ));
-  const TABS=[['overview','📊','Overview'],['users','👥','Users'],['creators','🛠','Creators',hc.apps],['projects','📦','Projects',hc.queue],['hub','🏠','Hub'],['codes','✦','Glow codes'],['channels','#','Channels']];
+  const TABS=[['overview','📊','Overview'],['users','👥','Users'],['creators','🛠','Creators',hc.apps],['projects','📦','Projects',hc.queue],['shop','🎨','Shop items',hc.shop],['hub','🏠','Hub'],['codes','✦','Glow codes'],['channels','#','Channels']];
   const tabsHTML=`<div class="adm-tabs">${TABS.map(([k,i,l,n])=>`<button data-atab="${k}" class="${admTab===k?'on':''}"><span>${i}</span>${l}${n?`<em>${n}</em>`:''}</button>`).join('')}</div>`;
   const stat=(i,l,v,go)=>`<button class="card an-stat"${go?` data-atab="${go}"`:''}><span>${i} ${l}</span><b>${(+v||0).toLocaleString()}</b></button>`;
   const users=`<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h2>Accounts <em class="count">${allUsers.length}</em></h2><input id="admQ" placeholder="Search name or ID" value="${esc(adminQ)}" style="max-width:280px"></div>
@@ -384,7 +384,7 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
      <div class="list">${glowCodes.map(c=>`<div class="person"><div class="info"><b style="font-family:'JetBrains Mono',monospace;letter-spacing:.04em">${esc(c.id)}</b><span>✦ ${(+c.amount).toLocaleString()} · used ${c.uses}/${c.maxUses}</span></div><button class="ib" data-copycode="${esc(c.id)}" title="Copy">📋</button><button class="ib" data-delcode="${esc(c.id)}" title="Delete">✕</button></div>`).join('')||'<p class="muted">No codes yet.</p>'}</div></div>`;
   const channels=`<div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
      <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div>`;
-  const todo=[hc.apps&&[`🛠 ${hc.apps} creator application${hc.apps>1?'s':''} waiting`,'creators'],hc.queue&&[`📦 ${hc.queue} project${hc.queue>1?'s':''} to review`,'projects']].filter(Boolean);
+  const todo=[hc.shop&&[`🎨 ${hc.shop} shop item${hc.shop>1?'s':''} to review`,'shop'],hc.apps&&[`🛠 ${hc.apps} creator application${hc.apps>1?'s':''} waiting`,'creators'],hc.queue&&[`📦 ${hc.queue} project${hc.queue>1?'s':''} to review`,'projects']].filter(Boolean);
   const overview=`<div class="an-stats">${stat('👥','Accounts',allUsers.length,'users')}${stat('🟢','Online friends',friendIds().filter(u=>status(u)!=='offline').length)}${stat('⛔','Banned',bannedSet.size,'users')}${stat('🛠','Creators',hc.creators,'creators')}${stat('📦','Live projects',hc.live,'projects')}${stat('✦','Glow codes',glowCodes.length,'codes')}</div>
      <div class="card"><h2>📥 To do</h2><div class="list">${todo.map(([t,k])=>`<button class="adm-todo" data-atab="${k}">${t}<span>Open →</span></button>`).join('')||'<p class="muted">All caught up. Nothing waiting for you.</p>'}</div></div>
      <div class="adm-quick">${[['users','👥','Manage accounts','Rename, gift Glow, message, ban'],['hub','🏠','Customise the Hub','Banner, announcement, featured picks'],['projects','📦','Review projects','Approve, feature, hide or delete'],['channels','#','Chat channels','Add and remove global rooms']].map(([k,i,t,d])=>`<button class="card" data-atab="${k}"><span style="font-size:24px">${i}</span><b>${t}</b><span class="muted">${d}</span></button>`).join('')}</div>`;

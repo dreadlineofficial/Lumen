@@ -73,8 +73,20 @@ const byId=Object.fromEntries(CATALOG.map(i=>[i.id,i]));
 const R=(a,b)=>a+Math.random()*(b-a);
 const css=o=>Object.entries(o).map(([k,v])=>`${k}:${v}`).join(';');
 
+/* creator-made items (id "c_…"): a transparent GIF stored in shopImgs/{id}, loaded once and turned into a CSS rule */
+const CID=/^c_[A-Za-z0-9]{8,24}$/;const custom=new Map();let cstyle=null;
+function ensure(id){if(!CID.test(id)||custom.has(id))return;custom.set(id,null);
+  const go=()=>{const c=window.Lumen.cloud;if(!c?.F||!c.me?.()){setTimeout(()=>{custom.delete(id)},4000);return}
+    c.F.getDoc(c.D('shopImgs',id)).then(s=>{const d=s.data();if(!d||!/^data:image\/gif;base64,[A-Za-z0-9+/=]+$/.test(d.data||''))return;addRule(id,d.data,d.mode)}).catch(()=>custom.delete(id))};
+  window.Lumen.cloud?go():setTimeout(go,1500)}
+function addRule(id,data,mode){custom.set(id,{mode});if(!cstyle){cstyle=document.createElement('style');cstyle.id='creatorCos';document.head.appendChild(cstyle)}
+  const u=`url("${data}")`,fill=mode==='tile'?`background-image:${u};background-repeat:repeat;background-size:auto`:`background-image:${u};background-repeat:no-repeat;background-size:cover;background-position:center`;
+  cstyle.appendChild(document.createTextNode(`.cfx-${id}{${fill}}.cdeco-${id}{background-image:${u}}.cplate-${id}::before{background:${u} center/cover no-repeat!important}`))}
+/* preview an uploaded GIF before it's saved */
+function previewRule(id,data,mode){custom.delete(id);addRule(id,data,mode)}
+
 /* profile effect layer */
-function fxLayer(id){if(!byId[id]||byId[id].type!=='fx')return'';const n=id.slice(3);let p='';
+function fxLayer(id){if(CID.test(id||'')){ensure(id);return`<div class="fxl cfx cfx-${id}" aria-hidden="true"></div>`}if(!byId[id]||byId[id].type!=='fx')return'';const n=id.slice(3);let p='';
   const make=(count,fn)=>{for(let i=0;i<count;i++)p+=fn(i)};
   switch(n){
     case'snow':make(34,()=>`<i style="${css({left:R(0,100)+'%','--s':R(2.5,6)+'px','--d':R(7,14)+'s','--dl':-R(0,14)+'s','--x':R(-30,30)+'px',opacity:R(.5,.95)})}"></i>`);break;
@@ -108,10 +120,10 @@ function fxLayer(id){if(!byId[id]||byId[id].type!=='fx')return'';const n=id.slic
   return`<div class="fxl fx-${n}" aria-hidden="true">${p}</div>`}
 
 /* avatar decoration */
-function deco(id){if(!byId[id]||byId[id].type!=='deco')return'';const n=id.slice(5);
+function deco(id){if(CID.test(id||'')){ensure(id);return`<i class="deco cdeco cdeco-${id}" aria-hidden="true"></i>`}if(!byId[id]||byId[id].type!=='deco')return'';const n=id.slice(5);
   const inner=n==='orbit'?'<b>❤</b><b>❤</b><b>❤</b>':n==='sparkle'?'<b>✦</b><b>✦</b><b>✧</b><b>✦</b>':n==='crown'?'<b>👑</b>':'';
   return`<i class="deco deco-${n}" aria-hidden="true">${inner}</i>`}
-const plateCls=id=>byId[id]?.type==='plate'?` plate plate-${id.slice(6)}`:'';
+const plateCls=id=>CID.test(id||'')?(ensure(id),` plate cplate cplate-${id}`):byId[id]?.type==='plate'?` plate plate-${id.slice(6)}`:'';
 // 3D buddies are drawn by js/buddies.js onto these canvases
 let buddyLoad=null;
 const BUDDIES_ON=false; // buddies are switched off for now
@@ -120,6 +132,6 @@ function buddyCanvas(id,size,key){if(!BUDDIES_ON)return'';if(byId[id]?.type!=='b
 const nfxCls=id=>byId[id]?.type==='nfx'?` nfx-${id.slice(4)}`:'';
 function applyTheme(id){document.body.dataset.theme=byId[id]?.type==='theme'?id.slice(6):''}
 
-window.Lumen.cos={BUDDIES_ON,CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
+window.Lumen.cos={CID,ensure,previewRule,BUDDIES_ON,CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
 applyTheme(window.Lumen.cfg.theme);
 })();

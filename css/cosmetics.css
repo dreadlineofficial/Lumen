@@ -227,3 +227,9 @@ canvas.buddy{position:absolute;pointer-events:none;z-index:0}
 .fx-flicker .figure{right:12%;bottom:0;width:46px;height:120px;background:radial-gradient(ellipse at 50% 14%,#000 0 15px,transparent 16px),radial-gradient(ellipse at 50% 60%,#000 0 22px,transparent 24px),linear-gradient(#000,#000) 50% 100%/26px 55% no-repeat;opacity:0;animation:fl-fig 5s steps(1) infinite}
 .fx-flicker .figure::after{content:"";position:absolute;left:15px;top:13px;width:16px;height:3px;background:radial-gradient(circle,#ff2020 0 1.5px,transparent 2px) 0 0/8px 3px repeat-x;filter:drop-shadow(0 0 3px red)}
 @keyframes fl-fig{0%,100%{opacity:0}62%{opacity:.9}63%{opacity:0}64%{opacity:1}70%{opacity:0}}
+
+/* creator-made items (transparent GIFs) */
+.fxl.cfx{z-index:3}
+.pic .deco.cdeco{inset:-22%;border-radius:0;background-size:contain;background-repeat:no-repeat;background-position:center}
+.plate.cplate::before{animation:none;-webkit-mask:none;mask:none;opacity:.85}
+.plate.cplate::after{display:none}

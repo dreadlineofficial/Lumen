@@ -7,7 +7,7 @@ const L=window.Lumen,{esc,toast,safeImg}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const BUILTINS=[{key:'b_nightbound',title:'Nightbound',type:'game',desc:'1v4 asymmetric horror · online multiplayer',url:()=>L.cfg.nbUrl,art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)'},
   {key:'b_offal',title:'OFFAL',type:'game',desc:'Horror · demo',url:()=>'games/offal.html',image:'games/offal-poster.webp'}];
-let me=null,hubCfg={},live=[],plays={},trend={},myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
+let me=null,hubCfg={},live=[],plays={},trend={},myItems=[],allItems=[],myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
 const C=()=>L.cloud;
 const stop=()=>{unsubs.forEach(u=>u());unsubs=[]};
 const isAdmin=()=>C()?.isAdmin?.();
@@ -26,9 +26,11 @@ function start(){const {F,D,db}=C();const col=(...p)=>F.collection(db,...p);
   unsubs.push(F.onSnapshot(col('plays'),s=>{const t=DAY();plays={};trend={};s.docs.forEach(d=>{const x=d.data();plays[d.id]=+x.count||0;let w=0;for(let i=0;i<7;i++)w+=+x['d'+(t-i)]||0;trend[d.id]=w});refresh()},()=>{}));
   unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display=isCreator()?'':'none';refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('uid','==',me)),s=>{myProjects=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0));renderCreator()},()=>{}));
-  if(isAdmin()){unsubs.push(F.onSnapshot(col('creatorApps'),s=>{allApps=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
+  unsubs.push(F.onSnapshot(F.query(col('shopItems'),F.where('uid','==',me)),s=>{myItems=s.docs.map(d=>({id:d.id,...d.data()}));renderCreator()},()=>{}));
+  if(isAdmin()){unsubs.push(F.onSnapshot(col('shopItems'),s=>{allItems=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
+    unsubs.push(F.onSnapshot(col('creatorApps'),s=>{allApps=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
     unsubs.push(F.onSnapshot(col('projects'),s=>{allProjects=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}))}}
-const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];live=[];plays={};hubCfg={};
+const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
   if($('#navCreator'))$('#navCreator').style.display='none';if(me&&C())start();refresh()};
 L.onFeed=()=>{if($('#v-hub')?.classList.contains('on'))renderHub()};
 function refresh(){renderHub();renderCreator();renderGameHub();if(gpKey&&$('#v-gamepage')?.classList.contains('on'))renderGamePage();L.browser?.refresh?.()}
@@ -86,9 +88,23 @@ L.hub={play,openGame,mentionsIn,linkMentions,builtinHidden:key=>(hubCfg.hiddenBu
   renderAdminTab};
 const prevView=L.onView;L.onView=v=>{prevView?.(v);if(v==='hub')renderHub();if(v==='creator')renderCreator();if(v==='games')renderGameHub();if(v!=='gamepage'){stopReviews()}else $('nav [data-v=games]')?.classList.add('on')};
 
+/* ---------- images ---------- */
+const readURL=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});
+const MAX_DOC=880000; // a Firestore record holds at most 1 MB
+async function thumbFrom(file){if(file.size>3*1024*1024){toast('Pick an image smaller than 3 MB');return null}
+  if(file.type==='image/gif'){const d=await readURL(file);if(d.length<MAX_DOC)return d} // small GIFs stay animated
+  let img;try{img=await createImageBitmap(file)}catch{toast('That file isn’t an image Lumen can read');return null}
+  for(const [max,q] of [[1600,.88],[1280,.85],[1280,.75],[1024,.72],[800,.7],[640,.62]]){const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);let out=c.toDataURL('image/webp',q);if(!out.startsWith('data:image/webp'))out=c.toDataURL('image/jpeg',q);if(out.length<MAX_DOC)return out}
+  toast('Couldn’t shrink that image enough');return null}
+async function gifInfo(file){const buf=new Uint8Array(await file.arrayBuffer());const sig=String.fromCharCode(...buf.slice(0,6));if(!/^GIF8[79]a$/.test(sig))return{ok:false,why:'That isn’t a GIF file.'};
+  let transparent=false,frames=0;for(let i=0;i<buf.length-3;i++){if(buf[i]===0x21&&buf[i+1]===0xF9&&buf[i+2]===0x04){frames++;if(buf[i+3]&1)transparent=true}}
+  return{ok:true,transparent,frames,w:buf[6]|buf[7]<<8,h:buf[8]|buf[9]<<8}}
+
 /* ---------- Creator Dashboard ---------- */
 let editing=null,newImage=null;
 function renderCreator(){const box=$('#creatorBox');if(!box)return;
+  const ae=document.activeElement;if(ae&&box.contains(ae)&&ae.matches('input:not([type=file]),textarea'))return; // don't wipe a form mid-typing
   if(!me){box.innerHTML='<div class="banner">Sign in (bottom-left) to apply as a Lumen creator.</div>';return}
   if(!isCreator()){const st=myApp?.status;
     box.innerHTML=`<div class="cr-apply card"><div class="cr-steps"><div class="${st?'done':'now'}"><b>1</b>Apply</div><div class="${st==='pending'?'now':st==='approved'?'done':''}"><b>2</b>Admin review</div><div><b>3</b>Publish your projects</div></div>
@@ -99,11 +115,11 @@ function renderCreator(){const box=$('#creatorBox');if(!box)return;
         <label>Links to your work (optional)</label><textarea id="crLinks" rows="2" maxlength="400" placeholder="https://…">${esc(myApp?.links||'')}</textarea>
         <button class="btn-acc" id="crApply" style="margin-top:14px">Send application</button>`}</div>`;
     $('#crApply')?.addEventListener('click',apply);return}
-  const sum=f=>myProjects.reduce((a,p)=>a+f(p),0),wait=sum(unpaid);
+  const sum=f=>myProjects.reduce((a,p)=>a+f(p),0),itemWait=myItems.reduce((a,i)=>a+Math.max(0,(i.earned||0)-(i.paidEarned||0)),0),wait=sum(unpaid)+itemWait,itemTot=myItems.reduce((a,i)=>a+(i.earned||0),0);
   const tot=myProjects.reduce((a,p)=>a+(plays[projKey(p)]||0),0),liveN=myProjects.filter(p=>p.status==='approved').length,pend=myProjects.filter(p=>p.status==='pending').length,feat=myProjects.filter(p=>(hubCfg.pinned||[]).includes(projKey(p))).length;
   const f=editing||{};
   box.innerHTML=`<div class="card cr-earn"><div><span class="hkick">✦ Creator earnings</span><b class="cr-big">${fmtN(wait)} <small>Glow waiting</small></b>
-      <span class="muted" style="font-size:13px">You've earned ✦ ${fmtN(sum(earned))} in total. Other people playing your games earn you <b>${RATE.min} per minute</b>, every post that mentions a game <b>${RATE.mention}</b>, and every positive review <b>${RATE.review}</b>. Your own plays, posts and reviews don't count.</span></div>
+      <span class="muted" style="font-size:13px">You've earned ✦ ${fmtN(sum(earned)+itemTot)} in total. Other people playing your games earn you <b>${RATE.min} per minute</b>, every post that mentions a game <b>${RATE.mention}</b>, every positive review <b>${RATE.review}</b>, and you get <b>half of every sale</b> of your shop items. Your own plays, posts and reviews don't count.</span></div>
       <button class="btn-acc" id="crCollect" ${wait?'':'disabled'}>Collect ✦ ${fmtN(wait)}</button></div>
     <div class="an-stats">${[['📦','Projects',myProjects.length],['✅','Live',liveN],['⏳','In review',pend],['▶','Total plays',tot],['⏱','Minutes played',sum(p=>p.minutes||0)],['💬','Mentions',sum(p=>p.mentions||0)],['👍','Positive reviews',sum(p=>p.upReviews||0)],['⭐','Featured',feat]].map(([i,l,v])=>`<div class="card an-stat"><span>${i} ${l}</span><b>${fmtN(v)}</b></div>`).join('')}</div>
     <div class="cr-grid"><div class="card"><h2>${editing?'Edit project':'New project'}</h2><p class="muted" style="font-size:13px">${editing?'Saving sends it back for review.':'It goes live once the admin approves it.'}</p>
@@ -111,18 +127,60 @@ function renderCreator(){const box=$('#creatorBox');if(!box)return;
       <label>Title</label><input id="crTitle" maxlength="60" value="${esc(f.title||'')}" placeholder="My awesome game">
       <label>Link (must start with https://)</label><input id="crUrl" maxlength="500" value="${esc(f.url||'')}" placeholder="https://…">
       <label>Short description</label><textarea id="crDesc" rows="2" maxlength="300">${esc(f.desc||'')}</textarea>
-      <label>Cover image</label><div class="row"><button type="button" id="crImgBtn">🖼 Upload</button><input type="file" id="crImg" accept="image/*" hidden><span class="muted" id="crImgName" style="font-size:12px">${f.image?'Image set':''}</span></div>
+      <label>Cover image <span class="muted" style="font-size:12px">(up to 3 MB; small GIFs stay animated)</span></label><div class="row"><button type="button" id="crImgBtn">🖼 Upload</button><input type="file" id="crImg" accept="image/*" hidden><span class="muted" id="crImgName" style="font-size:12px">${f.image?'Image set':''}</span></div>
       <div class="row" style="margin-top:16px"><button class="btn-acc" id="crSave" style="flex:1">${editing?'Save and resubmit':'Submit for review'}</button>${editing?'<button id="crCancel">Cancel</button>':''}</div>
       <p class="muted" style="font-size:12px;margin:10px 0 0">Tip: games must work when opened inside another page (most HTML5 games on itch.io, GitHub Pages or your own site do). Sites that refuse to be embedded will open in a new tab.</p></div>
     <div class="card"><h2>My projects</h2><div class="list">${myProjects.map(p=>{const st=(hubCfg.pinned||[]).includes(projKey(p))&&p.status==='approved'?['⭐ Featured','feat']:{approved:['● Live','live'],pending:['⏳ In review','pend'],rejected:['✕ Not approved','rej']}[p.status]||['?',''];
       return`<div class="cr-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span><em class="pill ${st[1]}">${st[0]}</em> ${p.type==='site'?'Website':'Game'} · ▶ ${fmtN(plays[projKey(p)]||0)}${p.type==='game'?` · ⏱ ${fmtN(p.minutes||0)} min · 💬 ${fmtN(p.mentions||0)} · 👍 ${fmtN(p.upReviews||0)}`:''}</span></div>
-        ${p.status==='approved'&&p.type==='game'?`<button class="ib" data-page="${p.id}" title="Open its game page">↗</button>`:''}<button class="ib" data-edit="${p.id}" title="Edit">✏️</button><button class="ib" data-del="${p.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">Nothing yet. Submit your first project on the left.</p>'}</div></div></div>`;
+        ${p.status==='approved'&&p.type==='game'?`<button class="ib" data-page="${p.id}" title="Open its game page">↗</button>`:''}<button class="ib" data-edit="${p.id}" title="Edit">✏️</button><button class="ib" data-del="${p.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">Nothing yet. Submit your first project on the left.</p>'}</div></div></div>`+shopSection();
   $$('#crType button').forEach(b=>b.onclick=()=>{$$('#crType button').forEach(x=>x.classList.toggle('on',x===b))});
-  $('#crImgBtn').onclick=()=>$('#crImg').click();$('#crImg').onchange=async e=>{const fl=e.target.files[0];if(!fl)return;newImage=await L.shrinkImage(fl,640,.78);if(newImage.length>290000)newImage=await L.shrinkImage(fl,360,.6);$('#crImgName').textContent='✓ '+fl.name};
+  $('#crImgBtn').onclick=()=>$('#crImg').click();$('#crImg').onchange=async e=>{const fl=e.target.files[0];if(!fl)return;const out=await thumbFrom(fl);if(!out)return;newImage=out;$('#crImgName').textContent=`✓ ${fl.name} (${(fl.size/1048576).toFixed(1)} MB${out.startsWith('data:image/gif')?', animated':''})`};
   $('#crSave').onclick=saveProject;$('#crCancel')?.addEventListener('click',()=>{editing=null;newImage=null;renderCreator()});
-  $('#crCollect').onclick=collect;box.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>openGame('p_'+b.dataset.page));
+  $('#crCollect').onclick=collect;bindShop(box);box.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>openGame('p_'+b.dataset.page));
   box.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{editing=myProjects.find(p=>p.id===b.dataset.edit);newImage=null;renderCreator();box.scrollIntoView({behavior:'smooth'})});
   box.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this project?'))return;try{await C().F.deleteDoc(C().D('projects',b.dataset.del))}catch(e){toast(e.message)}})}
+/* ---------- shop creations ---------- */
+const CTYPES={fx:['✨','Profile effect','Plays over the big profile card, like the rain and snow effects. Best as a wide, transparent, looping GIF.'],deco:['💫','Avatar decoration','Sits around the profile picture, like a frame, halo or crown. Best as a square, transparent GIF.'],plate:['🎴','Nameplate','Fills the background behind the name in member lists. Best as a wide GIF.']};
+let shopEdit=null,shopGif=null,shopType='fx',shopMode='fill';const PREV='c_preview00000000';
+function cosPreview(type,id){const c=C(),u=c.profile()||{name:'You'};
+  if(type==='fx')return c.card({...u,fx:id,bio:''},{compact:true});
+  if(type==='deco')return`<div style="display:grid;place-items:center;padding:24px">${c.pic({...u,deco:id},96)}</div>`;
+  return`<div class="prev-plate${L.cos.plateCls(id)}">${c.pic(u,36)}<div><div style="font-weight:600">${c.nameHTML(u,{badges:false})}</div><div style="font-size:12px;opacity:.8">Online</div></div></div>`}
+function shopSection(){const f=shopEdit||{};
+  const st={approved:['● In the Shop','live'],pending:['⏳ In review','pend'],rejected:['✕ Not approved','rej']};
+  return`<div class="card cr-shop"><h2>🎨 Shop creations</h2><p class="muted" style="margin-top:0">Make your own profile effects, avatar decorations and nameplates from a <b>transparent GIF</b>. Once the admin approves one, it's sold in <b>Shop → 🛠 Creator</b> and you get half of every sale.</p>
+    <div class="cr-grid"><div><h3 style="margin:6px 0 0">${shopEdit?'Edit item':'New item'}</h3>
+      <label>Type</label><div class="seg" id="csType">${Object.entries(CTYPES).map(([k,[i,l]])=>`<button type="button" data-ct="${k}" class="${shopType===k?'on':''}">${i} ${l}</button>`).join('')}</div>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 0" id="csHint">${CTYPES[shopType][2]}</p>
+      <label>Name</label><input id="csName" maxlength="30" value="${esc(f.name||'')}" placeholder="Neon rain">
+      <label>Short description (optional)</label><input id="csDesc" maxlength="120" value="${esc(f.desc||'')}">
+      <div class="row" style="gap:12px;align-items:flex-end"><div style="flex:1"><label>Price in ✦ Glow (50 to 5,000)</label><input id="csPrice" type="number" min="50" max="5000" step="10" value="${f.price||300}"></div>
+        <div style="flex:1" id="csModeWrap"><label>Display</label><div class="seg" id="csMode"><button type="button" data-cm="fill" class="${shopMode==='fill'?'on':''}">Stretch to fill</button><button type="button" data-cm="tile" class="${shopMode==='tile'?'on':''}">Repeat</button></div></div></div>
+      <label>Transparent GIF (up to 650 KB)</label><div class="row"><button type="button" id="csGifBtn">🖼 Choose GIF</button><input type="file" id="csGif" accept="image/gif" hidden><span class="muted" id="csGifName" style="font-size:12px">${shopEdit?'Keep the current GIF or choose a new one':''}</span></div>
+      <div class="row" style="margin-top:16px"><button class="btn-acc" id="csSave" style="flex:1">${shopEdit?'Save and resubmit':'Submit for review'}</button>${shopEdit?'<button id="csCancel">Cancel</button>':''}</div></div>
+    <div><label>Preview</label><div class="cs-prev" id="csPrev">${shopGif||shopEdit?cosPreview(shopType,shopGif?PREV:shopEdit.id):'<p class="muted" style="padding:30px;text-align:center">Choose a GIF to see it here.</p>'}</div></div></div>
+    <h3>My shop items</h3><div class="list">${myItems.map(i=>{const s=st[i.status]||['?',''];return`<div class="cr-proj"><div class="cs-mini">${cosPreview(i.type,i.id)}</div><div class="info"><b>${esc(i.name)}</b><span><em class="pill ${s[1]}">${s[0]}</em> ${CTYPES[i.type]?.[1]||''} · ✦ ${fmtN(i.price)} · ${fmtN(i.sales||0)} sold · earned ✦ ${fmtN(i.earned||0)}</span></div>
+      <button class="ib" data-csedit="${i.id}" title="Edit">✏️</button><button class="ib" data-csdel="${i.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">None yet.</p>'}</div></div>`}
+function bindShop(box){const prev=()=>{const el=$('#csPrev');if(el&&(shopGif||shopEdit))el.innerHTML=cosPreview(shopType,shopGif?PREV:shopEdit.id);$('#csModeWrap').style.visibility=shopType==='fx'?'':'hidden'};
+  box.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{shopType=b.dataset.ct;box.querySelectorAll('[data-ct]').forEach(x=>x.classList.toggle('on',x===b));$('#csHint').textContent=CTYPES[shopType][2];prev()});
+  box.querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>{shopMode=b.dataset.cm;box.querySelectorAll('[data-cm]').forEach(x=>x.classList.toggle('on',x===b));if(shopGif)L.cos.previewRule(PREV,shopGif,shopMode);prev()});
+  $('#csModeWrap').style.visibility=shopType==='fx'?'':'hidden';
+  $('#csGifBtn').onclick=()=>$('#csGif').click();
+  $('#csGif').onchange=async e=>{const fl=e.target.files[0];if(!fl)return;const info=await gifInfo(fl);
+    if(!info.ok)return toast(info.why);if(!info.transparent)return toast('That GIF has no transparent background. Export it with transparency (e.g. ezgif.com → Effects → Transparency) and try again.');
+    const d=await readURL(fl);if(d.length>=920000)return toast(`That GIF is ${(fl.size/1024|0)} KB. Keep it under 650 KB (fewer frames or a smaller size).`);
+    shopGif=d;L.cos.previewRule(PREV,d,shopMode);$('#csGifName').textContent=`✓ ${fl.name} · ${info.w}×${info.h} · ${info.frames} frame${info.frames===1?'':'s'}`;prev()};
+  $('#csSave').onclick=saveItem;$('#csCancel')?.addEventListener('click',()=>{shopEdit=null;shopGif=null;renderCreator()});
+  box.querySelectorAll('[data-csedit]').forEach(b=>b.onclick=()=>{shopEdit=myItems.find(i=>i.id===b.dataset.csedit);shopType=shopEdit.type;shopMode=shopEdit.mode||'fill';shopGif=null;renderCreator();$('.cr-shop')?.scrollIntoView({behavior:'smooth'})});
+  box.querySelectorAll('[data-csdel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this shop item? People who bought it keep it in their list but it stops showing.'))return;const {F,D,db}=C();const bt=F.writeBatch(db);bt.delete(D('shopItems',b.dataset.csdel));bt.delete(D('shopImgs',b.dataset.csdel));try{await bt.commit();toast('Deleted')}catch(e){toast(e.message)}})}
+async function saveItem(){const {F,D,db}=C();const name=$('#csName').value.trim(),desc=$('#csDesc').value.trim(),price=Math.round((+$('#csPrice').value||0)/10)*10;
+  if(name.length<2)return toast('Give it a name');if(!(price>=50&&price<=5000))return toast('The price must be between 50 and 5,000 Glow');if(!shopEdit&&!shopGif)return toast('Choose a transparent GIF');
+  const data={type:shopType,name:name.slice(0,30),desc:desc.slice(0,120),price,cut:price/2,mode:shopType==='fx'?shopMode:'fill',status:'pending',at:F.serverTimestamp()};
+  const id=shopEdit?.id||('c_'+[...crypto.getRandomValues(new Uint8Array(14))].map(x=>'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[x%56]).join(''));
+  const b=F.writeBatch(db);if(shopEdit)b.update(D('shopItems',id),data);else b.set(D('shopItems',id),{...data,uid:me});
+  if(shopGif)b.set(D('shopImgs',id),{uid:me,data:shopGif,mode:data.mode,type:shopType});else if(shopEdit&&data.mode!==shopEdit.mode){const s=await F.getDoc(D('shopImgs',id));if(s.exists())b.set(D('shopImgs',id),{...s.data(),mode:data.mode})}
+  $('#csSave').disabled=true;try{await b.commit();toast(shopEdit?'Saved: back in review':'Submitted for review');shopEdit=null;shopGif=null;renderCreator()}catch(e){toast('Couldn’t save: '+(e.code==='permission-denied'?'Firebase refused it (re-publish the latest rules?)':e.message));$('#csSave').disabled=false}}
+
 async function apply(){const about=$('#crAbout').value.trim();if(about.length<10)return toast('Tell the admin a little about what you’ll make');
   try{await C().F.setDoc(C().D('creatorApps',me),{uid:me,about:about.slice(0,600),links:$('#crLinks').value.trim().slice(0,400),status:'pending',at:C().F.serverTimestamp()});toast('Application sent')}catch(e){toast('Couldn’t apply: '+e.message)}}
 async function saveProject(){const type=$('#crType .on')?.dataset.t||'game',title=$('#crTitle').value.trim(),url=$('#crUrl').value.trim(),desc=$('#crDesc').value.trim();
@@ -154,6 +212,15 @@ function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{
     el.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this project for good?'))return;try{await F.deleteDoc(D('projects',b.dataset.pdel));toast('Deleted')}catch(e){toast(e.message)}});
     el.querySelectorAll('[data-pin]').forEach(b=>b.onclick=()=>{const key=b.dataset.pin.startsWith('b_')?b.dataset.pin:'p_'+b.dataset.pin;const pin=new Set(hubCfg.pinned||[]);pin.has(key)?pin.delete(key):pin.add(key);saveHub({pinned:[...pin]})});
     el.querySelectorAll('[data-hideb]').forEach(b=>b.onclick=()=>{const h=new Set(hubCfg.hiddenBuiltins||[]);h.has(b.dataset.hideb)?h.delete(b.dataset.hideb):h.add(b.dataset.hideb);saveHub({hiddenBuiltins:[...h]})});return}
+  if(tab==='shop'){const pend=allItems.filter(i=>i.status==='pending'),liveI=allItems.filter(i=>i.status==='approved'),rej=allItems.filter(i=>i.status==='rejected');
+    const row=(i,acts)=>`<div class="adm-item"><div class="cs-mini big">${cosPreview(i.type,i.id)}</div><div class="info"><b>${esc(i.name)}</b><span>${CTYPES[i.type]?.[0]} ${CTYPES[i.type]?.[1]} · ✦ ${fmtN(i.price)} · <span data-uname="${i.uid}">…</span>${i.sales?` · ${fmtN(i.sales)} sold`:''}</span>${i.desc?`<p class="muted" style="font-size:12.5px;margin:4px 0 0">${esc(i.desc)}</p>`:''}<div class="acts">${acts}</div></div></div>`;
+    el.innerHTML=`<div class="card"><h2>⏳ Waiting for review <em class="count">${pend.length}</em></h2><p class="muted" style="font-size:13px;margin-top:0">Check that each GIF looks good, is transparent and is appropriate before it goes into the Shop.</p><div class="adm-items">${pend.map(i=>row(i,`<button class="btn-acc" data-iok="${i.id}">✓ Approve</button><button data-ino="${i.id}">✕ Reject</button>`)).join('')||'<p class="muted">Nothing waiting.</p>'}</div></div>
+      <div class="card" style="margin-top:16px"><h2>● In the Shop <em class="count">${liveI.length}</em></h2><div class="adm-items">${liveI.map(i=>row(i,`<button data-ino="${i.id}">🙈 Take down</button><button data-idel="${i.id}">🗑 Delete</button>`)).join('')||'<p class="muted">No creator items in the Shop yet.</p>'}</div></div>
+      ${rej.length?`<div class="card" style="margin-top:16px"><h2>✕ Not approved <em class="count">${rej.length}</em></h2><div class="adm-items">${rej.map(i=>row(i,`<button data-iok="${i.id}">✓ Approve</button><button data-idel="${i.id}">🗑 Delete</button>`)).join('')}</div></div>`:''}`;
+    el.querySelectorAll('[data-uname]').forEach(async b=>{const u=await C().getUser(b.dataset.uname);b.textContent='by '+(u.name||'creator')});
+    el.querySelectorAll('[data-iok]').forEach(b=>b.onclick=()=>upd(D('shopItems',b.dataset.iok),{status:'approved'},'Approved: it’s in the Shop'));
+    el.querySelectorAll('[data-ino]').forEach(b=>b.onclick=()=>upd(D('shopItems',b.dataset.ino),{status:'rejected'},'Not approved'));
+    el.querySelectorAll('[data-idel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this item for good?'))return;const bt=F.writeBatch(C().db);bt.delete(D('shopItems',b.dataset.idel));bt.delete(D('shopImgs',b.dataset.idel));try{await bt.commit();toast('Deleted')}catch(e){toast(e.message)}});return}
   if(tab==='hub'){el.innerHTML=`<div class="adm-cols"><div class="card"><h2>🏠 Hub banner</h2>
       <label>Small label</label><input id="hbKick" maxlength="40" value="${esc(hubCfg.kicker||'')}" placeholder="Lumen Hub">
       <label>Headline</label><input id="hbTitle" maxlength="80" value="${esc(hubCfg.title||'')}" placeholder="Welcome back, NAME. (default)">
@@ -177,6 +244,9 @@ async function collect(){const {F,D,db}=C();const btn=$('#crCollect');btn.disabl
     b.update(D('projects',p.id),{paidMin:p.minutes||0,paidMent:p.mentions||0,paidRev:p.upReviews||0});
     b.update(D('users',me),{coins:(+C().profile()?.coins||0)+got+amt,lastProj:p.id});
     try{await b.commit();got+=amt}catch(e){toast(e.code==='permission-denied'?'Couldn’t collect yet (new plays just came in, or the rules need re-publishing). Try again.':e.message);break}}
+  for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){const amt=it.earned-(it.paidEarned||0);const b=F.writeBatch(db);
+    b.update(D('shopItems',it.id),{paidEarned:it.earned});b.update(D('users',me),{coins:(+C().profile()?.coins||0)+got+amt,lastItem:it.id});
+    try{await b.commit();got+=amt}catch(e){toast(e.code==='permission-denied'?'Couldn’t collect yet (a sale just came in). Try again.':e.message);break}}
   if(got)toast(`+${fmtN(got)} ✦ Glow collected`);renderCreator()}
 
 /* ---------- playtime: +1 minute for the creator for every full minute someone else plays ---------- */
@@ -267,6 +337,6 @@ async function sendReview(){const {F,D,db}=C();const text=$('#gpText').value.tri
     await b.commit();$('#gpText').value='';toast('Review posted')}catch(e){toast(e.code==='permission-denied'?'Couldn’t post the review (you can only review a game once).':e.message)}}
 $('#brand')?.addEventListener('click',()=>L.go('hub'));
 
-L.hubCounts=()=>({apps:allApps.filter(a=>a.status==='pending').length,queue:allProjects.filter(p=>p.status==='pending').length,creators:allApps.filter(a=>a.status==='approved').length,live:allProjects.filter(p=>p.status==='approved').length});
+L.hubCounts=()=>({shop:allItems.filter(i=>i.status==='pending').length,apps:allApps.filter(a=>a.status==='pending').length,queue:allProjects.filter(p=>p.status==='pending').length,creators:allApps.filter(a=>a.status==='approved').length,live:allProjects.filter(p=>p.status==='approved').length});
 if(C()?.profile?.())L.onProfile(C().profile());
 renderHub();renderGameHub();

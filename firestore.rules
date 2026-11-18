@@ -49,6 +49,8 @@ service cloud.firestore {
         || (no == oo && nl == ol && earnOk(o, n, oc, nc))
         || (no == oo && nl == ol && redeemOk(o, n, oc, nc))
         || (no == oo && nl == ol && projEarnOk(o, n, oc, nc))
+        || (no == oo && nl == ol && itemEarnOk(o, n, oc, nc))
+        || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo) && creatorBuyOk(n, oc, nc, no, oo))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo)
             && n.get('lastBuy', '') in prices() && no.hasAny([n.lastBuy]) && !oo.hasAny([n.lastBuy])
             && nc == oc - prices()[n.lastBuy] && nc >= 0);
@@ -75,6 +77,21 @@ service cloud.firestore {
       return pid != '' && pa.uid == uid()
         && nc == oc + 20 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
         && nc > oc;
+    }
+    // Creator shop items: buying one costs exactly its price; the creator later collects half of each sale
+    function itemPath(i) { return /databases/$(database)/documents/shopItems/$(i); }
+    function creatorBuyOk(n, oc, nc, no, oo) {
+      let id = n.get('lastBuy', '');
+      return id.matches('^c_[A-Za-z0-9]{8,24}$') && no.hasAny([id]) && !oo.hasAny([id])
+        && get(itemPath(id)).data.status == 'approved' && get(itemPath(id)).data.uid != uid()
+        && nc == oc - get(itemPath(id)).data.price && nc >= 0
+        && getAfter(itemPath(id)).data.get('sales', 0) == get(itemPath(id)).data.get('sales', 0) + 1;
+    }
+    function itemEarnOk(o, n, oc, nc) {
+      let id = n.get('lastItem', '');
+      let pb = get(itemPath(id)).data;
+      let pa = getAfter(itemPath(id)).data;
+      return id != '' && pa.uid == uid() && nc == oc + (pa.get('paidEarned', 0) - pb.get('paidEarned', 0)) && nc > oc;
     }
     function earnOk(o, n, oc, nc) {
       let pid = n.get('lastEarn', '');
@@ -145,7 +162,7 @@ service cloud.firestore {
     function projectOk(d) {
       return d.type in ['game', 'site'] && d.title is string && d.title.size() >= 2 && d.title.size() <= 60
         && d.url is string && d.url.size() <= 500 && d.url.matches('^https://.*')
-        && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 300000;
+        && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 900000;
     }
     function counters() { return ['minutes', 'mentions', 'upReviews', 'paidMin', 'paidMent', 'paidRev', 'lastMention', 'lastReview']; }
     match /projects/{id} {
@@ -220,6 +237,44 @@ service cloud.firestore {
       allow update: if active() && who == uid() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'at']) && reviewOk(request.resource.data);
       allow delete: if isAdmin();
     }
+    // ---------- creator shop items (profile effects, decorations, nameplates made from a transparent GIF) ----------
+    function itemOk(d) {
+      return d.type in ['fx', 'deco', 'plate'] && d.name is string && d.name.size() >= 2 && d.name.size() <= 30
+        && d.get('desc', '') is string && d.get('desc', '').size() <= 120
+        && d.price is int && d.price >= 50 && d.price <= 5000 && d.price % 10 == 0 && d.cut is int && d.cut * 2 == d.price
+        && d.mode in ['fill', 'tile'];
+    }
+    match /shopItems/{id} {
+      function d() { return request.resource.data; }
+      function o() { return resource.data; }
+      function keys() { return d().diff(o()).affectedKeys(); }
+      function userPath() { return /databases/$(database)/documents/users/$(uid()); }
+      allow get, list: if signedIn() && (resource.data.status == 'approved' || resource.data.uid == uid() || isAdmin());
+      allow create: if active() && isCreator() && id.matches('^c_[A-Za-z0-9]{8,24}$') && d().uid == uid() && d().status == 'pending'
+        && itemOk(d()) && !d().keys().hasAny(['sales', 'earned', 'paidEarned', 'lastBuyer'])
+        && existsAfter(/databases/$(database)/documents/shopImgs/$(id));
+      // the creator edits it: back into review
+      allow update: if active() && isCreator() && o().uid == uid()
+        && keys().hasOnly(['type', 'name', 'desc', 'price', 'cut', 'mode', 'status', 'at']) && d().status == 'pending' && itemOk(d());
+      allow update: if isAdmin() && itemOk(d()) && d().status in ['pending', 'approved', 'rejected'];
+      // someone buys it (paired with the purchase on their account)
+      allow update: if active() && o().status == 'approved' && o().uid != uid() && keys().hasOnly(['sales', 'earned', 'lastBuyer'])
+        && d().sales == o().get('sales', 0) + 1 && d().earned == o().get('earned', 0) + o().cut && d().lastBuyer == uid()
+        && !get(userPath()).data.get('owned', []).hasAny([id]) && getAfter(userPath()).data.get('owned', []).hasAny([id]);
+      // the creator collects their share (the Glow itself is checked in users)
+      allow update: if active() && o().uid == uid() && keys().hasOnly(['paidEarned']) && d().paidEarned == o().get('earned', 0);
+      allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
+    }
+    match /shopImgs/{id} {
+      allow read: if signedIn();
+      allow create, update: if active() && request.resource.data.uid == uid()
+        && request.resource.data.keys().hasOnly(['uid', 'data', 'mode', 'type'])
+        && request.resource.data.data is string && request.resource.data.data.size() < 950000
+        && request.resource.data.data.matches('^data:image/gif;base64,.*')
+        && getAfter(itemPath(id)).data.uid == uid() && getAfter(itemPath(id)).data.status == 'pending';
+      allow delete: if (signedIn() && resource.data.uid == uid()) || isAdmin();
+    }
+
     // play counts for "Most played": +1 per person per game per day, paired with a play record
     function playPath(k) { return /databases/$(database)/documents/plays/$(k); }
     match /plays/{key} {
