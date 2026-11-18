@@ -229,7 +229,9 @@ canvas.buddy{position:absolute;pointer-events:none;z-index:0}
 @keyframes fl-fig{0%,100%{opacity:0}62%{opacity:.9}63%{opacity:0}64%{opacity:1}70%{opacity:0}}
 
 /* creator-made items (transparent GIFs) */
-.fxl.cfx{z-index:3}
-.pic .deco.cdeco{inset:-22%;border-radius:0}
-.plate.cplate::before{animation:none;-webkit-mask:none;mask:none;opacity:.85}
+.fxl.cfx{z-index:1}
+.pcard .body{position:relative;z-index:2}
+.pic .deco.cdeco{inset:-22%;border-radius:50%}
+/* creator nameplates: the picture keeps its shape and fades on the left so the name stays readable */
+.plate.cplate::before{animation:none;-webkit-mask:linear-gradient(90deg,rgba(0,0,0,.4),#000 55%);mask:linear-gradient(90deg,rgba(0,0,0,.4),#000 55%);opacity:.85}
 .plate.cplate::after{display:none}

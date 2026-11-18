@@ -87,10 +87,13 @@ function ruleCSS(id,data,o={}){const u=`url("${data}")`,m=['fill','tile','place'
   const fx=m==='tile'?`background-repeat:repeat;background-size:${s}% auto;background-position:${x}% ${y}%`
     :m==='place'?`background-repeat:no-repeat;background-size:${s}% auto;background-position:${x}% ${y}%`
     :`background-repeat:no-repeat;background-size:cover;background-position:${x}% ${y}%;transform:scale(${Math.max(1,s/100)});transform-origin:${x}% ${y}%`;
-  const plate=m==='place'?`${u} ${x}% ${y}%/${s}% auto no-repeat`:`${u} ${x}% ${y}%/cover no-repeat`;
-  return`.cfx-${id}{background-image:${u};${fx};opacity:${op}}.cdeco-${id}{background-image:${u};background-size:${s}% auto;background-position:${x}% ${y}%;background-repeat:no-repeat;opacity:${op}}.cplate-${id}::before{background:${plate}!important;opacity:${(op*.85).toFixed(2)}}`}
+  // decorations and nameplates keep the picture's own shape in every size (rows, chips, cards)
+  const ar=+o.ar||1,dsz=(m==='fill')===(ar>=1)?`auto ${s}%`:`${s}% auto`; // fill = covers the round frame, place/tile = whole picture visible
+  const plate=m==='place'?`${u} ${x}% ${y}%/auto ${s}% no-repeat`:m==='tile'?`${u} ${x}% ${y}%/auto 100% repeat-x`:`${u} ${x}% ${y}%/cover no-repeat`;
+  return`.cfx-${id}{background-image:${u};${fx};opacity:${op}}.cdeco-${id}{background-image:${u};background-size:${dsz};background-position:${x}% ${y}%;background-repeat:no-repeat;opacity:${op}}.cplate-${id}::before{background:${plate}!important;opacity:${(op*.85).toFixed(2)}}`}
 const rules=new Map();
-function addRule(id,data,o){custom.set(id,{mode:o?.mode});let el=rules.get(id);if(!el){el=document.createElement('style');el.dataset.cos=id;document.head.appendChild(el);rules.set(id,el)}el.textContent=ruleCSS(id,data,o||{})}
+function addRule(id,data,o){o={...(o||{})};custom.set(id,{mode:o.mode});
+  if(!o.ar){const im=new Image();im.onload=()=>{if(im.naturalWidth&&im.naturalHeight&&rules.get(id)?.dataset.src===String(data.length))addRule(id,data,{...o,ar:im.naturalWidth/im.naturalHeight})};im.src=data}let el=rules.get(id);if(!el){el=document.createElement('style');el.dataset.cos=id;document.head.appendChild(el);rules.set(id,el)}el.dataset.src=String(data.length);el.textContent=ruleCSS(id,data,o)}
 /* live preview while a creator edits (replaces the rule each time) */
 function previewRule(id,data,o){addRule(id,data,typeof o==='string'?{mode:o}:o)}
 
