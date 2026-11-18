@@ -311,7 +311,7 @@ async function drawMsgs(p,c,docs,fromCache,pending){const us=await Promise.all(d
         (Object.keys(rx).length?`<div class="dreacts">${Object.entries(rx).map(([e,w])=>`<button data-react="${esc(e)}" class="${w.includes(me.uid)?'mine':''}">${esc(e)} <b>${w.length}</b></button>`).join('')}</div>`:'');
       const tools=m.id?`<div class="dtools"><button data-rx title="React">😊</button><button data-reply title="Reply">↩</button>${m.uid===me.uid&&m.text?'<button data-edit title="Edit">✏️</button>':''}${m.text?'<button data-copy title="Copy text">📋</button>':''}${m.uid===me.uid||(c.type==='room'&&isAdmin())?'<button data-del title="Delete">🗑</button>':''}</div>`:'';
       const at=` data-mid="${m.id||''}" data-k="${m.id||i}"`;const mineC=m.uid===me.uid?' me-msg':'';
-      return grouped?`<div class="dmsg grouped${mineC}"${at}>${tools}<span class="dtime">${new Date(ms(m.at)).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>"<div class="dbody">${body}</div></div>`
+      return grouped?`<div class="dmsg grouped${mineC}"${at}>${tools}<span class="dtime">${new Date(ms(m.at)).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><div class="dbody">${body}</div></div>`
         :`<div class="dmsg${mineC}"${at}>${tools}<div class="dav" data-user="${m.uid}">${pic(u,40,friendIds().includes(m.uid)||m.uid===me.uid?m.uid:null)}</div><div class="dbody"><div class="dhead"><b data-user="${m.uid}">${nameHTML(u)}</b><span class="muted">${when(m.at)}</span></div>${body}</div></div>`}).join('')
       ||`<div class="sysmsg">${c.type==='room'?'No messages yet. Say hi 👋':'This is the start of your private chat. Only you two can read it.'}</div>`);
     box.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>showUser(b.dataset.user));
