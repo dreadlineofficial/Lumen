@@ -130,10 +130,10 @@ function stars(it,{count=true,big=false}={}){const n=nRev(it);if(!n)return count
   return`<span class="mk-rating${big?' big':''}"><span class="mk-stars" style="--r:${r}" title="${r} out of 5" aria-label="${r} out of 5 stars"></span>${count?`<a href="#" data-revs class="mk-rc">${fmtN(n)}</a>`:''}</span>`}
 function priceHTML(it,big){if(!it.price)return`<span class="mk-price${big?' big':''} free">FREE</span>`;const c=cost(it);
   return`<span class="mk-price${big?' big':''}"><sup>✦</sup>${fmtN(c)}</span>${c<it.price?` <span class="mk-was">List: <s>✦${fmtN(it.price)}</s></span>`:''}`}
-function pcard(it,{mini=false,best=null}={}){const k=esc(it.key),[ic,lb]=label(it),own=has(it),bs=best?.has(it.key);
+function pcard(it,{mini=false,best=null,spons=false}={}){const k=esc(it.key),[ic,lb]=label(it),own=has(it),bs=best?.has(it.key);
   if(mini)return`<button class="mk-mini" data-open="${k}"><div class="mk-mini-img" style="${pics(it)[0].style}">${it.image?'':`<span>${esc(it.title)}</span>`}</div><span class="mk-mini-t">${esc(it.title)}</span>${stars(it,{count:false})}<span>${own?'<span class="mk-own">✓ Owned</span>':priceHTML(it)}</span></button>`;
   return`<div class="mk-card" data-pk="${k}"><div class="mk-imgwrap"><button class="mk-img" data-open="${k}" style="${pics(it)[0].style}" aria-label="${esc(it.title)}">${H().coverOf(it)?'':`<span>${esc(it.title)}</span>`}</button>${pics(it).length>1?`<em class="mk-npics">🖼 ${pics(it).length}</em>`:''}
-      ${bs?'<em class="mk-tag best">Best seller</em>':pinned(it)?'<em class="mk-tag pick">Lumen’s choice</em>':Date.now()-at(it)<7*864e5&&!it.builtin?'<em class="mk-tag new">New</em>':''}
+      ${spons?'<em class="mk-tag spons">Sponsored</em>':bs?'<em class="mk-tag best">Best seller</em>':pinned(it)?'<em class="mk-tag pick">Lumen’s choice</em>':Date.now()-at(it)<7*864e5&&!it.builtin?'<em class="mk-tag new">New</em>':''}
       <button class="mk-heart${wish.includes(it.key)?' on':''}" data-wish="${k}" title="${wish.includes(it.key)?'Remove from wishlist':'Add to wishlist'}">${wish.includes(it.key)?'♥':'♡'}</button></div>
     <div class="mk-body"><a href="#" class="mk-title" data-open="${k}">${esc(it.title)}</a><span class="mk-by">${ic} ${lb} · ${it.uid?byHTML(it):'Lumen'}</span>
       ${stars(it)}${it.sales>=5?`<span class="mk-sold">${fmtN(it.sales)}+ ${it.price?'bought':'got it'}</span>`:''}
@@ -151,16 +151,17 @@ const carousel=(title,list,more)=>list.length?`<section class="mk-box mk-surface
 function quad(title,list,link){const tiles=list.slice(0,4);if(!tiles.length)return'';
   return`<div class="mk-quad mk-surface"><h2>${title}</h2><div class="mk-quad-g">${tiles.map(it=>`<button data-open="${esc(it.key)}"><div style="${pics(it)[0].style}">${H().coverOf(it)?'':`<span>${esc(it.title)}</span>`}</div><span>${esc(it.title)}</span></button>`).join('')}</div><a href="#" ${link}>See more</a></div>`}
 function home(){const all=products();
-  const feat=[...all.filter(pinned),...all.filter(it=>!pinned(it)&&H().coverOf(it)).sort((a,b)=>pop(b)-pop(a))].slice(0,5);heroI%=Math.max(1,feat.length);
+  const sp=L.promo?.live();const feat=[...(sp?[sp]:[]),...all.filter(it=>pinned(it)&&it.key!==sp?.key),...all.filter(it=>!pinned(it)&&it.key!==sp?.key&&H().coverOf(it)).sort((a,b)=>pop(b)-pop(a))].slice(0,5);heroI%=Math.max(1,feat.length);
   const games=all.filter(it=>it.type==='game').sort((a,b)=>pop(b)-pop(a)),free=all.filter(it=>!it.price&&!has(it)).sort((a,b)=>pop(b)-pop(a)),fresh=all.filter(it=>!it.builtin).sort((a,b)=>at(b)-at(a));
   const read=all.filter(it=>it.type==='ebook'||it.type==='doc').sort((a,b)=>pop(b)-pop(a));
   const dept=CATS.slice(1,5).map(([k,i,l])=>`<button data-mkcat="${k}"><div class="mk-dept t-${k}">${i}</div><span>${l}</span></button>`).join('');
-  return`<div class="mk-hero">${feat.map((it,i)=>`<div class="mk-slide${i===heroI?' on':''}" data-open="${esc(it.key)}"><div class="mk-slide-art" style="${pics(it)[0].style.replace('background-size:contain','background-size:cover')}"></div><div class="mk-slide-in"><span class="mk-kick">${pinned(it)?'Lumen’s choice':'Trending now'} · ${label(it)[1]}</span><h2>${esc(it.title)}</h2>${it.desc?`<p>${esc(it.desc.slice(0,120))}${it.desc.length>120?'…':''}</p>`:''}<span class="mk-hero-p">${it.price?'✦ '+fmtN(cost(it)):'Free'}</span></div></div>`).join('')||'<div class="mk-slide on"><div class="mk-slide-in"><span class="mk-kick">Lumen Store</span><h2>Games, ebooks and more from Lumen creators</h2></div></div>'}
+  return`<div class="mk-hero">${feat.map((it,i)=>`<div class="mk-slide${i===heroI?' on':''}" data-open="${esc(it.key)}"><div class="mk-slide-art" style="${pics(it)[0].style.replace('background-size:contain','background-size:cover')}"></div><div class="mk-slide-in"><span class="mk-kick">${it.key===sp?.key?'Featured':pinned(it)?'Lumen’s choice':'Trending now'} · ${label(it)[1]}</span><h2>${esc(it.title)}</h2>${it.desc?`<p>${esc(it.desc.slice(0,120))}${it.desc.length>120?'…':''}</p>`:''}<span class="mk-hero-p">${it.price?'✦ '+fmtN(cost(it)):'Free'}</span></div></div>`).join('')||'<div class="mk-slide on"><div class="mk-slide-in"><span class="mk-kick">Lumen Store</span><h2>Games, ebooks and more from Lumen creators</h2></div></div>'}
       ${feat.length>1?`<button class="mk-arrow l" data-heronav="-1" aria-label="Previous">‹</button><button class="mk-arrow r" data-heronav="1" aria-label="Next">›</button>`:''}</div>
     <div class="mk-quads">${quad('Top games right now',games,'data-mkcat="game"')}${quad('Free to get',free,'data-mkdeal="free"')}${quad('New arrivals',fresh,'data-mksort="new"')}
       <div class="mk-quad mk-surface"><h2>Shop by department</h2><div class="mk-quad-g">${dept}</div><a href="#" data-mkcat="all" data-browse>See all departments</a></div>
       ${me()?'':'<div class="mk-quad mk-surface mk-signin"><h2>Sign in for the best experience</h2><p class="mk-muted">Buy with ✦ Glow, keep a wishlist and get things free.</p></div>'}</div>
     ${carousel('Best sellers in Lumen Store',all.filter(it=>it.price>0&&it.sales).sort((a,b)=>(b.sales||0)-(a.sales||0)).slice(0,14),'data-mksort="best"')}
+    ${L.promo?.band()||''}
     ${carousel('Free picks for you',free.slice(0,14),'data-mkdeal="free"')}
     ${carousel('Popular in eBooks & Documents',read.slice(0,14),'data-mkcat="ebook"')}
     ${carousel('New releases',fresh.slice(0,14),'data-mksort="new"')}
@@ -177,7 +178,8 @@ function filtered(){const ql=q.toLowerCase();
   if(minStars)list=list.filter(it=>rating(it)>=minStars);if(hideOwned)list=list.filter(it=>!has(it));
   const s={featured:(a,b)=>(pinned(b)-pinned(a))||pop(b)-pop(a),best:(a,b)=>(b.sales||0)-(a.sales||0)||pop(b)-pop(a),new:(a,b)=>at(b)-at(a),rated:(a,b)=>rating(b)-rating(a)||nRev(b)-nRev(a),low:(a,b)=>a.price-b.price||pop(b)-pop(a),high:(a,b)=>b.price-a.price||pop(b)-pop(a)}[sort];
   return list.sort(s)}
-function results(){const all=products(),list=filtered(),cc=CATS.find(c=>c[0]===cat),best=bestSellers();const n=c=>c==='all'?all.length:all.filter(it=>it.type===c).length;
+function results(){const all=products(),cc=CATS.find(c=>c[0]===cat),best=bestSellers();let list=filtered();
+  const sp=(cat==='all'||cat==='game')&&!hideOwned&&priceF!=='free'?L.promo?.live():null;if(sp)list=[sp,...list.filter(it=>it.key!==sp.key)];const n=c=>c==='all'?all.length:all.filter(it=>it.type===c).length;
   const side=`<aside class="mk-filters mk-surface"><h3>Department</h3>${CATS.map(([k,,l])=>`<a href="#" data-mkcat="${k}" data-browse class="${cat===k?'on':''}">${l} <span>(${n(k)})</span></a>`).join('')}
     <h3>Customer reviews</h3>${[4,3,2].map(s=>`<a href="#" data-stars="${minStars===s?0:s}" class="${minStars===s?'on':''}"><span class="mk-stars" style="--r:${s}"></span> &amp; up</a>`).join('')}
     <h3>Price</h3>${PRICES.map(([k,l])=>`<a href="#" data-price="${k}" class="${priceF===k?'on':''}">${l}</a>`).join('')}
@@ -185,7 +187,7 @@ function results(){const all=products(),list=filtered(),cc=CATS.find(c=>c[0]===c
     ${cat!=='all'||priceF!=='any'||minStars||hideOwned||q?'<a href="#" data-clear class="mk-clear">✕ Clear all filters</a>':''}</aside>`;
   return`<div class="mk-results"><div class="mk-resbar mk-surface"><span>${list.length?`1-${list.length} of `:''}<b>${list.length}</b> result${list.length===1?'':'s'}${q?` for <b class="mk-q">"${esc(q)}"</b>`:''}${cat!=='all'?` in <b>${cc[2]}</b>`:''}</span>
       <label class="mk-sort">Sort by: <select id="mkSort">${SORTS.map(([k,l])=>`<option value="${k}" ${sort===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
-    <div class="mk-resgrid">${side}<div class="mk-resmain">${list.length?`<div class="mk-grid">${list.map(it=>pcard(it,{best})).join('')}</div>`:`<div class="mk-empty mk-surface"><div style="font-size:42px">🔎</div><b>No results${q?` for "${esc(q)}"`:''}</b><p class="mk-muted">Try checking your spelling, use fewer words, or clear the filters.</p></div>`}</div></div></div>`}
+    <div class="mk-resgrid">${side}<div class="mk-resmain">${list.length?`<div class="mk-grid">${list.map(it=>pcard(it,{best,spons:it===sp})).join('')}</div>`:`<div class="mk-empty mk-surface"><div style="font-size:42px">🔎</div><b>No results${q?` for "${esc(q)}"`:''}</b><p class="mk-muted">Try checking your spelling, use fewer words, or clear the filters.</p></div>`}</div></div></div>`}
 
 /* ---------- a product's page ---------- */
 function revCol(key){const {F,db}=C();return key.startsWith('p_')?F.collection(db,'projects',key.slice(2),'reviews'):F.collection(db,'reviews',key,'list')}
@@ -207,7 +209,7 @@ function productPage(it){const [ic,lb]=label(it),cc=catOf(it),own=it.uid&&it.uid
      ${!me()?'<button class="mk-btn mk-wide" disabled>Sign in to buy</button>':
        `<button class="mk-btn ${cart.includes(it.key)?'mk-in':'mk-cta'} mk-wide mk-addcart" data-cart="${esc(it.key)}">${cart.includes(it.key)?'✓ Added to cart · remove':'🛒 Add to cart'}</button><button class="mk-btn mk-buy mk-wide" data-buy="${esc(it.key)}">${it.price?'Buy now':'Get it now, free'}</button>`}
      ${cart.includes(it.key)?'<a href="#" class="mk-a mk-gocart" data-gocart>Go to cart ›</a>':''}
-     ${canOpen(it)&&!has(it)&&it.price?`<button class="mk-btn mk-wide" data-use="${esc(it.key)}">${useLabel(it)} (admin)</button>`:''}`;
+`;
   return`<nav class="mk-crumbs"><a href="#" data-mkhome>Store</a> › <a href="#" data-mkcat="${cc[0]}" data-browse>${cc[2]}</a> › <span>${esc(it.title)}</span></nav>
   <div class="mk-pdp mk-surface">
     <div class="mk-gal"><div class="mk-gal-in">${ps.length>1?`<div class="mk-thumbs">${ps.map((x,i)=>`<button class="${i===galI?'on':''}" data-gal="${i}" style="${x.style}" aria-label="Picture ${i+1}"></button>`).join('')}</div>`:''}

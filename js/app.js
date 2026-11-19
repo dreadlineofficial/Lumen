@@ -295,7 +295,9 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-19g',items:[
+const NEWS={id:'2026-11-19m',items:[
+  ['🛍','The new Lumen Store','Games, ebooks, documents and more from Lumen creators, with a cart, wishlist and reviews. Creators can sell their own things too.','shop'],
+  ['🔥','Fixing Good','The desert crime story everyone’s talking about. Find it in the Store.','shop'],
   ['📅','Daily challenges on the Hub','Your three daily puzzles now sit right on the Hub. ✦ 100 Glow each.','hub'],
   ['🔥','5 days only: 10% off','Upgrade, Pro and Ultimate are 10% off until 24 November. See Shop → Lumen Lite.','shop'],
   ['📅','Daily challenges','Minesweeper, Memory and Slide: new puzzles every day, ✦ 100 Glow each. Right on the Hub (and at the top of Games).','games'],

@@ -501,7 +501,7 @@ async function drawFeed(){const all=allFeed,mu=muted(),fr=friendIds(),vis=all.fi
     ${p.text?`<div class="post-t${p.kind==='question'||p.kind==='poll'?' q':''}">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
     ${p.kind==='poll'?pollHTML(p):p.kind==='link'?linkHTML(p):p.kind==='share'?shareHTML(p):''}
     <div class="post-a"><button class="like${liked?' on':''}" data-like="${p.id}">${liked?'❤️':'🤍'} <span>${likes.length}</span></button><button data-cm="${p.id}">💬 ${p.ecomments?p.ecomments:''} ${p.kind==='question'?'Answers':'Comments'}</button><span class="views" title="Views">👁 ${p.views||0}</span>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||`<p class="muted">${feedF==='all'?'Nothing here yet. Be the first!':'Nothing like that in the latest content.'}</p>`;
-  bindPeople($('#feed'));L.hub?.linkMentions($('#feed'));
+  bindPeople($('#feed'));L.hub?.linkMentions($('#feed'));L.promo?.feed($('#feed'),feedF);
   $$('#feed [data-cm]').forEach(b=>b.onclick=()=>toggleCmts(b.dataset.cm));
   $$('#feed [data-vote]').forEach(b=>b.onclick=()=>vote(b.dataset.vote,+b.dataset.i));
   $$('#feed [data-openlink]').forEach(a=>a.onclick=e=>{e.preventDefault();L.browser?L.browser.open(a.dataset.openlink):window.open(a.dataset.openlink,'_blank','noopener')});
@@ -686,5 +686,5 @@ function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. 
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,isOwner,tierOf,tierTag,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
+L.cloud={ownerId:ADMIN_UID,F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,isOwner,tierOf,tierTag,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
 L.onCloudReady?.();
