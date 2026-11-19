@@ -64,7 +64,11 @@ function openView(url,title,act){
   f.addEventListener('load',()=>hookFrame(f));hookFrame(f);setActivity(act)}
 function closeView(){const w=$('#viewer');w.querySelector('iframe')?.remove();w.style.display='none';view=null;setActivity(null)}
 // same-origin frames (Nightbound): keep panic keys working and track audio so Swap can mute it
-function hookFrame(f){try{const w=f.contentWindow;if(!w||w.__lumen)return;w.__lumen=1;w.addEventListener('keydown',onKey,true);
+function hookFrame(f){try{const w=f.contentWindow;if(!w)return;
+  const inner=()=>{try{w.document.querySelectorAll('iframe').forEach(x=>{if(!x.__lumenHook){x.__lumenHook=1;x.addEventListener('load',()=>hookFrame(x));hookFrame(x)}})}catch{}};
+  // watch each new document for frames (the first one is often a blank page that gets replaced)
+  if(w.__lumenDoc!==w.document){w.__lumenDoc=w.document;try{new w.MutationObserver(inner).observe(w.document.documentElement,{childList:true,subtree:true})}catch{}}inner();
+  if(w.__lumen)return;w.__lumen=1;w.addEventListener('keydown',onKey,true);
   const A=w.AudioContext;if(A&&!A.__lumen){const ctxs=w.__lumenCtx=[];const P=class extends A{constructor(...a){super(...a);ctxs.push(this)}};P.__lumen=1;w.AudioContext=P;if(w.webkitAudioContext)w.webkitAudioContext=P}}catch{}}
 function setFrameMuted(m){const f=$('#viewer iframe');if(!f)return;try{const w=f.contentWindow;(w.__lumenCtx||[]).forEach(c=>m?c.suspend():c.resume());
   w.document.querySelectorAll('audio,video').forEach(v=>m?(v.__p=!v.paused,v.pause()):(v.__p&&v.play()))}catch{}
@@ -231,15 +235,19 @@ function leaveFullscreen(){try{const f=$('#viewer iframe'),fd=f?.contentDocument
 function runKey(which){leaveFullscreen();try{if(document.activeElement?.tagName==='IFRAME'){document.activeElement.blur();window.focus()}}catch{}if(which==='panic')return panic();
   if(which==='study')return studyOn()?exitStudy():enterStudy();
   if(studyOn())exitStudy();else{const sc=scheduledCover();sc?showCover(sc.url,{fromSwap:true}):enterStudy({keep:true})}}
+// is this window (or a frame inside it) the game in Lumen's viewer?
+function inViewer(w){try{for(let i=0;w&&i<6;i++){const fe=w.frameElement;if(!fe)return false;if(fe.closest?.('#viewer'))return true;w=w.parent}}catch{}return false}
 function onKey(e){if(capturing)return;const t=e.target;
   if(['Shift','Control','Alt','Meta'].includes(e.key))return;
   const which=e.key===cfg.panicKey?'panic':same(e.key,cfg.studyKey)?'study':same(e.key,cfg.swapKey)?'swap':null;
-  if(!which){tap.key='';return}
+  const inFrame=!!t?.ownerDocument&&t.ownerDocument!==document;
+  if(!which){if(!inFrame||typing(t))tap.key='';return}
+  if(e.repeat){if(inFrame){e.preventDefault();e.stopPropagation()}return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(coverOn){e.preventDefault();e.stopPropagation();hideCover();return}
   // inside a game, letters belong to the game: Study and Swap need a quick double-tap there (Panic stays one press)
-  const inGame=which!=='panic'&&!studyOn()&&!coverOn&&!!t?.ownerDocument&&t.ownerDocument!==document&&!!t.ownerDocument.defaultView?.frameElement?.closest?.('#viewer');
-  if(inGame&&!typing(t)){const now=Date.now();if(tap.key!==which||now-tap.at>500){tap.key=which;tap.at=now;return}tap.key='';e.preventDefault();e.stopPropagation();runKey(which);return}
+  const inGame=which!=='panic'&&!studyOn()&&!coverOn&&inFrame&&inViewer(t.ownerDocument.defaultView);
+  if(inGame&&!typing(t)){const now=Date.now();if(tap.key!==which||now-tap.at>650){tap.key=which;tap.at=now;return}tap.key='';e.preventDefault();e.stopPropagation();runKey(which);return}
   if(typing(t)&&e.key.length===1&&!t.readOnly){const now=Date.now();
     if(tap.key!==which||now-tap.at>450){tap.key=which;tap.at=now;return}
     tap.key='';try{const v=t.value,p=t.selectionStart;if(v[p-1]&&same(v[p-1],e.key)){t.value=v.slice(0,p-1)+v.slice(p);t.setSelectionRange(p-1,p-1)}}catch{}}
