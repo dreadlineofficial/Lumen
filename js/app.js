@@ -55,12 +55,14 @@ function go(v){if(v==='admin'&&$('#navAdmin').style.display==='none')v='hub';if(
 $$('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
 /* ---------- viewer (games + web pages) ---------- */
-let view=null; // {url,title,act}
+let view=null; // {url,title,act,opts}
 function ytId(u){const m=String(u).match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/);return m&&m[1]}
-function openView(url,title,act){
+// opts.html: a game uploaded to the Store runs from its own HTML in a sandbox (its own origin), so it can't reach Lumen's account data
+function openView(url,title,act,opts){
   const w=$('#viewer');w.querySelector('iframe')?.remove();const f=document.createElement('iframe');
-  f.src=url;f.allow='fullscreen; autoplay; gamepad; microphone; encrypted-media; picture-in-picture';f.referrerPolicy='strict-origin-when-cross-origin';
-  w.appendChild(f);w.style.display='flex';$('#viewTitle').textContent=title;view={url,title,act};
+  if(opts?.html){f.sandbox='allow-scripts allow-pointer-lock allow-forms allow-modals allow-popups allow-downloads allow-orientation-lock';f.srcdoc=opts.html}else f.src=url;
+  f.allow='fullscreen; autoplay; gamepad; microphone; encrypted-media; picture-in-picture';f.referrerPolicy='strict-origin-when-cross-origin';
+  w.appendChild(f);w.style.display='flex';$('#viewTitle').textContent=title;view={url,title,act,opts};
   f.addEventListener('load',()=>hookFrame(f));hookFrame(f);setActivity(act)}
 function closeView(){const w=$('#viewer');w.querySelector('iframe')?.remove();w.style.display='none';view=null;setActivity(null)}
 // same-origin frames (Nightbound): keep panic keys working and track audio so Swap can mute it
@@ -75,8 +77,8 @@ function setFrameMuted(m){const f=$('#viewer iframe');if(!f)return;try{const w=f
   // cross-origin YouTube: pause/play through its player API
   try{f.contentWindow.postMessage(JSON.stringify({event:'command',func:m?'pauseVideo':'playVideo',args:[]}),'*')}catch{}}
 $('#closeView').onclick=closeView;$('#fsBtn').onclick=()=>$('#viewer').requestFullscreen?.();
-$('#vReload').onclick=()=>{if(view)openView(view.url,view.title,view.act)};
-$('#vCloak').onclick=()=>{if(view)cloak(view.url,view.title)};
+$('#vReload').onclick=()=>{if(view)openView(view.url,view.title,view.act,view.opts)};
+$('#vCloak').onclick=()=>{if(!view)return;if(view.opts?.html)return toast('Games uploaded to the Store can only be played here');cloak(view.url,view.title)};
 
 /* games */
 const BUILTIN=[{name:'Nightbound',url:()=>cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'},
