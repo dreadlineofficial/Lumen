@@ -339,6 +339,9 @@ service cloud.firestore {
     // projects = Marketplace products: creators submit games, websites, ebooks, documents, resources and anything else;
     // the admin reviews, features, hides and deletes. A product is delivered as a link, an uploaded file (up to 3 MB)
     // or an uploaded HTML game; links and files sit in projects/{id}/private, readable once you own it.
+    // up to 8 picture links (e.g. Google Drive share links) shown on the product page
+    function picOk(g, i) { return g.size() <= i || (g[i] is string && g[i].size() <= 500 && g[i].matches('^https://[^ <>()]+$')); }
+    function galleryOk(g) { return g is list && g.size() <= 8 && picOk(g, 0) && picOk(g, 1) && picOk(g, 2) && picOk(g, 3) && picOk(g, 4) && picOk(g, 5) && picOk(g, 6) && picOk(g, 7); }
     function projectOk(d) {
       return d.type in ['game', 'site', 'ebook', 'doc', 'asset', 'other'] && d.title is string && d.title.size() >= 2 && d.title.size() <= 60
         && d.url is string && d.url.size() <= 500 && (d.url.matches('^https://.*') || (d.type != 'site' && d.url == ''))
@@ -346,6 +349,7 @@ service cloud.firestore {
         && (d.type != 'site' || d.get('deliver', 'link') == 'link')
         && d.get('fname', '') is string && d.get('fname', '').size() <= 120 && d.get('fmime', '') is string && d.get('fmime', '').size() <= 100
         && d.get('fsize', 0) is int && d.get('fsize', 0) >= 0 && d.get('fsize', 0) <= 3145728
+        && d.get('brand', '') is string && d.get('brand', '').size() <= 40 && galleryOk(d.get('gallery', []))
         && d.get('price', 0) is int && d.get('price', 0) >= 0 && d.get('price', 0) <= 5000 && d.get('price', 0) % 10 == 0
         && (d.type != 'site' || d.get('price', 0) == 0)
         && d.get('cut', 0) is int && (d.get('price', 0) == 0 ? d.get('cut', 0) == 0 : d.get('cut', 0) * 10 == d.get('price', 0) * 9)
@@ -355,7 +359,7 @@ service cloud.firestore {
         && d.get('iz', 100) is int && d.get('iz', 100) >= 100 && d.get('iz', 100) <= 400
         && d.get('ar', 160) is int && d.get('ar', 160) >= 5 && d.get('ar', 160) <= 2000;
     }
-    function counters() { return ['minutes', 'mentions', 'upReviews', 'paidMin', 'paidMent', 'paidRev', 'lastMention', 'lastReview', 'sales', 'sold', 'paidSold', 'lastBuyer']; }
+    function counters() { return ['minutes', 'mentions', 'upReviews', 'downReviews', 'paidMin', 'paidMent', 'paidRev', 'lastMention', 'lastReview', 'sales', 'sold', 'paidSold', 'lastBuyer']; }
     match /projects/{id} {
       function d() { return request.resource.data; }
       function o() { return resource.data; }
@@ -367,11 +371,11 @@ service cloud.firestore {
         && d().get('featured', false) == false && projectOk(d()) && !d().keys().hasAny(counters());
       // a creator changes the link, picture or type: back into review (counters can't be touched)
       allow update: if active() && isCreator() && o().uid == uid()
-        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'status', 'at', 'deliver', 'fname', 'fsize', 'fmime'])
+        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'status', 'at', 'deliver', 'fname', 'fsize', 'fmime', 'brand', 'gallery'])
         && d().status == 'pending' && projectOk(d());
       // a creator edits the listing itself (title, description, framing, price): stays live
       allow update: if active() && isCreator() && o().uid == uid()
-        && keys().hasOnly(['title', 'desc', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'at']) && d().status == o().status && projectOk(d());
+        && keys().hasOnly(['title', 'brand', 'desc', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'at']) && d().status == o().status && projectOk(d());
       // someone buys (or gets a free) product (paired with the purchase on their account)
       allow update: if active() && o().status == 'approved' && o().type != 'site' && uid() != o().uid
         && keys().hasOnly(['sales', 'sold', 'lastBuyer']) && d().sales == o().get('sales', 0) + 1 && d().sold == o().get('sold', 0) + o().get('cut', 0) && d().lastBuyer == uid()
@@ -394,6 +398,11 @@ service cloud.firestore {
         && d().upReviews == o().get('upReviews', 0) + 1 && d().lastReview == uid()
         && !exists(/databases/$(database)/documents/projects/$(id)/reviews/$(uid()))
         && getAfter(/databases/$(database)/documents/projects/$(id)/reviews/$(uid())).data.up == true;
+      // a new "not for me" review by someone else (paired with the review): with upReviews it gives the star rating
+      allow update: if active() && o().status == 'approved' && uid() != o().uid && keys().hasOnly(['downReviews', 'lastReview'])
+        && d().downReviews == o().get('downReviews', 0) + 1 && d().lastReview == uid()
+        && !exists(/databases/$(database)/documents/projects/$(id)/reviews/$(uid()))
+        && getAfter(/databases/$(database)/documents/projects/$(id)/reviews/$(uid())).data.up == false;
       // the creator marks earnings as paid out (the Glow itself is checked in users)
       allow update: if active() && uid() == o().uid && keys().hasOnly(['paidMin', 'paidMent', 'paidRev', 'paidSold'])
         && d().get('paidMin', 0) == o().get('minutes', 0) && d().get('paidMent', 0) == o().get('mentions', 0) && d().get('paidRev', 0) == o().get('upReviews', 0)

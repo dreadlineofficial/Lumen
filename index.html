@@ -10,15 +10,15 @@
 <style>html.booting,html.booting body{background:#f6f8fc!important}html.booting body>*:not(#study){visibility:hidden!important}html.booting #study{display:block}</style>
 <script>
 /* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
-window.LUMEN_VERSION='2026-11-19j';
+window.LUMEN_VERSION='2026-11-19l';
 (function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
 </script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Pacifico&family=Silkscreen&family=UnifrakturMaguntia&family=Michroma&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261119j">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261119j">
+<link rel="stylesheet" href="css/app.css?v=20261119l">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261119l">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -48,12 +48,12 @@ window.LUMEN_VERSION='2026-11-19j';
 
 
     <section class="view" id="v-games">
-      <div class="gh-head"><div><h1>Game <span class="serif iri">hub.</span></h1><p class="sub">Your game library: Lumen originals and every game you've bought or got from the Store. Open a game to play it and see its reviews.</p></div>
+      <div class="gh-head"><div><h1>Game <span class="serif iri">hub.</span></h1><p class="sub">Your game library: every game you own. Buy or get new ones in the Store, and publish your own from the Creator Dashboard.</p></div>
         <div class="gh-search"><span>🔍</span><input id="ghQ" placeholder="Search your games" autocomplete="off"></div></div>
-      <div class="seg gh-tabs" id="ghTabs"><button data-gt="play" class="on">🎮 Play</button><button data-gt="create">🛠 Create</button></div>
+      <div class="seg gh-tabs" id="ghTabs"><button data-gt="play" class="on">🎮 Play</button><button data-gt="create">🛠 Creator Dashboard</button></div>
       <div id="ghPlay">
       <div id="dailyBox" class="daily"></div>
-      <div class="seg gh-chips" id="ghChips"><button data-f="all" class="on">All</button><button data-f="new">✨ Recently added</button><button data-f="top">🔥 Most played</button><button data-f="az">🔤 A to Z</button><button data-f="creators">🛠 Creators</button><button data-f="lumen">⭐ Lumen originals</button></div>
+      <div class="seg gh-chips" id="ghChips"><button data-f="all" class="on">All</button><button data-f="new">✨ Recently added</button><button data-f="top">🔥 Most played</button><button data-f="az">🔤 A to Z</button><button data-f="creators">🛠 Creators</button><button data-f="lumen">⭐ By Lumen</button></div>
       <div id="ghBox"></div>
       <h2 class="hsec">🧩 Your games <span class="muted" style="font-size:13px;font-weight:400">only on this device</span></h2>
       <div class="grid" id="gameGrid"></div>
@@ -131,10 +131,17 @@ window.LUMEN_VERSION='2026-11-19j';
     </section>
 
     <section class="view" id="v-shop">
-      <div class="gh-head"><div><h1>The <span class="serif iri">store.</span></h1><p class="sub">Games, ebooks, documents and resources from Lumen creators, plus cosmetics for your profile. Pay with ✦ Glow, and claim free Glow every day.</p></div>
-        <div class="gh-search" id="mkSearch"><span>🔍</span><input id="mkQ" placeholder="Search the Store" autocomplete="off"></div></div>
-      <div class="shop-head"><span class="glow-bal"><span class="g">✦</span><span id="glowBal">0</span> Glow</span><span id="shopPlan" class="shop-plan"></span><button class="claim" id="claimBtn">🎁 Claim</button><form class="row code-form" id="codeForm"><input id="codeIn" placeholder="Glow or premium code" autocomplete="off" spellcheck="false"><button>Redeem</button></form><button class="mk-cartbtn" id="mkCartBtn" title="Your cart">🛒 Cart <em id="mkCartN" hidden></em></button></div>
-      <div class="seg mk-panes" id="mkPanes"><button data-p="market" class="on">🛍 Marketplace</button><button data-p="cos">✨ Cosmetics</button><button data-p="wish">♡ Wishlist</button><button data-p="lib">📥 My purchases</button></div>
+      <div class="mk-head" id="mkHead">
+        <div class="mk-top">
+          <button class="mk-logo" data-mkhome title="Store home"><b>lumen</b><span>store</span></button>
+          <form class="mk-searchbar" id="mkSearch"><select id="mkDept" aria-label="Department"><option value="all">All</option><option value="game">Games</option><option value="ebook">eBooks</option><option value="doc">Documents</option><option value="asset">Resources</option><option value="other">Other</option></select><input id="mkQ" placeholder="Search Lumen Store" autocomplete="off" aria-label="Search"><button aria-label="Search">🔍</button></form>
+          <div class="mk-topbtn mk-bal"><small>Your balance</small><b><span class="g">✦</span> <span id="glowBal">0</span></b></div>
+          <button class="mk-topbtn" data-p="lib"><small>Your</small><b>Purchases</b></button>
+          <button class="mk-topbtn mk-cartbtn" id="mkCartBtn" title="Your cart"><span class="mk-cart-ico">🛒<em id="mkCartN" hidden></em></span><b>Cart</b></button>
+        </div>
+        <div class="mk-subnav" id="mkPanes"><button data-mkcat="all" data-browse>☰ All</button><button data-mkdeal="free">🆓 Free picks</button><button data-mksort="best">Best sellers</button><button data-mksort="new">New releases</button><button data-mkcat="game">Games</button><button data-mkcat="ebook">eBooks</button><button data-mkcat="doc">Documents</button><button data-mkcat="asset">Resources</button><span class="spacer"></span><button data-p="cos">✨ Cosmetics</button><button data-p="wish">♡ Wishlist</button><button data-sell>🛠 Sell on Lumen</button></div>
+        <div class="mk-util"><span id="shopPlan" class="shop-plan"></span><span class="muted">Free Glow every day:</span><button class="claim" id="claimBtn">🎁 Claim</button><form class="row code-form" id="codeForm"><input id="codeIn" placeholder="Glow or premium code" autocomplete="off" spellcheck="false"><button>Redeem</button></form></div>
+      </div>
       <div id="mkPane"><div id="mkBox"></div></div>
       <div id="cosPane" hidden>
       <div class="shop-tabs" id="shopTabs"></div>
@@ -244,7 +251,7 @@ window.LUMEN_VERSION='2026-11-19j';
           <li><b>Game covers</b> can be up to 3 MB; Lumen shrinks them to fit, and small GIFs stay animated. After uploading, zoom and drag the cover to choose which part shows on the cards.</li>
           <li><b>Creators earn Glow:</b> ✦ 20 for every minute someone else plays your game inside Lumen (up to 4 hours per player per day), ✦ 50 for every post that mentions one of your games (one per post), and ✦ 50 for every positive review. Your own plays, posts and reviews don't count. Press <b>Collect</b> on Games → Create.</li></ul></details>
         <details><summary>🎮 Games and 🌐 the Web tab</summary><ul>
-          <li><b>Games</b> is the game hub: search, filter (Trending, Most played, New, Top rated, Creators, Lumen originals) and open any game to see its <b>game page</b> with stats and reviews. Press <b>▶ Play now</b> to play. <b>Your games</b> at the bottom are games you added yourself (a link or an HTML file, kept in this browser only).</li>
+          <li><b>Games</b> is the game hub: search, filter (Recently added, Most played, A to Z, Creators, By Lumen) and open any game to see its <b>game page</b> with stats and reviews. Press <b>▶ Play now</b> to play. <b>Your games</b> at the bottom are games you added yourself (a link or an HTML file, kept in this browser only).</li>
           <li><b>Nightbound lobbies:</b> host a lobby in Nightbound inside Lumen and others see a <b>Join</b> button (on the Hub, the Game hub, Nightbound's page and, for friends, in the friends list). Pressing Join opens Nightbound and joins with the room code. Turn off <i>Show the Nightbound lobbies I host to everyone</i> in Settings to show them to friends only.</li>
           <li><b>Browser size:</b> in the Web tab, press <b>⤢</b>. <b>Stretch</b> fills the whole window (Esc to go back), the sliders or the bottom-right corner change its size, and <b>Minimize</b> turns it into a small floating window you can drag around while you chat or play. Open the Web tab to bring it back.</li>
           <li><b>Reviews:</b> on a game page, pick 👍 or 👎 and write a few words. One review per person; you can edit your words later but not the thumbs.</li>
@@ -443,19 +450,19 @@ window.LUMEN_VERSION='2026-11-19j';
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261119j"></script>
-<script src="js/study.js?v=20261119j"></script>
-<script src="js/app.js?v=20261119j"></script>
-<script src="js/cosmetics.js?v=20261119j"></script>
-<script src="js/rich.js?v=20261119j"></script>
-<script src="js/browser.js?v=20261119j"></script>
-<script src="js/bwsize.js?v=20261119j"></script>
-<script type="module" src="js/cloud.js?v=20261119j"></script>
-<script type="module" src="js/shop.js?v=20261119j"></script>
-<script type="module" src="js/hub.js?v=20261119j"></script>
-<script type="module" src="js/market.js?v=20261119j"></script>
-<script type="module" src="js/notify.js?v=20261119j"></script>
-<script type="module" src="js/lobbies.js?v=20261119j"></script>
-<script type="module" src="js/daily.js?v=20261119j"></script>
+<script src="js/config.js?v=20261119l"></script>
+<script src="js/study.js?v=20261119l"></script>
+<script src="js/app.js?v=20261119l"></script>
+<script src="js/cosmetics.js?v=20261119l"></script>
+<script src="js/rich.js?v=20261119l"></script>
+<script src="js/browser.js?v=20261119l"></script>
+<script src="js/bwsize.js?v=20261119l"></script>
+<script type="module" src="js/cloud.js?v=20261119l"></script>
+<script type="module" src="js/shop.js?v=20261119l"></script>
+<script type="module" src="js/hub.js?v=20261119l"></script>
+<script type="module" src="js/market.js?v=20261119l"></script>
+<script type="module" src="js/notify.js?v=20261119l"></script>
+<script type="module" src="js/lobbies.js?v=20261119l"></script>
+<script type="module" src="js/daily.js?v=20261119l"></script>
 </body>
 </html>

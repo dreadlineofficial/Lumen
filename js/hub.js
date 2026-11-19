@@ -6,7 +6,6 @@
 const L=window.Lumen,{esc,toast,safeImg}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const BUILTINS=[{key:'b_nightbound',title:'Nightbound',type:'game',desc:'1v4 asymmetric horror · online multiplayer',url:()=>L.cfg.nbUrl,art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)'},
-  {key:'b_offal',title:'OFFAL',type:'game',desc:'Horror · demo',url:()=>'games/offal.html',image:'games/offal-poster.webp'},
   {key:'b_fixinggood',title:'Fixing Good',type:'game',price:800,desc:'Desert crime action · story mode',url:()=>'games/fixing-good.html',image:'games/fixing-good-poster.webp'},
   {key:'b_lumisleap',title:"Lumi's Leap",type:'game',desc:'2D platformer · six worlds',url:()=>'games/lumis-leap.html',image:'games/lumis-leap-poster.webp'}];
 let me=null,hubCfg={},live=[],plays={},trend={},myItems=[],allItems=[],myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
@@ -20,7 +19,12 @@ const DAY=()=>Math.floor(Date.now()/864e5);
 const RATE={min:10,mention:50,review:50}; // must match projEarnOk in firestore.rules
 // Marketplace product types (projects): websites stay in Web → Featured, everything else is sold in the Store
 const PTYPES={game:['🎮','Game','Games'],site:['🌐','Website','Websites'],ebook:['📚','eBook','eBooks'],doc:['📄','Document','Documents'],asset:['🧰','Resource','Resources'],other:['📦','Other','Other']};
-const MAX_FILE=3*1024*1024; // uploads above 3 MB need a hosting link (MediaFire, Google Drive…)
+const MAX_FILE=3*1024*1024;
+// a picture link a creator pasted: Google Drive share links (…/file/d/ID/view, open?id=ID, uc?id=ID) become a direct image
+function imgUrl(u){u=String(u||'').trim();if(!/^https:\/\/[^\s'"()<>\\]+$/i.test(u))return'';
+  const m=u.match(/^https:\/\/(?:drive|docs)\.google\.com\/(?:file\/d\/([\w-]{20,})|(?:open|uc)\?(?:[^#]*&)?id=([\w-]{20,}))/i);
+  return m?`https://drive.google.com/thumbnail?id=${m[1]||m[2]}&sz=w1600`:u}
+const coverOf=it=>safeImg(it.image)||(it.image&&it.image.startsWith('games/')?it.image:'')||imgUrl((it.gallery||[])[0]); // uploads above 3 MB need a hosting link (MediaFire, Google Drive…)
 const unpaid=p=>RATE.min*Math.max(0,(p.minutes||0)-(p.paidMin||0))+RATE.mention*Math.max(0,(p.mentions||0)-(p.paidMent||0))+RATE.review*Math.max(0,(p.upReviews||0)-(p.paidRev||0))+Math.max(0,(p.sold||0)-(p.paidSold||0));
 const earned=p=>RATE.min*(p.minutes||0)+RATE.mention*(p.mentions||0)+RATE.review*(p.upReviews||0)+(p.sold||0);
 
@@ -29,7 +33,7 @@ function start(){const {F,D,db}=C();const col=(...p)=>F.collection(db,...p);
   unsubs.push(F.onSnapshot(D('server','hub'),s=>{hubCfg=s.data()||{};refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('status','==','approved')),s=>{live=s.docs.map(d=>({id:d.id,...d.data()}));refresh()},()=>{}));
   unsubs.push(F.onSnapshot(col('plays'),s=>{const t=DAY();plays={};trend={};s.docs.forEach(d=>{const x=d.data();plays[d.id]=+x.count||0;let w=0;for(let i=0;i<7;i++)w+=+x['d'+(t-i)]||0;trend[d.id]=w});refresh()},()=>{}));
-  unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display=isCreator()?'':'none';refresh()},()=>{}));
+  unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display='';refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('uid','==',me)),s=>{myProjects=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0));renderCreator()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('shopItems'),F.where('uid','==',me)),s=>{myItems=s.docs.map(d=>({id:d.id,...d.data()}));myItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));renderCreator()},()=>{}));
   adminOn=false;startAdminHub()}
@@ -39,10 +43,10 @@ function startAdminHub(){if(adminOn||!me||!isAdmin())return;adminOn=true;const {
   unsubs.push(F.onSnapshot(col('shopItems'),s=>{allItems=s.docs.map(d=>({id:d.id,...d.data()}));allItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));L.onAdminData?.()},()=>{}));
   unsubs.push(F.onSnapshot(col('creatorApps'),s=>{allApps=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
   unsubs.push(F.onSnapshot(col('projects'),s=>{allProjects=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
-  $('#navCreator').style.display=isCreator()?'':'none';refresh()}
+  $('#navCreator').style.display='';refresh()}
 L.onAdminStart=(prev=>()=>{prev?.();startAdminHub()})(L.onAdminStart);
 const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
-  if($('#navCreator'))$('#navCreator').style.display='none';if(me&&C())start();refresh()};
+  if($('#navCreator'))$('#navCreator').style.display=me?'':'none';if(me&&C())start();refresh()};
 L.onFeed=()=>{if($('#v-hub')?.classList.contains('on'))renderHub()};
 function refresh(){renderHub();renderCreator();renderGameHub();L.market?.refresh?.();if(gpKey&&$('#v-gamepage')?.classList.contains('on'))renderGamePage();L.browser?.refresh?.()}
 
@@ -55,7 +59,7 @@ async function play(key){if(!me||!C())return;const {F,D,db}=C();const day=Math.f
 /* ---------- shared cards ---------- */
 const allGames=()=>[...BUILTINS.filter(g=>!(hubCfg.hiddenBuiltins||[]).includes(g.key)).map(g=>({...g,url:g.url()})),...live.filter(p=>p.type==='game').map(p=>({...p,key:projKey(p)}))];
 const findItem=key=>key.startsWith('b_')?(()=>{const g=BUILTINS.find(x=>x.key===key);return g&&{...g,url:g.url()}})():(()=>{const p=live.find(x=>projKey(x)===key);return p&&{...p,key}})();
-function art(it){const img=safeImg(it.image)||(it.image&&it.image.startsWith('games/')?it.image:'');
+function art(it){const img=coverOf(it);
   if(img){const x=it.ix??50,y=it.iy??50,z=it.iz||100,ar=(+it.ar||0)/100,size=!ar?(z===100?'cover':`${z}% auto`):ar>=1.6?`auto ${z}%`:`${z}% auto`;return`background-image:url('${esc(img)}');background-size:${size};background-position:${x}% ${y}%;background-repeat:no-repeat`}
   return img?'':`background:${it.art||`linear-gradient(135deg,hsl(${(it.title||'x').length*47%360} 70% 45%),hsl(${(it.title||'x').length*47%360+60} 70% 20%))`}`}
 function card(it,{small=false}={}){const pl=plays[it.key]||0;
@@ -75,6 +79,7 @@ async function gameLink(p){if(p.url)return p.url;if(linkCache.has(p.id))return l
   try{const s=await C().F.getDoc(C().D('projects',p.id,'private','link'));const u=s.data()?.url||'';if(u)linkCache.set(p.id,u);return u}catch{return''}}
 async function launch(key){const it=findItem(key);if(!it)return toast('That isn’t available any more');
   if(!unlocked(it)){openGame(key);return toast(`Unlock ${it.title} first (✦ ${fmtN(it.price)})`)}
+  if(it.deliver==='file'){play(key);return L.market?.download(it)}
   if(it.deliver==='html'){toast('Loading '+it.title+'…');const html=await L.market?.html(it.id).catch(()=>'');if(!html)return toast('Couldn’t open this game');
     play(key);L.openView('about:blank',it.title,{kind:'game',label:it.title,key},{html});startTimer(key);return}
   const url=await gameLink(it);if(!url)return toast('Couldn’t open this game');play(key);L.openView(url,it.title,{kind:'game',label:it.title,key});startTimer(key)}
@@ -113,7 +118,7 @@ function bindGo(root){root.querySelectorAll('[data-goto]').forEach(b=>b.onclick=
   root.querySelectorAll('[data-daily-jump]').forEach(b=>b.onclick=()=>$('#hubDaily')?.scrollIntoView({behavior:'smooth',block:'center'}))}
 
 /* ---------- Games tab: creator games + hidden built-ins ---------- */
-L.hub={gamesTab,play,openGame,mentionsIn,linkMentions,launch,art,inLib,unlocked,gameLink,PTYPES,BUILTINS,findItem,openItem,
+L.hub={gamesTab,play,openGame,mentionsIn,linkMentions,launch,art,imgUrl,coverOf,inLib,unlocked,gameLink,PTYPES,BUILTINS,findItem,openItem,
   data:()=>({me,live,plays,trend,hubCfg,isCreator:isCreator()}),builtinHidden:key=>(hubCfg.hiddenBuiltins||[]).includes(key),
   featuredPage(el,openUrl){const sites=live.filter(p=>p.type==='site').sort((a,b)=>(plays[projKey(b)]||0)-(plays[projKey(a)]||0));
     el.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo" style="background:linear-gradient(135deg,#ffd76a,#ff9a5c)">⭐</span><b>Featured</b><span class="muted" style="font-size:13px">Websites made by Lumen creators</span></div>
@@ -143,12 +148,14 @@ async function gifInfo(file){const buf=new Uint8Array(await file.arrayBuffer());
 let editing=null,newImage=null,cov={ix:50,iy:50,iz:100,ar:0};
 // the product form: type, how it's delivered (an uploaded HTML game, an uploaded file up to 3 MB, or a link) and the chosen file
 let crT=null,crD=null,newFile=null,pfKeep=null;
-const DELS={game:[['html','🧩 Upload HTML game'],['link','🔗 Game link']],site:[['link','🔗 Link']],_:[['file','📎 Upload file'],['link','🔗 Hosting link']]};
+const DELS={game:[['html','🧩 Upload HTML game'],['file','💾 Downloadable game'],['link','🔗 Game or download link']],site:[['link','🔗 Link']],_:[['file','📎 Upload file'],['link','🔗 Hosting link']]};
 const delsFor=t=>DELS[t]||DELS._;
 const curT=()=>crT||editing?.type||'game';
 const curD=()=>{const ok=delsFor(curT()).map(d=>d[0]);const d=crD||(editing?editing.deliver||'link':ok[0]);return ok.includes(d)?d:ok[0]};
 const fmtSize=b=>b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
-const keepPF=()=>{pfKeep={'#crTitle':$('#crTitle')?.value,'#crUrl':$('#crUrl')?.value,'#crPrice':$('#crPrice')?.value,'#crDesc':$('#crDesc')?.value}};
+const keepPF=()=>{pfKeep={'#crTitle':$('#crTitle')?.value,'#crBrand':$('#crBrand')?.value,'#crGal':$('#crGal')?.value,'#crUrl':$('#crUrl')?.value,'#crPrice':$('#crPrice')?.value,'#crDesc':$('#crDesc')?.value}};
+const galOf=()=>($('#crGal')?.value||'').split(/\s+/).map(x=>x.trim()).filter(Boolean);
+function galPreview(){const box=$('#crGalPrev');if(!box)return;const l=galOf();box.innerHTML=l.slice(0,8).map(u=>{const i=imgUrl(u);return i?`<img src="${esc(i)}" alt="" onerror="this.classList.add('bad');this.title='This picture couldn’t load. For Google Drive, set sharing to Anyone with the link.'">`:'<span class="bad" title="Links must start with https://">✕</span>'}).join('')+(l.length>8?'<span class="muted">Only the first 8 are used</span>':'')}
 const resetPF=()=>{editing=null;newImage=null;newFile=null;crT=null;crD=null;pfKeep=null;cov={ix:50,iy:50,iz:100,ar:0}};
 function renderCreator(){const box=$('#creatorBox');if(!box)return;
   const ae=document.activeElement;if(ae&&box.contains(ae)&&ae.matches('input:not([type=file]),textarea'))return; // don't wipe a form mid-typing
@@ -169,18 +176,21 @@ function renderCreator(){const box=$('#creatorBox');if(!box)return;
       <span class="muted" style="font-size:13px">You've earned ✦ ${fmtN(sum(earned)+itemTot)} in total. Other people playing your games earn you <b>${RATE.min} per minute</b>, every post that mentions a game <b>${RATE.mention}</b>, every positive review <b>${RATE.review}</b>, and you keep <b>90% of every sale</b> in the Store and of your shop items. Your own plays, posts and reviews don't count.</span></div>
       <button class="btn-acc" id="crCollect" ${wait?'':'disabled'}>Collect ✦ ${fmtN(wait)}</button></div>
     <div class="an-stats">${[['📦','Products',myProjects.length],['✅','Live',liveN],['⏳','In review',pend],['▶','Total plays',tot],['⏱','Minutes played',sum(p=>p.minutes||0)],['💬','Mentions',sum(p=>p.mentions||0)],['👍','Positive reviews',sum(p=>p.upReviews||0)],['⭐','Featured',feat]].map(([i,l,v])=>`<div class="card an-stat"><span>${i} ${l}</span><b>${fmtN(v)}</b></div>`).join('')}</div>
-    <div class="cr-grid"><div class="card"><h2>${editing?'Edit product':'New product'}</h2><p class="muted" style="font-size:13px">${isAdmin()?'You’re the admin, so it goes live straight away.':editing?'Changing the file, link, picture or type sends it back for review. Title, description, framing and price changes go live right away.':'It goes live once the admin approves it.'}</p>
+    <div class="cr-grid"><div class="card"><h2>${editing?'Edit product':'New product'}</h2><p class="muted" style="font-size:13px">${isAdmin()?'You’re the admin, so it goes live straight away.':editing?'Changing the file, link, pictures or type sends it back for review. Title, publish-as name, description, framing and price changes go live right away.':'It goes live once the admin approves it.'}</p>
       <label>What are you making?</label><div class="seg" id="crType">${Object.entries(PTYPES).map(([k,[i,l]])=>`<button type="button" data-t="${k}" class="${t===k?'on':''}">${i} ${l}</button>`).join('')}</div>
       <p class="muted" style="font-size:12px;margin:6px 0 0">${t==='site'?'Websites show up in Web → Featured and are always free.':t==='game'?'Sold or given away in the Store. Everyone who buys or gets it finds it in their Game hub.':'Sold or given away in the Store. Buyers find it in Store → My purchases.'}</p>
       <label>Title</label><input id="crTitle" maxlength="60" value="${esc(f.title||'')}" placeholder="${t==='game'?'My awesome game':t==='ebook'?'My first novel':'What it’s called'}">
+      ${t!=='site'?`<label>Publish as <span class="muted" style="font-size:12px">(a studio, brand or pen name; leave empty to use your Lumen name)</span></label><input id="crBrand" maxlength="40" value="${esc(f.brand||'')}" placeholder="${esc(C()?.profile?.()?.name||'Your name')}">`:''}
       <div ${t==='site'?'hidden':''}><label>How people get it</label><div class="seg" id="crDel">${delsFor(t).map(([k,l])=>`<button type="button" data-d="${k}" class="${dl===k?'on':''}">${l}</button>`).join('')}</div></div>
-      <div id="crUrlRow" ${dl==='link'?'':'hidden'}><label>${t==='site'?'Website link (must start with https://)':t==='game'?'Game link (must start with https:// and work inside a page)':'Download link: MediaFire, Google Drive, Dropbox… (must start with https://)'}</label><input id="crUrl" maxlength="500" value="${esc(dl==='link'?(f.url||linkCache.get(f.id)||''):'')}" placeholder="https://…">
+      <div id="crUrlRow" ${dl==='link'?'':'hidden'}><label>${t==='site'?'Website link (must start with https://)':t==='game'?'Game link: a web game that works inside a page, or a download page (must start with https://)':'Download link: MediaFire, Google Drive, Dropbox… (must start with https://)'}</label><input id="crUrl" maxlength="500" value="${esc(dl==='link'?(f.url||linkCache.get(f.id)||''):'')}" placeholder="https://…">
         ${t!=='site'?'<p class="muted" style="font-size:12px;margin:6px 0 0">People only see this link once they’ve bought or got it.</p>':''}</div>
-      <div id="crFileRow" ${dl==='link'?'hidden':''}><label>${dl==='html'?'Your game as one HTML file (up to 3 MB)':'Your file: PDF, ebook, ZIP, image, anything (up to 3 MB)'}</label>
-        <div class="row"><button type="button" id="crFileBtn">${dl==='html'?'🧩 Choose HTML file':'📎 Choose file'}</button><input type="file" id="crFile" ${dl==='html'?'accept=".html,.htm,text/html"':''} hidden><span class="muted" id="crFileName" style="font-size:12px">${newFile?`✓ ${esc(newFile.name)} (${fmtSize(newFile.size)})`:f.fname&&f.deliver===dl?`Current file: ${esc(f.fname)} (${fmtSize(f.fsize||0)})`:''}</span></div>
-        <p class="muted" style="font-size:12px;margin:6px 0 0">Bigger than 3 MB? Upload it to MediaFire or Google Drive and choose <b>${t==='game'?'Game link':'Hosting link'}</b> instead.${dl==='html'?' Uploaded games run in a safe sandbox, so they can’t use saved data.':''}</p></div>
+      <div id="crFileRow" ${dl==='link'?'hidden':''}><label>${dl==='html'?'Your game as one HTML file (up to 3 MB)':t==='game'?'Your game file: .exe, .zip, .apk, .jar, anything (up to 3 MB)':'Your file: PDF, ebook, ZIP, image, anything (up to 3 MB)'}</label>
+        <div class="row"><button type="button" id="crFileBtn">${dl==='html'?'🧩 Choose HTML file':dl==='file'&&t==='game'?'💾 Choose game file':'📎 Choose file'}</button><input type="file" id="crFile" ${dl==='html'?'accept=".html,.htm,text/html"':''} hidden><span class="muted" id="crFileName" style="font-size:12px">${newFile?`✓ ${esc(newFile.name)} (${fmtSize(newFile.size)})`:f.fname&&f.deliver===dl?`Current file: ${esc(f.fname)} (${fmtSize(f.fsize||0)})`:''}</span></div>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Bigger than 3 MB? Upload it to MediaFire or Google Drive and choose <b>${t==='game'?'Game or download link':'Hosting link'}</b> instead.${dl==='html'?' Uploaded games run in a safe sandbox, so they can’t use saved data.':t==='game'?' People download it and run it on their own computer, so playtime isn’t counted for downloadable games.':''}</p></div>
       <div id="crPriceRow" ${t==='site'?'hidden':''}><label>Price in ✦ Glow <span class="muted" style="font-size:12px">(0 = free; you keep 90% of every sale)</span></label><input id="crPrice" type="number" min="0" max="5000" step="10" value="${f.price||0}">
         <p class="muted" style="font-size:12px;margin:6px 0 0">Free products go into people’s library with one click.${t==='game'?` Every game earns you ${RATE.min} Glow for each minute other people play it.`:''}</p></div>
+      ${t!=='site'?`<label>More pictures <span class="muted" style="font-size:12px">(up to 8 links, one per line)</span></label><textarea id="crGal" rows="3" maxlength="4200" placeholder="https://drive.google.com/file/d/…/view">${esc((f.gallery||[]).join('\n'))}</textarea>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Upload pictures to Google Drive, click <b>Share → Anyone with the link</b>, copy the link and paste it here. Any https image link works too. The first one is used as the cover if you don’t upload one.</p><div class="cr-gal" id="crGalPrev"></div>`:''}
       <label>Description</label><textarea id="crDesc" rows="4" maxlength="1500" placeholder="${t==='site'?'What’s on it?':'What is it, what’s inside, how to use it…'}">${esc(f.desc||'')}</textarea>
       <label>Cover image <span class="muted" style="font-size:12px">(up to 3 MB; small GIFs stay animated)</span></label><div class="row"><button type="button" id="crImgBtn">🖼 Upload</button><input type="file" id="crImg" accept="image/*" hidden><span class="muted" id="crImgName" style="font-size:12px">${f.image?'Image set':''}</span></div>
       <div class="pl-ed" id="covEd" ${(newImage||f.image)?'':'hidden'}><div class="hcard cov-prev"><div class="hart" id="covPrev" style="${art({image:newImage||f.image,...cov})}"></div><div class="hmeta"><b>${esc(f.title||'Your game')}</b><span class="pl">How it looks on the Hub and Game hub</span></div></div>
@@ -193,6 +203,7 @@ function renderCreator(){const box=$('#creatorBox');if(!box)return;
       return`<div class="cr-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span><em class="pill ${st[1]}">${st[0]}</em> ${(PTYPES[p.type]||PTYPES.game)[1]}${p.type==='game'||p.type==='site'?` · ▶ ${fmtN(plays[projKey(p)]||0)}`:''}${p.type==='game'?` · ⏱ ${fmtN(p.minutes||0)} min · 💬 ${fmtN(p.mentions||0)}`:''}${p.type!=='site'?` · 👍 ${fmtN(p.upReviews||0)} · ${p.price>0?'✦ '+fmtN(p.price):'Free'} · ${fmtN(p.sales||0)} ${p.price>0?'sold':'got it'}`:''}</span></div>
         ${p.status==='approved'&&p.type!=='site'?`<button class="ib" data-page="${p.id}" title="Open its Store page">↗</button>`:''}<button class="ib" data-edit="${p.id}" title="Edit">✏️</button><button class="ib" data-del="${p.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">Nothing yet. Submit your first product on the left.</p>'}</div></div></div>`+shopSection();
   if(pfKeep){for(const [k,v] of Object.entries(pfKeep)){const el=$(k);if(el&&v!=null)el.value=v}pfKeep=null}
+  $('#crGal')&&($('#crGal').oninput=galPreview);galPreview();
   $$('#crType button').forEach(b=>b.onclick=()=>{if(crT===b.dataset.t)return;keepPF();crT=b.dataset.t;crD=null;newFile=null;renderCreator()});
   $$('#crDel button').forEach(b=>b.onclick=()=>{if(curD()===b.dataset.d)return;keepPF();crD=b.dataset.d;newFile=null;renderCreator()});
   $('#crFileBtn').onclick=()=>$('#crFile').click();
@@ -316,17 +327,20 @@ async function saveProject(){const {F,D,db}=C();const type=curT(),del=curD(),tit
   if(del==='link'&&!/^https:\/\/\S+$/i.test(url))return toast('The link must start with https://');
   const oldDel=editing?(editing.deliver||'link'):'',keepFile=!!editing&&oldDel===del&&!!editing.fname;
   if(del!=='link'&&!newFile&&!keepFile)return toast(del==='html'?'Choose your game’s HTML file':'Choose the file to sell');
+  const brand=type==='site'?'':($('#crBrand')?.value||'').trim().slice(0,40),gal=galOf();
+  if(gal.length>8)return toast('Add up to 8 picture links');if(gal.some(u=>!/^https:\/\/[^\s'"()<>\\]+$/i.test(u)||u.length>500))return toast('Picture links must start with https://');
+  const gallery=type==='site'?[]:gal;
   const price=type==='site'?0:Math.max(0,Math.min(5000,Math.round((+$('#crPrice')?.value||0)/10)*10)),cut=price*9/10;
   const image=newImage??editing?.image??'';const framing={};
   if(image){if(!cov.ar)cov.ar=await imgRatio(image);Object.assign(framing,{ix:Math.round(cov.ix),iy:Math.round(cov.iy),iz:Math.round(cov.iz),ar:Math.max(5,Math.min(2000,Math.round(cov.ar)||160))})}
   const oldUrl=editing&&oldDel==='link'?(editing.url||linkCache.get(editing.id)||''):'';
   // the file, link, picture, type or free/paid switch changed: that needs review (the admin skips it)
-  const big=!editing||!!newImage||!!newFile||type!==editing.type||del!==oldDel||(del==='link'&&url!==oldUrl)||(price>0)!==(editing.price>0);
+  const big=!editing||!!newImage||!!newFile||type!==editing.type||del!==oldDel||(del==='link'&&url!==oldUrl)||(price>0)!==(editing.price>0)||gallery.join('\n')!==(editing.gallery||[]).join('\n');
   const b=F.writeBatch(db);const ref=editing?D('projects',editing.id):F.doc(F.collection(db,'projects'));
   const priv=(...p)=>F.doc(db,'projects',ref.id,'private',...p);
-  if(!big){b.update(ref,{title:title.slice(0,60),desc:desc.slice(0,1500),...framing,price,cut,at:F.serverTimestamp()})}
+  if(!big){b.update(ref,{title:title.slice(0,60),brand,desc:desc.slice(0,1500),...framing,price,cut,at:F.serverTimestamp()})}
   else{const meta=del==='link'?{fname:'',fsize:0,fmime:''}:newFile?{fname:newFile.name,fsize:newFile.size,fmime:newFile.mime}:{fname:editing.fname,fsize:editing.fsize||0,fmime:editing.fmime||''};
-    const data={type,title:title.slice(0,60),url:type==='site'?url.slice(0,500):'',deliver:del,...meta,desc:desc.slice(0,1500),image,...framing,price,cut,status:isAdmin()?'approved':'pending',at:F.serverTimestamp()};
+    const data={type,title:title.slice(0,60),brand,gallery,url:type==='site'?url.slice(0,500):'',deliver:del,...meta,desc:desc.slice(0,1500),image,...framing,price,cut,status:isAdmin()?'approved':'pending',at:F.serverTimestamp()};
     if(editing)b.update(ref,data);else b.set(ref,{...data,uid:me,featured:false});
     // links and files are private: only the creator, the admin and people who own it can read them
     if(type!=='site'&&del==='link')b.set(priv('link'),{url:url.slice(0,500)});else if(editing&&oldDel==='link'&&editing.type!=='site')b.delete(priv('link'));
@@ -348,7 +362,7 @@ function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{
     el.querySelectorAll('[data-appno]').forEach(b=>b.onclick=()=>upd(D('creatorApps',b.dataset.appno),{status:'rejected'},'Application rejected'));
     el.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=()=>{if(confirm('Remove this person’s creator access? Their projects stay until you delete them.'))upd(D('creatorApps',b.dataset.revoke),{status:'rejected'},'Creator access removed')});return}
   if(tab==='projects'){const pend=allProjects.filter(p=>p.status==='pending'),liveP=allProjects.filter(p=>p.status==='approved'),rej=allProjects.filter(p=>p.status==='rejected');
-    const row=(p,acts)=>`<div class="adm-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span>${(PTYPES[p.type]||PTYPES.game).slice(0,2).join(' ')} · <span data-uname="${p.uid}">…</span> · ▶ ${fmtN(plays[projKey(p)]||0)}</span>${p.type!=='site'&&!(p.url&&!(p.price>0))?`<span class="muted" style="font-size:12px">${p.price>0?'✦ '+fmtN(p.price):'Free'} · ${fmtN(p.sales||0)} sold · ${p.deliver==='file'?`📎 ${esc(p.fname||'file')} (${fmtSize(p.fsize||0)}) · <a href="#" data-try="${p.id}">download</a>`:p.deliver==='html'?`🧩 HTML game (${fmtSize(p.fsize||0)})`:`<a href="#" data-showlink="${p.id}">show link</a>`}</span>`:`<a href="${esc(p.url)}" target="_blank" rel="noopener" class="muted" style="font-size:12px;word-break:break-all">${esc(p.url)}</a>`}${p.desc?`<p class="muted" style="font-size:12.5px;margin:4px 0 0">${esc(p.desc)}</p>`:''}</div><div class="acts">${acts}</div></div>`;
+    const row=(p,acts)=>`<div class="adm-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span>${(PTYPES[p.type]||PTYPES.game).slice(0,2).join(' ')} · <span data-uname="${p.uid}">…</span> · ▶ ${fmtN(plays[projKey(p)]||0)}</span>${p.type!=='site'&&!(p.url&&!(p.price>0))?`<span class="muted" style="font-size:12px">${p.price>0?'✦ '+fmtN(p.price):'Free'} · ${fmtN(p.sales||0)} sold · ${p.deliver==='file'?`📎 ${esc(p.fname||'file')} (${fmtSize(p.fsize||0)}) · <a href="#" data-try="${p.id}">download</a>`:p.deliver==='html'?`🧩 HTML game (${fmtSize(p.fsize||0)}) · <a href="#" data-try="${p.id}">try it</a>`:`<a href="#" data-showlink="${p.id}">show link</a>`}</span>`:`<a href="${esc(p.url)}" target="_blank" rel="noopener" class="muted" style="font-size:12px;word-break:break-all">${esc(p.url)}</a>`}${p.brand?`<span class="muted" style="font-size:12px">Published as <b>${esc(p.brand)}</b></span>`:''}${(p.gallery||[]).length?`<div class="cr-gal">${p.gallery.map(u=>imgUrl(u)?`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(imgUrl(u))}" alt=""></a>`:'').join('')}</div>`:''}${p.desc?`<p class="muted" style="font-size:12.5px;margin:4px 0 0">${esc(p.desc)}</p>`:''}</div><div class="acts">${acts}</div></div>`;
     el.innerHTML=`<div class="card"><h2>⏳ Review queue <em class="count">${pend.length}</em></h2><div class="list">${pend.map(p=>row(p,`<button class="ib" data-try="${p.id}" title="Try it">▶</button><button class="btn-acc" data-pok="${p.id}">Approve</button><button data-pno="${p.id}">Reject</button>`)).join('')||'<p class="muted">Nothing waiting for review.</p>'}</div></div>
       <div class="card" style="margin-top:16px"><h2>● Live on Lumen <em class="count">${liveP.length}</em></h2><div class="list">${liveP.map(p=>row(p,`<button class="ib" data-try="${p.id}" title="Try it">▶</button><button class="ib" data-pin="${p.id}" title="${(hubCfg.pinned||[]).includes(projKey(p))?'Unfeature':'Feature on the Hub'}">${(hubCfg.pinned||[]).includes(projKey(p))?'⭐':'☆'}</button><button class="ib" data-pno="${p.id}" title="Hide (send back to rejected)">🙈</button><button class="ib" data-pdel="${p.id}" title="Delete">🗑</button>`)).join('')||'<p class="muted">No creator projects live yet.</p>'}</div></div>
       <div class="card" style="margin-top:16px"><h2>🎮 Built-in games</h2><div class="list">${BUILTINS.map(g=>`<div class="person"><div class="info"><b>${g.title}</b><span>▶ ${fmtN(plays[g.key]||0)} plays · ${(hubCfg.hiddenBuiltins||[]).includes(g.key)?'hidden':'showing'}</span></div><button class="ib" data-pin="${g.key}" title="Feature on the Hub">${(hubCfg.pinned||[]).includes(g.key)?'⭐':'☆'}</button><button class="ib" data-hideb="${g.key}" title="Show or hide on the Games tab">${(hubCfg.hiddenBuiltins||[]).includes(g.key)?'🙈':'👁'}</button></div>`).join('')}</div></div>
@@ -442,17 +456,16 @@ function renderGameHub(){const box=$('#ghBox');if(!box)return;
   games.forEach(g=>{if(g.uid&&!creatorNames[g.uid])C()?.getUser(g.uid).then(u=>{creatorNames[g.uid]=u.name||'';if(ghQ)renderGameHub()})});
   const q=ghQ.toLowerCase();const match=g=>!q||[g.title,g.desc,g.cname].some(x=>(x||'').toLowerCase().includes(q));
   const own=ownedKeys(),added=g=>own.indexOf(g.key);
-  const lib=games.filter(inLib),shop=games.filter(g=>!inLib(g));
+  const lib=games.filter(inLib);
   const sorts={all:(a,b)=>added(b)-added(a)||(plays[b.key]||0)-(plays[a.key]||0),top:(a,b)=>(plays[b.key]||0)-(plays[a.key]||0),new:(a,b)=>added(b)-added(a),az:(a,b)=>a.title.localeCompare(b.title)};
   const filt={creators:g=>g.key.startsWith('p_'),lumen:g=>g.key.startsWith('b_')}[ghFilter]||(()=>true);
   const list=lib.filter(match).filter(filt).sort(sorts[ghFilter]||sorts.all);
   $$('#ghChips button').forEach(b=>b.classList.toggle('on',b.dataset.f===ghFilter));
-  const disc=shop.filter(match).sort((a,b)=>(trend[b.key]||0)-(trend[a.key]||0)||(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0)).slice(0,10);
-  box.innerHTML=`<h2 class="hsec">${q?`In your library: “${esc(ghQ)}”`:{all:'🎮 Your library',top:'🔥 Most played',new:'✨ Recently added',az:'🔤 A to Z',creators:'🛠 From Lumen creators',lumen:'⭐ Lumen originals'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
+  box.innerHTML=`<div class="gh-bar"><a href="#" class="gh-store" data-store>🛍 Find more games in the Store</a><button class="btn-acc" data-gtab="create">🛠 Creator Dashboard</button></div>`+`<h2 class="hsec">${q?`In your library: “${esc(ghQ)}”`:{all:'🎮 Your library',top:'🔥 Most played',new:'✨ Recently added',az:'🔤 A to Z',creators:'🛠 From Lumen creators',lumen:'⭐ By Lumen'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
     (list.length?`<div class="hgrid">${list.map(g=>card(g)).join('')}</div>`:`<p class="muted">${q?'No games in your library match that.':'No games here yet.'} Find more in the <a href="#" data-store>Store</a>.</p>`)+
-    (disc.length?`<h2 class="hsec">🛍 ${q?'In the Store':'New in the Store'} <button class="hsec-more" data-store>Browse the Store →</button></h2><div class="hrow">${disc.map(g=>card(g)).join('')}</div>`:'')+
     (!me?'<div class="banner" style="margin-top:16px">Sign in (bottom-left) to buy games and keep them in your library.</div>':'');
-  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-store]').forEach(b=>b.onclick=e=>{e.preventDefault();L.market?L.market.show('game'):L.go('shop')})}
+  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-store]').forEach(b=>b.onclick=e=>{e.preventDefault();L.market?L.market.show('game'):L.go('shop')});
+  box.querySelectorAll('[data-gtab]').forEach(b=>b.onclick=()=>gamesTab(b.dataset.gtab))}
 $('#ghQ')?.addEventListener('input',e=>{ghQ=e.target.value.trim();renderGameHub()});
 $('#ghChips')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;ghFilter=b.dataset.f;renderGameHub()});
 
@@ -471,7 +484,7 @@ async function renderGamePage(){const box=$('#gpBox');const it=gpKey&&findItem(g
   const draft=$('#gpText')?.value;box.dataset.key=gpKey;
   box.innerHTML=`<button class="gp-back" data-goto="games">‹ Game hub</button>
     <div class="gp-hero card"><div class="gp-art" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}</div>
-      <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'Lumen original'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}
+      <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'by Lumen'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}
         <div class="gp-stats"><span>▶ <b>${fmtN(plays[gpKey]||0)}</b> plays</span>${it.uid?`<span>⏱ <b>${fmtN(it.minutes||0)}</b> min played</span><span>💬 <b>${fmtN(it.mentions||0)}</b> mentions</span>`:''}<span>👍 <b>${reviews.length?pct+'%':'–'}</b> of ${fmtN(reviews.length)} review${reviews.length===1?'':'s'}</span>${trend[gpKey]?`<span>📈 <b>${fmtN(trend[gpKey])}</b> this week</span>`:''}</div>
         <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px">${unlocked(it)?'<button class="btn-acc gp-play" id="gpPlay">▶ Play now</button>':`<button class="btn-acc gp-play" id="gpUnlock">${it.price>0?`🛒 Buy for ✦ ${fmtN(L.plan?.price(it.price)??it.price)}${L.plan?.lite()?' <s style="opacity:.6">'+fmtN(it.price)+'</s>':''}`:'＋ Get it free'}</button>`}${L.market?'<button id="gpStore">🛍 Store page</button>':''}<button id="gpMention" title="Write a post about it">✍️ Post about it</button></div></div></div>
     <div class="gp-grid"><div class="card"><h2>Reviews</h2>
@@ -494,7 +507,7 @@ async function sendReview(){const {F,D,db}=C();const text=$('#gpText').value.tri
   try{if(mine){await F.updateDoc(ref,{text,at:F.serverTimestamp()});toast('Review updated');return}
     const up=$('#gpUp .on')?.dataset.up!=='0';if(!text&&!up)return toast('Say why it’s not for you');
     const b=F.writeBatch(db);b.set(ref,{uid:me,up,text,at:F.serverTimestamp()});
-    if(up&&gpKey.startsWith('p_'))b.update(D('projects',gpKey.slice(2)),{upReviews:F.increment(1),lastReview:me});
+    if(gpKey.startsWith('p_'))b.update(D('projects',gpKey.slice(2)),up?{upReviews:F.increment(1),lastReview:me}:{downReviews:F.increment(1),lastReview:me});
     await b.commit();$('#gpText').value='';toast('Review posted')}catch(e){toast(e.code==='permission-denied'?'Couldn’t post the review (you can only review a game once).':e.message)}}
 $('#brand')?.addEventListener('click',()=>L.go('hub'));
 
