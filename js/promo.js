@@ -8,11 +8,14 @@ const L=window.Lumen,{esc}=L;
 const KEY='lumen.fgads',DAYS=3;
 const shut=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}}};
 const closed=slot=>{const t=shut()[slot];return!!t&&Date.now()-t<DAYS*864e5};
-function hide(slot,el){const s=shut();s[slot]=Date.now();try{localStorage.setItem(KEY,JSON.stringify(s))}catch{}el?.remove();L.toast?.('Hidden for a few days')}
+function hide(slot,el){if(owner()){el?.remove();return L.toast?.('Hidden until you reload (you’re the owner, so it comes back for you)')}const s=shut();s[slot]=Date.now();try{localStorage.setItem(KEY,JSON.stringify(s))}catch{}el?.remove();L.toast?.('Hidden for a few days')}
 // Fixing Good as it is right now (the owner can rename it, change its price, pictures and description)
 function item(){const h=L.hub;if(!h?.data)return null;const d=h.data();if(d.hubCfg.fgPromo===false)return null;return h.findItem(h.fgKey())||null}
 // only advertise to people who don't have it yet
-function live(slot){const it=item();if(!it||L.hub.inLib(it)||(slot&&closed(slot)))return null;return it}
+// the owner always sees the campaign (so they can check it), even if they own the game or closed a spot
+const owner=()=>!!L.cloud?.isOwner?.();
+function live(slot){const it=item();if(!it)return null;if(owner())return it;if(L.hub.inLib(it)||(slot&&closed(slot)))return null;return it}
+const note=()=>owner()?'<span class="fg-own">👁 Owner preview: people who own it don’t see this</span>':'';
 const price=it=>it.price>0?'✦ '+(L.plan?.price?.(it.price)??it.price).toLocaleString():'Free';
 const tag=it=>{const l=(it.desc||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);return l[1]||l[0]||'A desert crime story. Fix what’s broken, at any cost.'};
 const kick=it=>(it.desc||'').split(/\n+/)[0]?.trim()||'Desert crime action · story mode';
@@ -24,17 +27,17 @@ const x=`<button class="fg-x" data-fgx title="Hide this for a few days" aria-lab
 function hub(box){if(!box||box.querySelector('.fg-ad'))return;const it=live('hub');if(!it)return;
   const el=document.createElement('div');el.className='fg-ad';
   el.innerHTML=`<div class="fg-art" style="${L.hub.art(it)}"></div><div class="fg-in"><span class="fg-kick">Lumen presents</span><h2>${esc(it.title)}</h2><p>${esc(tag(it))}</p>
-    <div class="fg-row"><button class="btn-acc" data-fgopen>See it in the Store</button><span class="fg-price">${price(it)}</span><span class="fg-note">${esc(kick(it))}</span></div></div>${x}`;
+    <div class="fg-row"><button class="btn-acc" data-fgopen>See it in the Store</button><span class="fg-price">${price(it)}</span><span class="fg-note">${esc(kick(it))}</span></div>${note()}</div>${x}`;
   const after=box.querySelector('#hubDaily')||box.querySelector('.hannounce')||box.querySelector('.hhero');after?after.after(el):box.prepend(el);bind(el,it,'hub')}
 // Game hub: a slim strip above your library
 function lib(box){if(!box||box.querySelector('.fg-strip'))return;const it=live('lib');if(!it)return;
   const el=document.createElement('div');el.className='fg-strip';
-  el.innerHTML=`<div class="fg-thumb" style="${L.hub.art(it)}"></div><div class="fg-in"><b>${esc(it.title)}</b><span>${esc(kick(it))}</span></div><button class="btn-acc" data-fgopen>${price(it)} · View</button>${x}`;
+  el.innerHTML=`<div class="fg-thumb" style="${L.hub.art(it)}"></div><div class="fg-in"><b>${esc(it.title)}</b><span>${esc(kick(it))}</span>${note()}</div><button class="btn-acc" data-fgopen>${price(it)} · View</button>${x}`;
   const bar=box.querySelector('.gh-bar');bar?bar.after(el):box.prepend(el);bind(el,it,'lib')}
 // Content: one "Sponsored" card after the fifth post (only in the full feed)
 function feed(box,filter){if(!box||filter!=='all'||box.querySelector('.fg-feed'))return;const it=live('feed');if(!it)return;const posts=box.querySelectorAll('.post');if(posts.length<5)return;
   const el=document.createElement('div');el.className='card post fg-feed';
-  el.innerHTML=`<div class="fg-spons">📣 Sponsored · Lumen</div><button class="fg-feed-art" data-fgopen style="${L.hub.art(it)}" aria-label="${esc(it.title)}"></button>
+  el.innerHTML=`<div class="fg-spons">📣 Sponsored · Lumen</div>${note()}<button class="fg-feed-art" data-fgopen style="${L.hub.art(it)}" aria-label="${esc(it.title)}"></button>
     <div class="fg-feed-in"><div><b>${esc(it.title)}</b><span>${esc(tag(it))}</span></div><button class="btn-acc" data-fgopen>${price(it)} · View</button></div>${x}`;
   posts[4].after(el);bind(el,it,'feed')}
 // other games' pages: a small "you might like" card in the side column

@@ -1024,3 +1024,4 @@ body.lab-bubbles .dmsg.me-msg .dtools{right:auto;left:10px}
 .fg-band-in h2{font-size:30px!important;margin:0}.fg-band-in p{margin:0;color:var(--mk-mute)}
 .mk-tag.spons{background:#6b6f80}
 @media(max-width:760px){.fg-ad,.fg-band{grid-template-columns:1fr}.fg-ad .fg-art,.fg-band-art{min-height:150px;-webkit-mask:none;mask:none}.fg-ad .fg-in{padding:18px}.fg-strip .fg-thumb{width:64px}.fg-strip .fg-in span{display:none}}
+.fg-own{display:block;font-size:11.5px;color:#ffd36a;opacity:.85;margin-top:6px}
