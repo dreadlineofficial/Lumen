@@ -352,7 +352,7 @@ service cloud.firestore {
         && d.get('brand', '') is string && d.get('brand', '').size() <= 40 && galleryOk(d.get('gallery', []))
         && d.get('price', 0) is int && d.get('price', 0) >= 0 && d.get('price', 0) <= 5000 && d.get('price', 0) % 10 == 0
         && (d.type != 'site' || d.get('price', 0) == 0)
-        && d.get('cut', 0) is int && (d.get('price', 0) == 0 ? d.get('cut', 0) == 0 : d.get('cut', 0) * 10 == d.get('price', 0) * 9)
+        && d.get('cut', 0) is int && (d.get('price', 0) == 0 ? d.get('cut', 0) == 0 : (d.get('cut', 0) * 10 == d.get('price', 0) * 9 || (d.get('uid', '') == adminId() && d.get('cut', 0) == d.get('price', 0))))
         && d.get('desc', '').size() <= 1500 && okImage(d.get('image', '')) && d.get('image', '').size() < 900000
         && d.get('ix', 50) is int && d.get('ix', 50) >= 0 && d.get('ix', 50) <= 100
         && d.get('iy', 50) is int && d.get('iy', 50) >= 0 && d.get('iy', 50) <= 100
@@ -381,8 +381,9 @@ service cloud.firestore {
         && keys().hasOnly(['sales', 'sold', 'lastBuyer']) && d().sales == o().get('sales', 0) + 1 && d().sold == o().get('sold', 0) + o().get('cut', 0) && d().lastBuyer == uid()
         && !get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id])
         && getAfter(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id]);
-      allow update: if isAdmin() && projectOk(d()) && d().status in ['pending', 'approved', 'rejected'];
-      allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
+      // the owner's own products (like Fixing Good) can only be changed by the owner, never by staff
+      allow update: if isAdmin() && (o().uid != adminId() || isOwner()) && projectOk(d()) && d().status in ['pending', 'approved', 'rejected'];
+      allow delete: if (signedIn() && o().uid == uid()) || (isAdmin() && o().uid != adminId());
       // someone else played for one more minute (paired with their rate-limited playtime record)
       allow update: if active() && live() && uid() != o().uid && keys().hasOnly(['minutes'])
         && d().minutes == o().get('minutes', 0) + 1
@@ -409,9 +410,11 @@ service cloud.firestore {
         && d().get('paidSold', 0) == o().get('sold', 0);
 
       // a product's link or uploaded file: only its creator, the admin and people who own it can read it
+      function ownsIt() { let own = get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []);
+        return own.hasAny(['p_' + id]) || (own.hasAny(['b_fixinggood']) && get(/databases/$(database)/documents/server/hub).data.get('fixingGood', '') == id); }
+      function staffMay() { return isOwner() || (isAdmin() && get(projPath(id)).data.uid != adminId()); }
       match /private/{doc} {
-        allow read: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin()
-          || get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id]));
+        allow read: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin() || ownsIt());
         allow create, update: if active() && doc == 'link' && getAfter(projPath(id)).data.uid == uid()
           && (getAfter(projPath(id)).data.status == 'pending' || isAdmin())
           && request.resource.data.keys().hasOnly(['url']) && request.resource.data.url is string
@@ -424,14 +427,13 @@ service cloud.firestore {
           && request.resource.data.mime is string && request.resource.data.mime.size() <= 100
           && request.resource.data.bytes is int && request.resource.data.bytes > 0 && request.resource.data.bytes <= 3145728
           && request.resource.data.parts is int && request.resource.data.parts >= 1 && request.resource.data.parts <= 6;
-        allow delete: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin());
+        allow delete: if signedIn() && (get(projPath(id)).data.uid == uid() || staffMay());
         match /parts/{n} {
-          allow read: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin()
-            || get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id]));
+          allow read: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin() || ownsIt());
           allow create, update: if active() && doc == 'file' && n.matches('^[0-5]$') && getAfter(projPath(id)).data.uid == uid()
             && (getAfter(projPath(id)).data.status == 'pending' || isAdmin())
             && request.resource.data.keys().hasOnly(['d']) && request.resource.data.d is string && request.resource.data.d.size() <= 900000;
-          allow delete: if signedIn() && (!exists(projPath(id)) || get(projPath(id)).data.uid == uid() || isAdmin());
+          allow delete: if signedIn() && (!exists(projPath(id)) || get(projPath(id)).data.uid == uid() || staffMay());
         }
       }
 
@@ -556,7 +558,9 @@ service cloud.firestore {
 
     match /server/{doc} {
       allow read: if signedIn();
-      allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40 && request.resource.data.get('pinned', []).size() <= 30;
+      allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40 && request.resource.data.get('pinned', []).size() <= 30
+        && (isOwner() || (request.resource.data.get('fixingGood', '') == (resource == null ? '' : resource.data.get('fixingGood', ''))
+            && request.resource.data.get('fgPromo', true) == (resource == null ? true : resource.data.get('fgPromo', true))));
     }
 
     // Nightbound lobbies you're hosting (so others on Lumen can join); only you write yours

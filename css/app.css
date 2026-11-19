@@ -1001,3 +1001,26 @@ body.lab-bubbles .dmsg.me-msg .dtools{right:auto;left:10px}
 @media(max-width:760px){.sc-art{width:80px}.scard em{display:none}}
 
 .gh-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 4px}.gh-store{color:var(--text);opacity:.8;font-size:14px}.gh-store:hover{opacity:1}
+
+/* ---------- Fixing Good campaign (js/promo.js) ---------- */
+.fg-x{position:absolute;top:10px;right:10px;width:30px;height:30px;padding:0;display:grid;place-items:center;font-size:13px;background:rgba(0,0,0,.45);color:#fff;box-shadow:none;opacity:.7;z-index:2}
+.fg-x:hover{opacity:1;background:rgba(0,0,0,.65);transform:none}.fg-x.dark{background:rgba(0,0,0,.08);color:#333}.fg-x.dark:hover{background:rgba(0,0,0,.15)}
+.fg-kick,.fg-spons{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#ffc94a}
+.fg-ad{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);margin-top:18px;border-radius:24px;overflow:hidden;min-height:200px;background:radial-gradient(circle at 80% 20%,#7a3a12,#1d0f08 70%);border:1px solid rgba(255,190,110,.25);box-shadow:0 30px 70px -35px #000}
+.fg-ad .fg-art{min-height:200px;-webkit-mask:linear-gradient(90deg,#000 65%,transparent);mask:linear-gradient(90deg,#000 65%,transparent)}
+.fg-ad .fg-in{padding:24px 50px 24px 6px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.fg-ad h2{font-size:clamp(26px,3vw,38px);margin:0;letter-spacing:-.04em}.fg-ad p{margin:0;color:rgba(255,236,214,.8);line-height:1.5}
+.fg-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}.fg-price{font-weight:800;font-size:18px;color:#ffc94a}.fg-note{font-size:12.5px;color:rgba(255,236,214,.6)}
+.fg-strip{position:relative;display:flex;align-items:center;gap:14px;padding:10px 50px 10px 10px;margin:10px 0 4px;border-radius:18px;background:linear-gradient(100deg,rgba(122,58,18,.55),rgba(255,255,255,.04));border:1px solid rgba(255,190,110,.22)}
+.fg-strip .fg-thumb{width:96px;aspect-ratio:16/10;border-radius:12px;flex:none}
+.fg-strip .fg-in{flex:1;min-width:0;display:flex;flex-direction:column}.fg-strip .fg-in span{font-size:12.5px;color:var(--mute)}
+.fg-strip .btn-acc{padding:8px 16px;font-size:13px;white-space:nowrap}.fg-strip .fg-x{top:50%;transform:translateY(-50%)}
+.fg-feed{overflow:hidden}.fg-feed .fg-spons{margin-bottom:10px}
+.fg-feed-art{display:block;width:100%;aspect-ratio:16/8;border-radius:16px;padding:0;box-shadow:none}.fg-feed-art:hover{transform:none}
+.fg-feed-in{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;flex-wrap:wrap}.fg-feed-in div{display:flex;flex-direction:column;min-width:0}.fg-feed-in span{font-size:13.5px;color:var(--mute)}
+.fg-side{display:flex;flex-direction:column;gap:8px}.fg-side-art{width:100%;aspect-ratio:16/10;border-radius:14px;padding:0;box-shadow:none}.fg-side-art:hover{transform:none}.fg-side p{margin:0;font-size:13px}
+.fg-band{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);margin-top:14px;overflow:hidden;background:linear-gradient(110deg,#fff,#fff3e3)}
+.fg-band-art{min-height:220px}.fg-band-in{padding:22px 50px 22px 26px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.fg-band-in h2{font-size:30px!important;margin:0}.fg-band-in p{margin:0;color:var(--mk-mute)}
+.mk-tag.spons{background:#6b6f80}
+@media(max-width:760px){.fg-ad,.fg-band{grid-template-columns:1fr}.fg-ad .fg-art,.fg-band-art{min-height:150px;-webkit-mask:none;mask:none}.fg-ad .fg-in{padding:18px}.fg-strip .fg-thumb{width:64px}.fg-strip .fg-in span{display:none}}
