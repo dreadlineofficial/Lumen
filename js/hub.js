@@ -101,13 +101,17 @@ async function renderHub(){const box=$('#hubBox');if(!box)return;const name=C()?
 function bindGo(root){root.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>L.go(b.dataset.goto))}
 
 /* ---------- Games tab: creator games + hidden built-ins ---------- */
-L.hub={play,openGame,mentionsIn,linkMentions,builtinHidden:key=>(hubCfg.hiddenBuiltins||[]).includes(key),
+L.hub={gamesTab,play,openGame,mentionsIn,linkMentions,builtinHidden:key=>(hubCfg.hiddenBuiltins||[]).includes(key),
   featuredPage(el,openUrl){const sites=live.filter(p=>p.type==='site').sort((a,b)=>(plays[projKey(b)]||0)-(plays[projKey(a)]||0));
     el.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo" style="background:linear-gradient(135deg,#ffd76a,#ff9a5c)">⭐</span><b>Featured</b><span class="muted" style="font-size:13px">Websites made by Lumen creators</span></div>
       ${sites.length?`<div class="hgrid">${sites.map(p=>card({...p,key:projKey(p)})).join('')}</div>`:`<p class="muted">No featured websites yet.${me?' Lumen creators can add theirs from the Creator Dashboard.':' Sign in to see them.'}</p>`}</div>`;
     el.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const p=findItem(b.dataset.open);if(!p)return;play(b.dataset.open);openUrl(p.url)});fillCreators(el)},
   renderAdminTab};
-const prevView=L.onView;L.onView=v=>{prevView?.(v);if(v==='hub')renderHub();if(v==='creator')renderCreator();if(v==='games')renderGameHub();if(v!=='gamepage'){stopReviews()}else $('nav [data-v=games]')?.classList.add('on')};
+// Games page: Play (games, daily challenges) and Create (the creator dashboard) in one place
+let gTab='play';
+function gamesTab(t){gTab=t==='create'?'create':'play';$$('#ghTabs [data-gt]').forEach(b=>b.classList.toggle('on',b.dataset.gt===gTab));$('#ghPlay').hidden=gTab!=='play';$('#ghCreate').hidden=gTab!=='create';if(gTab==='create')renderCreator();else renderGameHub()}
+$$('#ghTabs [data-gt]').forEach(b=>b.onclick=()=>gamesTab(b.dataset.gt));
+const prevView=L.onView;L.onView=v=>{prevView?.(v);if(v==='hub')renderHub();if(v==='games'&&gTab==='create')renderCreator();if(v==='games')renderGameHub();if(v!=='gamepage'){stopReviews()}else $('nav [data-v=games]')?.classList.add('on')};
 
 /* ---------- images ---------- */
 const readURL=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});
@@ -316,7 +320,7 @@ function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{
     el.querySelectorAll('[data-uname]').forEach(async b=>{const u=await C().getUser(b.dataset.uname);b.textContent='by '+(u.name||'creator')});
     el.querySelectorAll('[data-iok]').forEach(b=>b.onclick=async()=>{const it=allItems.find(i=>i.id===b.dataset.iok);b.disabled=true;
       const img=await L.cos.loadImg(it.id).catch(()=>null);
-      if(!img||img.broken){b.disabled=false;return toast('This picture didn’t finish uploading, so it would show up broken. Ask the creator to open it on their Creator page and press Save again.')}
+      if(!img||img.broken){b.disabled=false;return toast('This picture didn’t finish uploading, so it would show up broken. Ask the creator to open it on Games → Create and press Save again.')}
       const ok=await new Promise(r=>{const im=new Image();im.onload=()=>r(im.naturalWidth>0);im.onerror=()=>r(false);im.src=img.data});
       if(!ok){b.disabled=false;return toast('That picture can’t be opened (the file is damaged). Ask the creator to upload it again.')}
       L.cos.refresh(it.id,'approved:'+Date.now());await upd(D('shopItems',it.id),{status:'approved',cut:Math.round(it.price*9/10),at:F.serverTimestamp()},'Approved: it’s in the Shop, ready to buy and wear');b.disabled=false});
@@ -390,10 +394,12 @@ function renderGameHub(){const box=$('#ghBox');if(!box)return;
   const list=games.filter(match).filter(filt).sort(sorts[ghFilter]||sorts.all);
   const hot=games.filter(g=>trend[g.key]).sort(sorts.trending).slice(0,8);
   $$('#ghChips button').forEach(b=>b.classList.toggle('on',b.dataset.f===ghFilter));
+  const fromCr=games.filter(g=>g.key.startsWith('p_')).sort((a,b)=>at(b)-at(a)).slice(0,8);
   box.innerHTML=(!q&&ghFilter==='all'&&hot.length?`<h2 class="hsec">📈 Trending this week</h2><div class="hrow">${hot.map(g=>card(g)).join('')}</div>`:'')+
+    (!q&&ghFilter==='all'&&fromCr.length?`<h2 class="hsec">🛠 New from Lumen creators <button class="gh-mk" data-gtab="create">Make your own →</button></h2><div class="hrow">${fromCr.map(g=>card(g)).join('')}</div>`:'')+
     `<h2 class="hsec">${q?`Results for “${esc(ghQ)}”`:{all:'🎮 All games',trending:'📈 Trending',top:'🔥 Most played',new:'✨ Newest',rated:'👍 Top rated',creators:'🛠 From Lumen creators',lumen:'⭐ Lumen originals'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
     (list.length?`<div class="hgrid">${list.map(g=>card(g)).join('')}</div>`:`<p class="muted">No games found${q?' for that search':''}.</p>`);
-  bindOpen(box);fillCreators(box)}
+  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-gtab]').forEach(b=>b.onclick=e=>{e.stopPropagation();gamesTab(b.dataset.gtab)})}
 $('#ghQ')?.addEventListener('input',e=>{ghQ=e.target.value.trim();renderGameHub()});
 $('#ghChips')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;ghFilter=b.dataset.f;renderGameHub()});
 

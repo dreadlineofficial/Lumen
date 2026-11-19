@@ -109,6 +109,14 @@ service cloud.firestore {
       return id in pr && no.hasAny([id]) && !oo.hasAny([id])
         && payOk(oc, nc, pr[id]) && (!id.matches('^buddy_.*') || isLite());
     }
+    // daily challenges: 100 Glow (+5% with Lite) once per puzzle per day, after it was really played for a while
+    function dailyPath(id) { return /databases/$(database)/documents/dailies/$(id); }
+    function dailyOk(n, oc, nc) {
+      let id = n.get('lastDaily', '');
+      return id.matches('^' + uid() + '_' + today() + '_(mines|memory|slide)$')
+        && exists(dailyPath(id)) && get(dailyPath(id)).data.done == false && getAfter(dailyPath(id)).data.done == true
+        && bonusOk(oc, nc, 100);
+    }
     // a premium code with Glow (Lite, Pro, Ultimate): + exactly its Glow, once per code
     function pcodePath(c) { return /databases/$(database)/documents/pcodes/$(c); }
     function premiumGlowOk(o, n, oc, nc) {
@@ -128,6 +136,7 @@ service cloud.firestore {
             && ((ol == null && bonusOk(oc, nc, 500))
              || (ol != null && request.time > ol + duration.value(20, 'h') && bonusOk(oc, nc, 150))))
         || (no == oo && nl == ol && premiumGlowOk(o, n, oc, nc))
+        || (no == oo && nl == ol && n.get('lastDaily', '') != o.get('lastDaily', '') && dailyOk(n, oc, nc))
         || (nl == ol && no.hasAll(oo) && n.get('lastBuy', '').matches('^bundle_[a-z]+$') && bundleOk(n, oc, nc, no, oo))
         || (nl == ol && no.size() == oo.size() + 1 && no.hasAll(oo) && catalogBuyOk(n, oc, nc, no, oo))
         || (no == oo && nl == ol && earnOk(o, n, oc, nc))
@@ -613,6 +622,15 @@ service cloud.firestore {
     }
 
     // Posts: likes, views and comments.
+    // one record per person, puzzle and day: started now, finished at least 15 seconds later (paired with the Glow)
+    match /dailies/{id} {
+      allow get: if signedIn() && id.matches('^' + uid() + '_.*');
+      allow create: if active() && request.resource.data.g in ['mines', 'memory', 'slide'] && id == uid() + '_' + today() + '_' + request.resource.data.g
+        && request.resource.data.keys().hasOnly(['g', 'start', 'done']) && request.resource.data.start == request.time && request.resource.data.done == false;
+      allow update: if active() && id.matches('^' + uid() + '_' + today() + '_.*') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done'])
+        && resource.data.done == false && request.resource.data.done == true && request.time > resource.data.start + duration.value(15, 's')
+        && getAfter(/databases/$(database)/documents/users/$(uid())).data.get('lastDaily', '') == id;
+    }
     match /reports/{rid} {
       allow get: if signedIn() && (resource == null || resource.data.by == uid() || isAdmin());
       allow list, update, delete: if isAdmin();

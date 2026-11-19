@@ -50,7 +50,7 @@ function applyLayout(){const b=document.body.classList,r=document.documentElemen
   $$('nav .nav-btn').forEach(n=>{if(n.id==='navAdmin'||n.id==='navCreator')return;n.style.display=(cfg.hiddenNav||[]).includes(n.dataset.v)?'none':''})}
 
 /* ---------- navigation ---------- */
-function go(v){if(v==='admin'&&$('#navAdmin').style.display==='none')v='hub';$$('.nav-btn').forEach(x=>x.classList.toggle('on',x.dataset.v===v));$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
+function go(v){if(v==='admin'&&$('#navAdmin').style.display==='none')v='hub';if(v==='creator'){v='games';setTimeout(()=>window.Lumen?.hub?.gamesTab?.('create'))}$$('.nav-btn').forEach(x=>x.classList.toggle('on',x.dataset.v===v));$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
   if(v==='settings')fillSettings();if(v==='timetable')renderTT();window.Lumen?.onView?.(v)}
 $$('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
@@ -286,7 +286,9 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-19b',items:[
+const NEWS={id:'2026-11-19d',items:[
+  ['📅','Daily challenges','Minesweeper, Memory and Slide: new puzzles every day, ✦ 100 Glow each. Find them at the top of Games.','games'],
+  ['🛠','Create from Games','The creator tools moved into Games → Create, and creators\' games now show up right on the Games page (free or priced in Glow).','games'],
   ['🙈','Mute and report posts','Tap ⋯ on a post to hide posts from that person, or report a useless post. If the Lumen team agrees, it earns no Glow.','posts'],
   ['🎮','Two new games','Lumi\'s Leap, a brand-new platformer with six worlds, and Fixing Good, a desert crime story. Both are in the Games tab.','games'],
   ['🏷️','Stickers (beta)','Place little pictures anywhere on your profile bar. Stickers are made by Lumen creators and need Lumen Lite.','shop'],

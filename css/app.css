@@ -713,3 +713,27 @@ body.lab-bubbles .dmsg.me-msg .dtools{right:auto;left:10px}
 .rep-item{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);margin-bottom:10px}
 .rep-post{display:flex;gap:10px;align-items:flex-start}.rep-post img{width:70px;height:70px;object-fit:cover;border-radius:8px}.rep-post span{white-space:pre-wrap}
 .rep-meta{font-size:13px}.rep-tag{color:#ff8fa3;font-weight:600}.rep-row td{font-size:12.5px;color:#ffb3c1;background:rgba(255,92,122,.06)}
+
+/* the old Creator nav item: creator tools now live in Games > Create */
+#navCreator{display:none!important}
+.gh-tabs{margin:0 0 18px}.gh-tabs button{font-size:15px;padding:10px 18px}
+/* daily challenges */
+.daily{margin:0 0 26px}.daily-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.daily-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.daily-card{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:18px;border-radius:20px;background:var(--g);color:#fff;text-align:left;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 18px 40px -22px rgba(0,0,0,.8)}
+.daily-card::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 0,rgba(255,255,255,.25),transparent 55%);pointer-events:none}
+.daily-card .dc-i{font-size:30px}.daily-card b{font-size:17px}.daily-card small{opacity:.85;font-size:12.5px;line-height:1.35}
+.daily-card em{font-style:normal;margin-top:8px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.3);font-weight:700;font-size:13px}
+.daily-card.done{filter:saturate(.45) brightness(.8)}.daily-card.done em{background:rgba(125,255,176,.25)}
+.modal.daily-modal .item-card{width:min(560px,100%);padding:26px}
+.dg-head{display:flex;gap:14px;align-items:center;margin-bottom:16px}.dg-i{font-size:40px}.dg-head h2{margin:0}.dg-head p{margin:2px 0 0;font-size:13px}
+.dg-foot{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:14px;min-height:40px;text-align:center}
+.ms-grid{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:3px;max-width:420px;margin:0 auto}
+.ms-c{aspect-ratio:1;padding:0;border-radius:6px;font-weight:800;font-size:16px;background:rgba(255,255,255,.14);box-shadow:none;min-width:0;color:#9fd0ff}
+.ms-c:hover{transform:none;background:rgba(255,255,255,.22)}.ms-c.o{background:rgba(0,0,0,.28);cursor:default}.ms-c.boom{background:#ff3d5a}
+.mm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:380px;margin:0 auto}
+.mm-c{aspect-ratio:1;position:relative;padding:0;border-radius:12px;font-size:34px;background:linear-gradient(135deg,#7c4dff,#3a2a8f);box-shadow:none}
+.mm-c .mm-f{display:none}.mm-c.up{background:rgba(255,255,255,.12)}.mm-c.up .mm-f{display:block}.mm-c.up .mm-b{display:none}.mm-c.got{background:rgba(125,255,176,.18)}.mm-b{color:rgba(255,255,255,.6);font-size:22px}
+.sl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:0 auto}
+.sl-c{aspect-ratio:1;font-size:34px;font-weight:800;border-radius:14px;background:linear-gradient(135deg,#2fd6a0,#127a5c);color:#04130e;box-shadow:none}.sl-e{aspect-ratio:1}
+.gh-mk{margin-left:10px;padding:5px 12px;font-size:12px;border-radius:999px;vertical-align:middle}
