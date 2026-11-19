@@ -225,7 +225,10 @@ const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
 // Panic, Study and Swap work everywhere in Lumen (and in Lumen's own games). Inside a text box,
 // a single press types the letter and a quick double-press triggers the action instead.
 const tap={key:'',at:0};
-function runKey(which){if(which==='panic')return panic();
+// a game in fullscreen (or holding the mouse) would hide the portal: let go of both first
+function leaveFullscreen(){try{const f=$('#viewer iframe'),fd=f?.contentDocument;fd?.exitPointerLock?.();if(fd?.fullscreenElement)fd.exitFullscreen?.()}catch{}
+  try{document.exitPointerLock?.();if(document.fullscreenElement)document.exitFullscreen?.()}catch{}}
+function runKey(which){leaveFullscreen();try{if(document.activeElement?.tagName==='IFRAME'){document.activeElement.blur();window.focus()}}catch{}if(which==='panic')return panic();
   if(which==='study')return studyOn()?exitStudy():enterStudy();
   if(studyOn())exitStudy();else{const sc=scheduledCover();sc?showCover(sc.url,{fromSwap:true}):enterStudy({keep:true})}}
 function onKey(e){if(capturing)return;const t=e.target;
@@ -234,6 +237,9 @@ function onKey(e){if(capturing)return;const t=e.target;
   if(!which){tap.key='';return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(coverOn){e.preventDefault();e.stopPropagation();hideCover();return}
+  // inside a game, letters belong to the game: Study and Swap need a quick double-tap there (Panic stays one press)
+  const inGame=which!=='panic'&&!studyOn()&&!coverOn&&!!t?.ownerDocument&&t.ownerDocument!==document&&!!t.ownerDocument.defaultView?.frameElement?.closest?.('#viewer');
+  if(inGame&&!typing(t)){const now=Date.now();if(tap.key!==which||now-tap.at>500){tap.key=which;tap.at=now;return}tap.key='';e.preventDefault();e.stopPropagation();runKey(which);return}
   if(typing(t)&&e.key.length===1&&!t.readOnly){const now=Date.now();
     if(tap.key!==which||now-tap.at>450){tap.key=which;tap.at=now;return}
     tap.key='';try{const v=t.value,p=t.selectionStart;if(v[p-1]&&same(v[p-1],e.key)){t.value=v.slice(0,p-1)+v.slice(p);t.setSelectionRange(p-1,p-1)}}catch{}}
