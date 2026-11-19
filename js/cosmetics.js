@@ -105,10 +105,18 @@ const css=o=>Object.entries(o).map(([k,v])=>`${k}:${v}`).join(';');
 /* creator-made items (id "c_…"): a transparent GIF stored in shopImgs/{id}, loaded once and turned into a CSS rule */
 const CID=/^c_[A-Za-z0-9]{8,24}$/;const custom=new Map();
 const IMG=/^data:image\/(gif|png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
-function ensure(id){if(!CID.test(id)||custom.has(id))return;custom.set(id,null);
-  const go=()=>{const c=window.Lumen.cloud;if(!c?.F||!c.me?.()){setTimeout(()=>{custom.delete(id)},4000);return}
-    c.F.getDoc(c.D('shopImgs',id)).then(async s=>{const d=s.data();if(!d)return;if(d.parts>0&&d.parts<=24)d.data=(await Promise.all([...Array(d.parts).keys()].map(i=>c.F.getDoc(c.D('shopImgs',id,'parts',String(i))).then(x=>x.data()?.d||'')))).join('');if(!IMG.test(d.data||''))return;addRule(id,d.data,d)}).catch(()=>custom.delete(id))};
-  window.Lumen.cloud?go():setTimeout(go,1500)}
+// loads a creator item's picture (joining its pieces) and keeps trying until it's signed in and complete
+async function loadImg(id){const c=window.Lumen.cloud;const s=await c.F.getDoc(c.D('shopImgs',id));const d=s.data();if(!d)return null;
+  if(d.parts>0&&d.parts<=24){const ps=await Promise.all([...Array(d.parts).keys()].map(i=>c.F.getDoc(c.D('shopImgs',id,'parts',String(i))).then(x=>x.data()?.d||'')));
+    if(ps.some(p=>!p))return{...d,data:'',broken:true};d.data=ps.join('')}
+  if(!IMG.test(d.data||''))return{...d,broken:true};return d}
+function ensure(id,tries=0){if(!CID.test(id)||(custom.has(id)&&tries===0))return;custom.set(id,null);
+  const retry=ms=>setTimeout(()=>ensure(id,tries+1),ms);
+  const c=window.Lumen.cloud;if(!c?.F||!c.me?.()){if(tries<40)retry(1500);else custom.delete(id);return}
+  loadImg(id).then(d=>{if(!d)return;if(d.broken){if(tries<5)retry(20000);return}addRule(id,d.data,d)}).catch(()=>{if(tries<5)retry(8000);else custom.delete(id)})}
+// an item was edited (new picture or placement): load it again for everyone already showing it
+const vers=new Map();
+function refresh(id,ver){if(!CID.test(id))return;const v=String(ver||'');if(vers.has(id)&&vers.get(id)!==v){custom.delete(id);if(rules.has(id))ensure(id)}vers.set(id,v)}
 const num=(v,d,a,b)=>{v=Math.round(+v);return Number.isFinite(v)?Math.min(b,Math.max(a,v)):d};
 /* placement: mode fill (cover, zoomable), tile (repeating pattern) or place (free size and position); x/y in %, scale in %, opacity in % */
 function ruleCSS(id,data,o={}){const u=`url("${data}")`,m=['fill','tile','place'].includes(o.mode)?o.mode:'fill',x=num(o.x,50,0,100),y=num(o.y,50,0,100),op=num(o.op,100,10,100)/100;
@@ -122,7 +130,12 @@ function ruleCSS(id,data,o={}){const u=`url("${data}")`,m=['fill','tile','place'
   return`.cstk-${id}{background-image:${u}}.cfx-${id}{background-image:${u};${fx};opacity:${op}}.cdeco-${id}{background-image:${u};background-size:${dsz};background-position:${x}% ${y}%;background-repeat:no-repeat;opacity:${op}}.cplate-${id}::before{background:${plate}!important;opacity:${(op*.85).toFixed(2)}}`}
 const rules=new Map();
 function addRule(id,data,o){o={...(o||{})};custom.set(id,{mode:o.mode});
-  if(!o.ar){const im=new Image();im.onload=()=>{if(im.naturalWidth&&im.naturalHeight&&rules.get(id)?.dataset.src===String(data.length))addRule(id,data,{...o,ar:im.naturalWidth/im.naturalHeight})};im.src=data}let el=rules.get(id);if(!el){el=document.createElement('style');el.dataset.cos=id;document.head.appendChild(el);rules.set(id,el)}el.dataset.src=String(data.length);el.textContent=ruleCSS(id,data,o)}
+  if(!o.ar){const im=new Image();im.onload=()=>{if(im.naturalWidth&&im.naturalHeight&&rules.get(id)?.dataset.src===String(data.length))addRule(id,data,{...o,ar:im.naturalWidth/im.naturalHeight})};im.src=data}let el=rules.get(id);if(!el){el=document.createElement('style');el.dataset.cos=id;document.head.appendChild(el);rules.set(id,el)}el.dataset.src=String(data.length);el.textContent=ruleCSS(id,blobFor(id,data),o)}
+// big pictures go into the page once (as a blob link), not copied into every style rule
+const blobs=new Map();
+function blobFor(id,data){if(data.length<60000||!data.startsWith('data:'))return data;const k=id+':'+data.length,hit=blobs.get(id);if(hit&&hit.k===k)return hit.u;
+  try{const [h,b64]=data.split(','),mime=h.slice(5).split(';')[0],bin=atob(b64),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    const u=URL.createObjectURL(new Blob([arr],{type:mime}));if(hit)setTimeout(()=>URL.revokeObjectURL(hit.u),5000);blobs.set(id,{k,u});return u}catch{return data}}
 /* live preview while a creator edits (replaces the rule each time) */
 function previewRule(id,data,o){addRule(id,data,typeof o==='string'?{mode:o}:o)}
 
@@ -197,6 +210,6 @@ const BUNDLES=[
  {id:'bundle_dream',name:'Daydream',emoji:'🌸',desc:'Sakura petals, an angel halo, a blossom plate and the Sakura theme.',items:['fx_sakura','deco_halo','plate_sakura','theme_sakura'],price:850,g:'linear-gradient(135deg,#5a1a3a,#ff8fb8 55%,#ffd9e6)'},
  {id:'bundle_space',name:'Deep Space',emoji:'🪐',desc:'Galaxy swirl, meteor shower, galaxy plate and orbiting hearts.',items:['fx_galaxy','fx_meteor','plate_galaxy','deco_orbit'],price:1150,g:'linear-gradient(135deg,#0a0420,#3b1a78 55%,#1c3b8f)'},
  {id:'bundle_names',name:'Name Glow-Up',emoji:'🔤',desc:'Four new name effects: Frostbite, Toxic, Glitch and Starlight.',items:['nfx_ice','nfx_toxic','nfx_glitch','nfx_sparkle'],price:1000,g:'linear-gradient(135deg,#0b2a3f,#3aa8ff 50%,#7dff3a)'}];
-window.Lumen.cos={stickerLayer,premOn,BUNDLES,CID,ensure,previewRule,BUDDIES_ON,CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
+window.Lumen.cos={refresh,loadImg,stickerLayer,premOn,BUNDLES,CID,ensure,previewRule,BUDDIES_ON,CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
 applyTheme(window.Lumen.cfg.theme);
 })();

@@ -28,10 +28,16 @@ function start(){const {F,D,db}=C();const col=(...p)=>F.collection(db,...p);
   unsubs.push(F.onSnapshot(col('plays'),s=>{const t=DAY();plays={};trend={};s.docs.forEach(d=>{const x=d.data();plays[d.id]=+x.count||0;let w=0;for(let i=0;i<7;i++)w+=+x['d'+(t-i)]||0;trend[d.id]=w});refresh()},()=>{}));
   unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display=isCreator()?'':'none';refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('uid','==',me)),s=>{myProjects=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0));renderCreator()},()=>{}));
-  unsubs.push(F.onSnapshot(F.query(col('shopItems'),F.where('uid','==',me)),s=>{myItems=s.docs.map(d=>({id:d.id,...d.data()}));renderCreator()},()=>{}));
-  if(isAdmin()){unsubs.push(F.onSnapshot(col('shopItems'),s=>{allItems=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
-    unsubs.push(F.onSnapshot(col('creatorApps'),s=>{allApps=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
-    unsubs.push(F.onSnapshot(col('projects'),s=>{allProjects=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}))}}
+  unsubs.push(F.onSnapshot(F.query(col('shopItems'),F.where('uid','==',me)),s=>{myItems=s.docs.map(d=>({id:d.id,...d.data()}));myItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));renderCreator()},()=>{}));
+  adminOn=false;startAdminHub()}
+// the review lists (shop items, creator applications, projects); for Pro / Ultimate staff the panel turns on a moment after sign-in
+let adminOn=false;
+function startAdminHub(){if(adminOn||!me||!isAdmin())return;adminOn=true;const {F}=C(),col=n=>F.collection(C().db,n);
+  unsubs.push(F.onSnapshot(col('shopItems'),s=>{allItems=s.docs.map(d=>({id:d.id,...d.data()}));allItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));L.onAdminData?.()},()=>{}));
+  unsubs.push(F.onSnapshot(col('creatorApps'),s=>{allApps=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
+  unsubs.push(F.onSnapshot(col('projects'),s=>{allProjects=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
+  $('#navCreator').style.display=isCreator()?'':'none';refresh()}
+L.onAdminStart=(prev=>()=>{prev?.();startAdminHub()})(L.onAdminStart);
 const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
   if($('#navCreator'))$('#navCreator').style.display='none';if(me&&C())start();refresh()};
 L.onFeed=()=>{if($('#v-hub')?.classList.contains('on'))renderHub()};
@@ -256,7 +262,7 @@ async function saveItem(){const {F,D,db}=C();const name=$('#csName').value.trim(
   const place={mode,type:shopType,x:r(pl.x),y:r(pl.y),scale:Math.max(10,Math.min(400,r(pl.scale))),op:Math.max(10,Math.min(100,r(pl.op)))};
   if(!big&&!shopEdit._new){const cur=(await F.getDoc(D('shopImgs',id))).data()||{};b.set(D('shopImgs',id),{...cur,...place,uid:me})}
   else{b.set(D('shopImgs',id),{uid:me,data:parts?'':shopImg,...(parts?{parts}:{}),...place});for(let i=0;i<parts;i++)(i<8?b:(later[(i>>3)-1]||=F.writeBatch(db))).set(D('shopImgs',id,'parts',String(i)),{d:shopImg.slice(i*PART,(i+1)*PART)})}
-  $('#csSave').disabled=true;try{await b.commit();for(const x of later){toast('Uploading… '+Math.round(100*(later.indexOf(x)+1)/(later.length+1))+'%');await x.commit()}toast(!big?'Saved: your changes are live':isAdmin()?'Published to the Shop':shopEdit?'Saved: back in review':'Submitted for review');L.cos.previewRule(id,shopImg,{...pl,mode});shopEdit=null;shopImg=null;formKeep=null;pl=plDefault(shopType,CTYPES[shopType][3][0]);renderCreator()}
+  $('#csSave').disabled=true;try{await b.commit();if(later.length&&!shopEdit)shopEdit={id,type:shopType,status:isAdmin()?'approved':'pending',_new:true};for(const x of later){toast('Uploading… '+Math.round(100*(later.indexOf(x)+1)/(later.length+1))+'%');await x.commit()}toast(!big?'Saved: your changes are live':isAdmin()?'Published to the Shop':shopEdit?'Saved: back in review':'Submitted for review');L.cos.previewRule(id,shopImg,{...pl,mode});shopEdit=null;shopImg=null;formKeep=null;pl=plDefault(shopType,CTYPES[shopType][3][0]);renderCreator()}
   catch(e){toast('Couldn’t save: '+(e.code==='permission-denied'?'Firebase refused it (re-publish the latest rules?)':e.message));$('#csSave').disabled=false}}
 
 async function apply(){const about=$('#crAbout').value.trim();if(about.length<10)return toast('Tell the admin a little about what you’ll make');
@@ -308,7 +314,12 @@ function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{
       <div class="card" style="margin-top:16px"><h2>● In the Shop <em class="count">${liveI.length}</em></h2><div class="adm-items">${liveI.map(i=>row(i,`<button data-ino="${i.id}">🙈 Take down</button><button data-idel="${i.id}">🗑 Delete</button>`)).join('')||'<p class="muted">No creator items in the Shop yet.</p>'}</div></div>
       ${rej.length?`<div class="card" style="margin-top:16px"><h2>✕ Not approved <em class="count">${rej.length}</em></h2><div class="adm-items">${rej.map(i=>row(i,`<button data-iok="${i.id}">✓ Approve</button><button data-idel="${i.id}">🗑 Delete</button>`)).join('')}</div></div>`:''}`;
     el.querySelectorAll('[data-uname]').forEach(async b=>{const u=await C().getUser(b.dataset.uname);b.textContent='by '+(u.name||'creator')});
-    el.querySelectorAll('[data-iok]').forEach(b=>b.onclick=()=>{const it=allItems.find(i=>i.id===b.dataset.iok);upd(D('shopItems',b.dataset.iok),{status:'approved',cut:it.price*9/10},'Approved: it’s in the Shop')});
+    el.querySelectorAll('[data-iok]').forEach(b=>b.onclick=async()=>{const it=allItems.find(i=>i.id===b.dataset.iok);b.disabled=true;
+      const img=await L.cos.loadImg(it.id).catch(()=>null);
+      if(!img||img.broken){b.disabled=false;return toast('This picture didn’t finish uploading, so it would show up broken. Ask the creator to open it on their Creator page and press Save again.')}
+      const ok=await new Promise(r=>{const im=new Image();im.onload=()=>r(im.naturalWidth>0);im.onerror=()=>r(false);im.src=img.data});
+      if(!ok){b.disabled=false;return toast('That picture can’t be opened (the file is damaged). Ask the creator to upload it again.')}
+      L.cos.refresh(it.id,'approved:'+Date.now());await upd(D('shopItems',it.id),{status:'approved',cut:Math.round(it.price*9/10),at:F.serverTimestamp()},'Approved: it’s in the Shop, ready to buy and wear');b.disabled=false});
     el.querySelectorAll('[data-ino]').forEach(b=>b.onclick=()=>upd(D('shopItems',b.dataset.ino),{status:'rejected'},'Not approved'));
     el.querySelectorAll('[data-idel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this item for good?'))return;const bt=F.writeBatch(C().db);bt.delete(D('shopItems',b.dataset.idel));bt.delete(D('shopImgs',b.dataset.idel));for(let i=0;i<8;i++)bt.delete(D('shopImgs',b.dataset.idel,'parts',String(i)));try{await bt.commit();toast('Deleted')}catch(e){toast(e.message)}});return}
   if(tab==='hub'){el.innerHTML=`<div class="adm-cols"><div class="card"><h2>🏠 Hub banner</h2>

@@ -206,7 +206,7 @@ async function equipOwn(id){if(!prof)return;const it=getItem(id)||{id,type:(awai
   try{if(!owned().includes(id))await upd({owned:[...owned(),id],lastBuy:id});await upd({[SLOT[it.type]]:id});toast(`${it.name||'Item'} equipped`)}catch(e){toast('Couldn’t equip: '+(e.code==='permission-denied'?'it has to be approved first':e.message))}}
 L.equipOwn=equipOwn;
 function listenCreator(){cunsub?.();cunsub=null;citems=[];if(!prof||!L.cloud)return;const {F,db}=L.cloud;
-  cunsub=F.onSnapshot(F.query(F.collection(db,'shopItems'),F.where('status','==','approved')),s=>{citems=s.docs.map(d=>({id:d.id,...d.data()}));render();L.onStickers?.()},()=>{})}
+  cunsub=F.onSnapshot(F.query(F.collection(db,'shopItems'),F.where('status','==','approved')),s=>{citems=s.docs.map(d=>({id:d.id,...d.data()}));citems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));render();L.onStickers?.()},()=>{})}
 L.shopItem=getItem;L.shopStickers=()=>citems.filter(i=>i.type==='sticker');
 
 /* ---------- buying ---------- */
