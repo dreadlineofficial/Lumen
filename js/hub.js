@@ -80,8 +80,9 @@ function popularPosts(){const posts=[...(C()?.feed?.()?.values?.()||[])];const w
   return posts.filter(p=>(p.at?.toMillis?.()||Date.now())>week).map(p=>({...p,score:(p.likes||[]).length*3+(p.views||0)+(p.ecomments||0)*2})).sort((a,b)=>b.score-a.score).slice(0,4)}
 async function renderHub(){const box=$('#hubBox');if(!box)return;const name=C()?.profile?.()?.name;
   const hero=`<div class="hhero" style="background:${HUES[hubCfg.hue]||HUES.aurora}"><div class="hhero-in"><span class="hkick">${esc(hubCfg.kicker||'Lumen Hub')}</span><h1>${esc(hubCfg.title||(name?`Welcome back, ${name}.`:'Welcome to Lumen.'))}</h1><p>${esc(hubCfg.subtitle||'Games, friends, creators and everything else, in one place.')}</p>
-    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px"><button class="btn-acc" data-goto="games">🎮 Play</button><button data-goto="chat">💬 Chat</button><button data-goto="posts">📰 Posts</button>${isCreator()?'<button data-goto="creator">🛠 Creator Dashboard</button>':''}</div></div></div>
-    ${hubCfg.announce?`<div class="hannounce">📣 ${L.fmt?L.fmt(hubCfg.announce):esc(hubCfg.announce)}</div>`:''}`;
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px"><button class="btn-acc" data-goto="games">🎮 Play</button><button class="hdaily-btn" data-daily-jump>📅 Daily challenges</button><button data-goto="chat">💬 Chat</button><button data-goto="posts">📰 Posts</button>${isCreator()?'<button data-goto="creator">🛠 Create</button>':''}</div></div></div>
+    ${hubCfg.announce?`<div class="hannounce">📣 ${L.fmt?L.fmt(hubCfg.announce):esc(hubCfg.announce)}</div>`:''}
+    <div id="hubDaily" class="daily hub-daily"></div>`;
   if(!me){box.innerHTML=hero+`<div class="banner" style="margin-top:20px">Sign in (bottom-left) to see what's popular, play creators' games and become a Lumen creator.</div><h2 class="hsec">🎮 Games</h2><div class="hgrid">${allGames().map(g=>card(g)).join('')}</div>`;bindOpen(box);bindGo(box);return}
   const pinned=(hubCfg.pinned||[]).map(findItem).filter(Boolean);
   const top=allGames().sort((a,b)=>(plays[b.key]||0)-(plays[a.key]||0)).slice(0,6);
@@ -98,7 +99,8 @@ async function renderHub(){const box=$('#hubBox');if(!box)return;const name=C()?
     (hubCfg.hideNew||!fresh.length?'':`<h2 class="hsec">✨ New from Lumen creators</h2><div class="hgrid">${fresh.map(p=>card(p)).join('')}</div>`)+
     (isCreator()?'':`<div class="hcta card"><div><b>🛠 Make things for Lumen</b><p class="muted">Become a Lumen creator to get your games and websites onto the Hub, the Games tab and Web → Featured.</p></div><button class="btn-acc" data-goto="creator">${myApp?.status==='pending'?'Application sent ✓':'Apply'}</button></div>`);
   bindOpen(box);bindGo(box);fillCreators(box)}
-function bindGo(root){root.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>L.go(b.dataset.goto))}
+function bindGo(root){root.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>L.go(b.dataset.goto));L.daily?.paint();
+  root.querySelectorAll('[data-daily-jump]').forEach(b=>b.onclick=()=>$('#hubDaily')?.scrollIntoView({behavior:'smooth',block:'center'}))}
 
 /* ---------- Games tab: creator games + hidden built-ins ---------- */
 L.hub={gamesTab,play,openGame,mentionsIn,linkMentions,builtinHidden:key=>(hubCfg.hiddenBuiltins||[]).includes(key),

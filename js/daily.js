@@ -16,7 +16,9 @@ const did=g=>`${me().uid}_${DAY()}_${g}`;
 
 async function loadDone(){doneToday={};if(!me())return render();const {F,D}=C();
   await Promise.all(GAMES.map(g=>F.getDoc(D('dailies',did(g.k))).then(s=>{if(s.exists())doneToday[g.k]=s.data().done?'done':'started'}).catch(()=>{})));render()}
-function render(){const box=$('#dailyBox');if(!box)return;const left=GAMES.filter(g=>doneToday[g.k]!=='done').length;
+// drawn in two places: the top of the Hub and the top of Games
+function render(){document.querySelectorAll('#dailyBox,#hubDaily').forEach(paint)}
+function paint(box){const left=GAMES.filter(g=>doneToday[g.k]!=='done').length;
   const reward=L.plan?.bonus?L.plan.bonus(REWARD):REWARD;
   box.innerHTML=`<div class="daily-h"><h2 class="hsec" style="margin:0">📅 Daily challenges</h2><span class="muted">${left?`${left} left today · ✦ ${reward} each`:'All done for today. New puzzles at midnight (UTC).'}</span></div>
     <div class="daily-row">${GAMES.map(g=>{const st=doneToday[g.k];return`<button class="daily-card${st==='done'?' done':''}" data-daily="${g.k}" style="--g:linear-gradient(135deg,${g.col})"><span class="dc-i">${g.icon}</span><b>${g.name}</b><small>${esc(g.desc)}</small><em>${st==='done'?'✓ Done today':`✦ ${reward}`}</em></button>`}).join('')}</div>`;
@@ -79,7 +81,7 @@ function slide(){const r=rng('slide'+DAY());let t=[1,2,3,4,5,6,7,8,0],moves=0;
   const mv=i=>{const z=t.indexOf(0);if(!nbrs(z).includes(i))return;[t[z],t[i]]=[t[i],t[z]];moves++;draw();if(t.join()==='1,2,3,4,5,6,7,8,0')win()};
   draw()}
 
-L.daily={render:loadDone,open};
-const prevV=L.onView;L.onView=v=>{prevV?.(v);if(v==='games')loadDone()};
+L.daily={render:loadDone,paint:render,open};
+const prevV=L.onView;L.onView=v=>{prevV?.(v);if(v==='games'||v==='hub')loadDone()};
 const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);if(p&&$('#v-games')?.classList.contains('on')&&!Object.keys(doneToday).length)loadDone()};
 loadDone();
