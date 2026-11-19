@@ -135,7 +135,7 @@ function pcard(it,{mini=false,best=null}={}){const k=esc(it.key),[ic,lb]=label(i
   return`<div class="mk-card" data-pk="${k}"><div class="mk-imgwrap"><button class="mk-img" data-open="${k}" style="${pics(it)[0].style}" aria-label="${esc(it.title)}">${H().coverOf(it)?'':`<span>${esc(it.title)}</span>`}</button>${pics(it).length>1?`<em class="mk-npics">🖼 ${pics(it).length}</em>`:''}
       ${bs?'<em class="mk-tag best">Best seller</em>':pinned(it)?'<em class="mk-tag pick">Lumen’s choice</em>':Date.now()-at(it)<7*864e5&&!it.builtin?'<em class="mk-tag new">New</em>':''}
       <button class="mk-heart${wish.includes(it.key)?' on':''}" data-wish="${k}" title="${wish.includes(it.key)?'Remove from wishlist':'Add to wishlist'}">${wish.includes(it.key)?'♥':'♡'}</button></div>
-    <div class="mk-body"><a href="#" class="mk-title" data-open="${k}">${esc(it.title)}</a><span class="mk-by">${ic} ${lb} · ${it.uid?byHTML(it):'Lumen original'}</span>
+    <div class="mk-body"><a href="#" class="mk-title" data-open="${k}">${esc(it.title)}</a><span class="mk-by">${ic} ${lb} · ${it.uid?byHTML(it):'Lumen'}</span>
       ${stars(it)}${it.sales>=5?`<span class="mk-sold">${fmtN(it.sales)}+ ${it.price?'bought':'got it'}</span>`:''}
       <div class="mk-pr">${own?'<span class="mk-own">✓ In your library</span>':priceHTML(it)}</div>
       ${own?'':'<span class="mk-green">Instant access</span>'}
@@ -214,7 +214,7 @@ function productPage(it){const [ic,lb]=label(it),cc=catOf(it),own=it.uid&&it.uid
       <div class="mk-cover" id="mkCover" style="${ps[galI].style}">${H().coverOf(it)?'':`<span>${esc(it.title)}</span>`}${ps.length>1?`<button class="mk-gnav l" data-galnav="-1" aria-label="Previous picture">‹</button><button class="mk-gnav r" data-galnav="1" aria-label="Next picture">›</button><em class="mk-gcount">${galI+1} / ${ps.length}</em>`:''}</div></div>
       <div class="mk-gal-acts"><button class="mk-btn" data-wish="${esc(it.key)}">${wish.includes(it.key)?'♥ On your wishlist':'♡ Add to wishlist'}</button><button class="mk-btn" data-sharec="${esc(it.key)}">📣 Share</button></div></div>
     <div class="mk-info"><h1>${esc(it.title)}</h1>
-      <div class="mk-byline">${it.uid?`Visit the <a href="#" data-pub="${esc(it.brand||'')}" data-uid="${esc(it.uid)}">${byHTML(it)} store</a>`:'By <b>Lumen</b> · Lumen original'}</div>
+      <div class="mk-byline">${it.uid?`Visit the <a href="#" data-pub="${esc(it.brand||'')}" data-uid="${esc(it.uid)}">${byHTML(it)} store</a>`:'By <b>Lumen</b>'}</div>
       <div class="mk-rateline">${tot?`<b>${rating(rIt).toFixed(1)}</b> ${stars(rIt,{count:false})} <a href="#mkReviews" data-jump>${fmtN(tot)} rating${tot===1?'':'s'}</a>`:'<span class="mk-norate">No ratings yet</span>'}${best.has(it.key)?' <em class="mk-tag best inl">#1 Best seller in '+cc[2]+'</em>':''}</div>
       ${it.sales?`<div class="mk-muted">${fmtN(it.sales)}${it.sales>=10?'+':''} ${it.price?'bought':'people got it'}</div>`:''}
       <hr><div class="mk-pricebig">${has(it)?'<span class="mk-own">✓ In your library</span>':priceHTML(it,true)}</div>${c<it.price&&!has(it)?'<div class="mk-green">💎 Lite members save 10%</div>':''}

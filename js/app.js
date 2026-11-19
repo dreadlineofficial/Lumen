@@ -82,7 +82,6 @@ $('#vCloak').onclick=()=>{if(!view)return;if(view.opts?.html)return toast('Games
 
 /* games */
 const BUILTIN=[{name:'Nightbound',url:()=>cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'},
-  {name:'OFFAL',url:()=>'games/offal.html',desc:'Horror · demo',art:"url('games/offal-poster.webp') center/cover",fg:'transparent',poster:true},
   {name:'Fixing Good',url:()=>'games/fixing-good.html',desc:'Desert crime action · story mode',art:"url('games/fixing-good-poster.webp') center/cover",fg:'transparent',poster:true},
   {name:"Lumi's Leap",url:()=>'games/lumis-leap.html',desc:'2D platformer · six worlds',art:"url('games/lumis-leap-poster.webp') center/cover",fg:'transparent',poster:true}];
 // uploaded game files live in IndexedDB (too big for localStorage)

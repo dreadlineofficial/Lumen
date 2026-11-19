@@ -999,3 +999,5 @@ body.lab-bubbles .dmsg.me-msg .dtools{right:auto;left:10px}
 .scard em{font-style:normal;font-size:13px;color:var(--mute);white-space:nowrap}
 .cmt.best .bub{background:rgba(47,214,122,.08);border-radius:12px;padding:6px 10px;box-shadow:inset 0 0 0 1px rgba(47,214,122,.35)}
 @media(max-width:760px){.sc-art{width:80px}.scard em{display:none}}
+
+.gh-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 4px}.gh-store{color:var(--text);opacity:.8;font-size:14px}.gh-store:hover{opacity:1}

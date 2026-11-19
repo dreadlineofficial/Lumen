@@ -6,7 +6,6 @@
 const L=window.Lumen,{esc,toast,safeImg}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const BUILTINS=[{key:'b_nightbound',title:'Nightbound',type:'game',desc:'1v4 asymmetric horror · online multiplayer',url:()=>L.cfg.nbUrl,art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)'},
-  {key:'b_offal',title:'OFFAL',type:'game',desc:'Horror · demo',url:()=>'games/offal.html',image:'games/offal-poster.webp'},
   {key:'b_fixinggood',title:'Fixing Good',type:'game',price:800,desc:'Desert crime action · story mode',url:()=>'games/fixing-good.html',image:'games/fixing-good-poster.webp'},
   {key:'b_lumisleap',title:"Lumi's Leap",type:'game',desc:'2D platformer · six worlds',url:()=>'games/lumis-leap.html',image:'games/lumis-leap-poster.webp'}];
 let me=null,hubCfg={},live=[],plays={},trend={},myItems=[],allItems=[],myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
@@ -34,7 +33,7 @@ function start(){const {F,D,db}=C();const col=(...p)=>F.collection(db,...p);
   unsubs.push(F.onSnapshot(D('server','hub'),s=>{hubCfg=s.data()||{};refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('status','==','approved')),s=>{live=s.docs.map(d=>({id:d.id,...d.data()}));refresh()},()=>{}));
   unsubs.push(F.onSnapshot(col('plays'),s=>{const t=DAY();plays={};trend={};s.docs.forEach(d=>{const x=d.data();plays[d.id]=+x.count||0;let w=0;for(let i=0;i<7;i++)w+=+x['d'+(t-i)]||0;trend[d.id]=w});refresh()},()=>{}));
-  unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display=isCreator()?'':'none';refresh()},()=>{}));
+  unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display='';refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('uid','==',me)),s=>{myProjects=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0));renderCreator()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('shopItems'),F.where('uid','==',me)),s=>{myItems=s.docs.map(d=>({id:d.id,...d.data()}));myItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));renderCreator()},()=>{}));
   adminOn=false;startAdminHub()}
@@ -44,10 +43,10 @@ function startAdminHub(){if(adminOn||!me||!isAdmin())return;adminOn=true;const {
   unsubs.push(F.onSnapshot(col('shopItems'),s=>{allItems=s.docs.map(d=>({id:d.id,...d.data()}));allItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));L.onAdminData?.()},()=>{}));
   unsubs.push(F.onSnapshot(col('creatorApps'),s=>{allApps=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
   unsubs.push(F.onSnapshot(col('projects'),s=>{allProjects=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
-  $('#navCreator').style.display=isCreator()?'':'none';refresh()}
+  $('#navCreator').style.display='';refresh()}
 L.onAdminStart=(prev=>()=>{prev?.();startAdminHub()})(L.onAdminStart);
 const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
-  if($('#navCreator'))$('#navCreator').style.display='none';if(me&&C())start();refresh()};
+  if($('#navCreator'))$('#navCreator').style.display=me?'':'none';if(me&&C())start();refresh()};
 L.onFeed=()=>{if($('#v-hub')?.classList.contains('on'))renderHub()};
 function refresh(){renderHub();renderCreator();renderGameHub();L.market?.refresh?.();if(gpKey&&$('#v-gamepage')?.classList.contains('on'))renderGamePage();L.browser?.refresh?.()}
 
@@ -457,17 +456,16 @@ function renderGameHub(){const box=$('#ghBox');if(!box)return;
   games.forEach(g=>{if(g.uid&&!creatorNames[g.uid])C()?.getUser(g.uid).then(u=>{creatorNames[g.uid]=u.name||'';if(ghQ)renderGameHub()})});
   const q=ghQ.toLowerCase();const match=g=>!q||[g.title,g.desc,g.cname].some(x=>(x||'').toLowerCase().includes(q));
   const own=ownedKeys(),added=g=>own.indexOf(g.key);
-  const lib=games.filter(inLib),shop=games.filter(g=>!inLib(g));
+  const lib=games.filter(inLib);
   const sorts={all:(a,b)=>added(b)-added(a)||(plays[b.key]||0)-(plays[a.key]||0),top:(a,b)=>(plays[b.key]||0)-(plays[a.key]||0),new:(a,b)=>added(b)-added(a),az:(a,b)=>a.title.localeCompare(b.title)};
   const filt={creators:g=>g.key.startsWith('p_'),lumen:g=>g.key.startsWith('b_')}[ghFilter]||(()=>true);
   const list=lib.filter(match).filter(filt).sort(sorts[ghFilter]||sorts.all);
   $$('#ghChips button').forEach(b=>b.classList.toggle('on',b.dataset.f===ghFilter));
-  const disc=shop.filter(match).sort((a,b)=>(trend[b.key]||0)-(trend[a.key]||0)||(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0)).slice(0,10);
-  box.innerHTML=`<h2 class="hsec">${q?`In your library: “${esc(ghQ)}”`:{all:'🎮 Your library',top:'🔥 Most played',new:'✨ Recently added',az:'🔤 A to Z',creators:'🛠 From Lumen creators',lumen:'⭐ Lumen originals'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
+  box.innerHTML=`<div class="gh-bar"><a href="#" class="gh-store" data-store>🛍 Find more games in the Store</a><button class="btn-acc" data-gtab="create">🛠 Creator Dashboard</button></div>`+`<h2 class="hsec">${q?`In your library: “${esc(ghQ)}”`:{all:'🎮 Your library',top:'🔥 Most played',new:'✨ Recently added',az:'🔤 A to Z',creators:'🛠 From Lumen creators',lumen:'⭐ By Lumen'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
     (list.length?`<div class="hgrid">${list.map(g=>card(g)).join('')}</div>`:`<p class="muted">${q?'No games in your library match that.':'No games here yet.'} Find more in the <a href="#" data-store>Store</a>.</p>`)+
-    (disc.length?`<h2 class="hsec">🛍 ${q?'In the Store':'New in the Store'} <button class="hsec-more" data-store>Browse the Store →</button></h2><div class="hrow">${disc.map(g=>card(g)).join('')}</div>`:'')+
     (!me?'<div class="banner" style="margin-top:16px">Sign in (bottom-left) to buy games and keep them in your library.</div>':'');
-  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-store]').forEach(b=>b.onclick=e=>{e.preventDefault();L.market?L.market.show('game'):L.go('shop')})}
+  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-store]').forEach(b=>b.onclick=e=>{e.preventDefault();L.market?L.market.show('game'):L.go('shop')});
+  box.querySelectorAll('[data-gtab]').forEach(b=>b.onclick=()=>gamesTab(b.dataset.gtab))}
 $('#ghQ')?.addEventListener('input',e=>{ghQ=e.target.value.trim();renderGameHub()});
 $('#ghChips')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;ghFilter=b.dataset.f;renderGameHub()});
 
@@ -486,7 +484,7 @@ async function renderGamePage(){const box=$('#gpBox');const it=gpKey&&findItem(g
   const draft=$('#gpText')?.value;box.dataset.key=gpKey;
   box.innerHTML=`<button class="gp-back" data-goto="games">‹ Game hub</button>
     <div class="gp-hero card"><div class="gp-art" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}</div>
-      <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'Lumen original'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}
+      <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'by Lumen'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}
         <div class="gp-stats"><span>▶ <b>${fmtN(plays[gpKey]||0)}</b> plays</span>${it.uid?`<span>⏱ <b>${fmtN(it.minutes||0)}</b> min played</span><span>💬 <b>${fmtN(it.mentions||0)}</b> mentions</span>`:''}<span>👍 <b>${reviews.length?pct+'%':'–'}</b> of ${fmtN(reviews.length)} review${reviews.length===1?'':'s'}</span>${trend[gpKey]?`<span>📈 <b>${fmtN(trend[gpKey])}</b> this week</span>`:''}</div>
         <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px">${unlocked(it)?'<button class="btn-acc gp-play" id="gpPlay">▶ Play now</button>':`<button class="btn-acc gp-play" id="gpUnlock">${it.price>0?`🛒 Buy for ✦ ${fmtN(L.plan?.price(it.price)??it.price)}${L.plan?.lite()?' <s style="opacity:.6">'+fmtN(it.price)+'</s>':''}`:'＋ Get it free'}</button>`}${L.market?'<button id="gpStore">🛍 Store page</button>':''}<button id="gpMention" title="Write a post about it">✍️ Post about it</button></div></div></div>
     <div class="gp-grid"><div class="card"><h2>Reviews</h2>
