@@ -10,15 +10,15 @@
 <style>html.booting,html.booting body{background:#f6f8fc!important}html.booting body>*:not(#study){visibility:hidden!important}html.booting #study{display:block}</style>
 <script>
 /* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
-window.LUMEN_VERSION='2026-11-18p';
+window.LUMEN_VERSION='2026-11-19a';
 (function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
 </script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Pacifico&family=Silkscreen&family=UnifrakturMaguntia&family=Michroma&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261118p">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261118p">
+<link rel="stylesheet" href="css/app.css?v=20261119a">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261119a">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -164,6 +164,7 @@ window.LUMEN_VERSION='2026-11-18p';
             <label>Badges (up to 5 emoji, shown next to your name)</label><input id="pBadges" maxlength="40" placeholder="🔥🎮">
             <label>Picture ring</label><div class="row"><select id="pRing" style="flex:1"><option value="none">None</option><option value="solid">Profile colour</option><option value="gradient">Name gradient</option><option value="rainbow">Rainbow</option></select></div>
             <label>Card style</label><select id="pCardStyle"><option value="glass">Glass</option><option value="tint">Tinted with profile colour</option><option value="gradient">Name gradient</option><option value="dark">Midnight</option><optgroup label="💎 Lumen Lite"><option value="aurora" data-lite>Aurora</option><option value="holo" data-lite>Holographic</option><option value="midnight" data-lite>Deep space</option></optgroup></select>
+            <div id="pStkBox" style="display:none"><label>🏷️ Stickers on your profile bar <span class="tag t-beta" style="position:static;font-size:9px;padding:2px 6px;border-radius:6px;background:#7c4dff;color:#fff;font-weight:800">BETA</span></label><div id="pStkArea"></div></div>
             <div id="pBuddyBox" style="display:none"><label>🧸 Buddy spot on your profile bar</label>
               <label class="chk" style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0"><input type="checkbox" id="pBuddyWander"> Let them wander around</label>
               <input type="range" id="pBuddyX" min="0" max="100" step="1" value="50" style="width:100%"><div id="pBuddyBar" class="prof-bar-prev"></div>
@@ -254,6 +255,7 @@ window.LUMEN_VERSION='2026-11-18p';
           <li><b>Upgrade</b> (₹999/3 months): 15 MB uploads, 5 MB chat pictures and the Prism effects. Works with Lite or on its own.</li>
           <li><b>Pro</b> (₹15,999/yr): everything in Lite, the PRO tag and electric Pro effects, and the control panel. <b>Ultimate</b> (₹25,000 once): everything in Pro and Lite for good, the ULTIMATE tag and Nebula and Crown effects; the control panel renews for ₹5,000 a year.</li>
           <li>The Shop is laid out like a store: departments on the left, aisles inside each one, and search, sort and filters (Not owned, Owned, I can afford) at the top. Tap any item to open its own page and see it on <b>your</b> profile before you buy. <b>Bundles</b> give you a whole look for less.</li>
+          <li><b>Stickers (beta)</b> are little pictures made by Lumen creators. With Lite, buy one in <b>Shop → Stickers</b>, then drag it anywhere on your profile bar in <b>Profile → Stickers</b> (up to 3, each with its own size and tilt). Creators with Lite can make stickers on their Creator page.</li>
           <li><b>3D buddies (beta)</b> need Lite, Pro or Ultimate, and only show while your plan is active. They appear on your profile card and your profile bar (sidebar and friends list). Pick where yours stands in <b>Profile → Buddy spot</b>, or let them wander.</li></ul></details>
         <details><summary>✦ Glow, the Shop and your profile</summary><ul>
           <li>Claim <b>500 Glow</b> the first time and <b>150 Glow</b> every day in the <b>Shop</b>.</li>
@@ -425,17 +427,17 @@ window.LUMEN_VERSION='2026-11-18p';
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261118p"></script>
-<script src="js/study.js?v=20261118p"></script>
-<script src="js/app.js?v=20261118p"></script>
-<script src="js/cosmetics.js?v=20261118p"></script>
-<script src="js/rich.js?v=20261118p"></script>
-<script src="js/browser.js?v=20261118p"></script>
-<script src="js/bwsize.js?v=20261118p"></script>
-<script type="module" src="js/cloud.js?v=20261118p"></script>
-<script type="module" src="js/shop.js?v=20261118p"></script>
-<script type="module" src="js/hub.js?v=20261118p"></script>
-<script type="module" src="js/notify.js?v=20261118p"></script>
-<script type="module" src="js/lobbies.js?v=20261118p"></script>
+<script src="js/config.js?v=20261119a"></script>
+<script src="js/study.js?v=20261119a"></script>
+<script src="js/app.js?v=20261119a"></script>
+<script src="js/cosmetics.js?v=20261119a"></script>
+<script src="js/rich.js?v=20261119a"></script>
+<script src="js/browser.js?v=20261119a"></script>
+<script src="js/bwsize.js?v=20261119a"></script>
+<script type="module" src="js/cloud.js?v=20261119a"></script>
+<script type="module" src="js/shop.js?v=20261119a"></script>
+<script type="module" src="js/hub.js?v=20261119a"></script>
+<script type="module" src="js/notify.js?v=20261119a"></script>
+<script type="module" src="js/lobbies.js?v=20261119a"></script>
 </body>
 </html>

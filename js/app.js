@@ -76,7 +76,9 @@ $('#vCloak').onclick=()=>{if(view)cloak(view.url,view.title)};
 
 /* games */
 const BUILTIN=[{name:'Nightbound',url:()=>cfg.nbUrl,desc:'1v4 asymmetric horror · online multiplayer',art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)',fg:'#ff4d6d'},
-  {name:'OFFAL',url:()=>'games/offal.html',desc:'Horror · demo',art:"url('games/offal-poster.webp') center/cover",fg:'transparent',poster:true}];
+  {name:'OFFAL',url:()=>'games/offal.html',desc:'Horror · demo',art:"url('games/offal-poster.webp') center/cover",fg:'transparent',poster:true},
+  {name:'Fixing Good',url:()=>'games/fixing-good.html',desc:'Desert crime action · story mode',art:"url('games/fixing-good-poster.webp') center/cover",fg:'transparent',poster:true},
+  {name:"Lumi's Leap",url:()=>'games/lumis-leap.html',desc:'2D platformer · six worlds',art:"url('games/lumis-leap-poster.webp') center/cover",fg:'transparent',poster:true}];
 // uploaded game files live in IndexedDB (too big for localStorage)
 const gdb=()=>new Promise((ok,no)=>{const r=indexedDB.open('lumen-games',1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
 async function gfile(op,id,val){const db=await gdb();return new Promise((ok,no)=>{const tx=db.transaction('files',op==='get'?'readonly':'readwrite'),st=tx.objectStore('files');
@@ -86,7 +88,7 @@ async function playCustom(g){if(g.file){try{const f=await gfile('get',g.id);if(!
     blobUrl=URL.createObjectURL(new Blob([f],{type:'text/html'}));openView(blobUrl,g.name,{kind:'game',label:g.name})}catch{toast('Could not open the game file')}}
   else openView(fixUrl(g.url),g.name,{kind:'game',label:g.name})}
 function renderGames(){
-  const bkey=g=>'b_'+g.name.toLowerCase();
+  const bkey=g=>'b_'+g.name.toLowerCase().replace(/[^a-z0-9]/g,'');
   const b=[].map((g,i)=>`<div class="card game-card" data-b="${i}"><div class="game-art" style="background:${g.art};color:${g.fg}">${g.poster?'':esc(g.name)}</div><div class="meta"><b>${esc(g.name)}</b><span>${esc(g.desc)}</span></div></div>`);
   const c=(cfg.games||[]).map(g=>{const col=/^#[0-9a-f]{6}$/i.test(g.color)?g.color:'#7c5cff';return`<div class="card game-card" data-c="${esc(g.id)}"><button class="g-del" data-del="${esc(g.id)}" title="Remove">✕</button><div class="game-art" style="background:radial-gradient(circle at 30% 20%,${col},#0b0b12 75%);color:#fff"><span style="font-size:52px;font-style:normal">${esc(g.emoji||'🎮')}</span></div><div class="meta"><b>${esc(g.name)}</b><span>${g.file?'Your file · this device':'Custom link'}</span></div></div>`});
   $('#gameGrid').innerHTML=b.join('')+c.join('')+`<div class="card game-card add-game" id="addGame"><div class="game-art"><span style="font-size:46px;font-style:normal">＋</span></div><div class="meta"><b>Add a game</b><span>A link or an HTML file</span></div></div>`;
@@ -278,11 +280,11 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-18o',items:[
-  ['🛍','A proper store','The Shop now has departments, aisles, search, sorting and filters, plus Lumen Lite, bundles and a full preview of every item on your own profile.','shop'],
-  ['🧸','Put your buddy anywhere','Lite members choose where their buddy stands on their profile bar (Profile → Buddy spot). Buddies only show for Lite, Pro and Ultimate members.','profile'],
-  ['✨','Smoother profiles','Nameplates, GIFs and buddies no longer flicker or restart when lists update.'],
-  ['💎','Lumen Lite','A gold LITE tag, a Liquid Gold name, 10 MB animated pictures, pictures in chat, 10% off the shop and +5% Glow.','shop'],
+const NEWS={id:'2026-11-19a',items:[
+  ['🎮','Two new games','Lumi\'s Leap, a brand-new platformer with six worlds, and Fixing Good, a desert crime story. Both are in the Games tab.','games'],
+  ['🏷️','Stickers (beta)','Place little pictures anywhere on your profile bar. Stickers are made by Lumen creators and need Lumen Lite.','shop'],
+  ['🛍','A proper store','Departments, aisles, search, sorting and filters in the Shop.','shop'],
+  ['🧸','Put your buddy anywhere','Lite members choose where their buddy stands on their profile bar.','profile'],
 ]};
 function showNews(){if(cfg.seenNews===NEWS.id||studyOn()||coverOn)return;
   $('#newsList').innerHTML=NEWS.items.map(([i,t,d,goTo])=>`<div class="news-item"><span class="news-ic">${esc(i)}</span><div><b>${esc(t)}</b><p>${esc(d)}</p>${goTo?`<button class="news-go" data-go="${goTo}">${goTo==='timetable'?'Set it up →':'Open →'}</button>`:''}</div></div>`).join('');

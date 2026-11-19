@@ -6,7 +6,9 @@
 const L=window.Lumen,{esc,toast,safeImg}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const BUILTINS=[{key:'b_nightbound',title:'Nightbound',type:'game',desc:'1v4 asymmetric horror · online multiplayer',url:()=>L.cfg.nbUrl,art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)'},
-  {key:'b_offal',title:'OFFAL',type:'game',desc:'Horror · demo',url:()=>'games/offal.html',image:'games/offal-poster.webp'}];
+  {key:'b_offal',title:'OFFAL',type:'game',desc:'Horror · demo',url:()=>'games/offal.html',image:'games/offal-poster.webp'},
+  {key:'b_fixinggood',title:'Fixing Good',type:'game',desc:'Desert crime action · story mode',url:()=>'games/fixing-good.html',image:'games/fixing-good-poster.webp'},
+  {key:'b_lumisleap',title:"Lumi's Leap",type:'game',desc:'2D platformer · six worlds',url:()=>'games/lumis-leap.html',image:'games/lumis-leap-poster.webp'}];
 let me=null,hubCfg={},live=[],plays={},trend={},myItems=[],allItems=[],myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
 const C=()=>L.cloud;
 const stop=()=>{unsubs.forEach(u=>u());unsubs=[]};
@@ -174,20 +176,22 @@ function bindCover(){const prev=$('#covPrev');if(!prev)return;const img=newImage
 /* ---------- shop creations ---------- */
 const CTYPES={fx:['✨','Profile effect','Plays over the big profile card, like the rain and snow effects. A wide, looping transparent GIF works best.',['fill','tile','place']],
   deco:['💫','Avatar decoration','Sits around the profile picture, like a frame, halo or crown. A square image with a see-through middle works best.',['place']],
-  plate:['🎴','Nameplate','Fills the background behind the name in member lists. A wide image works best.',['fill','place']]};
+  plate:['🎴','Nameplate','Fills the background behind the name in member lists. A wide image works best.',['fill','place']],
+  sticker:['🏷️','Sticker','A small picture people place anywhere on their profile bar (beta). Use a PNG or GIF with a transparent background, cropped close to the drawing. Making and buying stickers needs Lumen Lite.',['place']]};
 const MODES={fill:['🖼 Fill','Covers the whole area; zoom and move it'],tile:['🔁 Repeat','Repeats as a pattern; set the tile size'],place:['📍 Place','Put it exactly where you want, at any size']};
 let shopEdit=null,shopImg=null,shopSrc='gif',shopType='fx',pl={mode:'fill',x:50,y:50,scale:100,op:100};const PREV='c_preview00000000';
 const plDefault=(type,mode)=>({mode,x:50,y:50,scale:mode==='tile'?33:mode==='place'?(type==='deco'?100:40):100,op:100});
 function cosPreview(type,id){const c=C(),u=c.profile()||{name:'You'};
   if(type==='fx')return c.card({...u,fx:id,bio:''},{compact:true});
   if(type==='deco')return`<div style="display:grid;place-items:center;padding:24px">${c.pic({...u,deco:id},96)}</div>`;
+  if(type==='sticker')return`<div class="prev-plate${L.cos.plateCls(u.plate)}" style="position:relative">${L.cos.stickerLayer([{id,x:72,y:50,s:110,r:-8}])}${c.pic(u,36)}<div><div style="font-weight:600">${c.nameHTML(u,{badges:false})}</div><div style="font-size:12px;opacity:.8">Online</div></div></div>`;
   return`<div class="prev-plate${L.cos.plateCls(id)}">${c.pic(u,36)}<div><div style="font-weight:600">${c.nameHTML(u,{badges:false})}</div><div style="font-size:12px;opacity:.8">Online</div></div></div>`}
 function shopSection(){const f=shopEdit||{};const modes=CTYPES[shopType][3];
   const st={approved:['● In the Shop','live'],pending:['⏳ In review','pend'],rejected:['✕ Not approved','rej']};
   const sizeLbl=pl.mode==='tile'?'Tile size':pl.mode==='fill'?'Zoom':'Size';
-  return`<div class="card cr-shop"><h2>🎨 Shop creations</h2><p class="muted" style="margin-top:0">Make your own profile effects, avatar decorations and nameplates from a <b>GIF</b> or a <b>photo</b>, then place it exactly where you want. Once the admin approves it, it's sold in <b>Shop → 🛠 Creator</b> and you keep <b>90% of every sale</b>.</p>
+  return`<div class="card cr-shop"><h2>🎨 Shop creations</h2><p class="muted" style="margin-top:0">Make your own profile effects, avatar decorations, nameplates and (with Lumen Lite) stickers from a <b>GIF</b> or a <b>photo</b>, then place it exactly where you want. Once the admin approves it, it's sold in <b>Shop → 🛠 Creator</b> and you keep <b>90% of every sale</b>.</p>
     <div class="cr-grid"><div><h3 style="margin:6px 0 0">${shopEdit?'Edit item':'New item'}</h3>${shopEdit&&!isAdmin()?'<p class="muted" style="font-size:12px;margin:4px 0 0">Name, description, price and placement changes go live right away. A new picture or type goes back for review.</p>':''}
-      <label>Type</label><div class="seg" id="csType">${Object.entries(CTYPES).map(([k,[i,l]])=>`<button type="button" data-ct="${k}" class="${shopType===k?'on':''}">${i} ${l}</button>`).join('')}</div>
+      <label>Type</label><div class="seg" id="csType">${Object.entries(CTYPES).map(([k,[i,l]])=>`<button type="button" data-ct="${k}" class="${shopType===k?'on':''}">${i} ${l}${k==='sticker'?(L.plan?.lite()?' <em class="pill pend" style="font-size:9px">BETA</em>':' 🔒'):''}</button>`).join('')}</div>
       <p class="muted" style="font-size:12.5px;margin:8px 0 0">${CTYPES[shopType][2]}</p>
       <label>Picture</label><div class="seg" id="csSrc"><button type="button" data-src="gif" class="${shopSrc==='gif'?'on':''}">🎞 Animated GIF</button><button type="button" data-src="photo" class="${shopSrc==='photo'?'on':''}">🖼 Photo</button></div>
       <p class="muted" style="font-size:12px;margin:6px 0 0">${shopSrc==='gif'?`A GIF with a transparent background, up to ${L.plan?.uploadMB()||4} MB.`:`A PNG, JPG or WebP up to ${Math.max(3,L.plan?.uploadMB()||3)} MB. PNGs keep their transparent background${L.plan?.lite()?'':'; Lumen shrinks big photos to fit'}.`}${L.plan?.lite()?' <span class="ptag ptag-lite">LITE</span>':''}</p>
@@ -197,17 +201,17 @@ function shopSection(){const f=shopEdit||{};const modes=CTYPES[shopType][3];
       <label>Price in ✦ Glow (50 to 5,000)</label><input id="csPrice" type="number" min="50" max="5000" step="10" value="${f.price||300}">
       <div class="row" style="margin-top:16px"><button class="btn-acc" id="csSave" style="flex:1">${shopEdit?'Save and resubmit':'Submit for review'}</button>${shopEdit?'<button id="csCancel">Cancel</button>':''}</div></div>
     <div><label>Preview <span class="muted" style="font-size:12px">${shopImg?'· drag it to move the picture':''}</span></label><div class="cs-prev" id="csPrev">${shopImg?cosPreview(shopType,PREV):'<p class="muted" style="padding:30px;text-align:center">Choose a picture to see it here.</p>'}</div>
-      <div class="pl-ed2" ${shopImg?'':'hidden'}>${modes.length>1?`<label>How it appears</label><div class="seg" id="csMode">${modes.map(m=>`<button type="button" data-cm="${m}" class="${pl.mode===m?'on':''}" title="${MODES[m][1]}">${MODES[m][0]}</button>`).join('')}</div><p class="muted" style="font-size:12px;margin:6px 0 0">${MODES[pl.mode][1]}.</p>`:''}
+      <div class="pl-ed2" ${shopImg&&shopType!=='sticker'?'':'hidden'}>${modes.length>1?`<label>How it appears</label><div class="seg" id="csMode">${modes.map(m=>`<button type="button" data-cm="${m}" class="${pl.mode===m?'on':''}" title="${MODES[m][1]}">${MODES[m][0]}</button>`).join('')}</div><p class="muted" style="font-size:12px;margin:6px 0 0">${MODES[pl.mode][1]}.</p>`:''}
         <div class="pl-grid"><div><label>${sizeLbl} <span id="csSv">${pl.scale}%</span></label><input type="range" id="csS" min="${pl.mode==='fill'?100:10}" max="${pl.mode==='fill'?300:pl.mode==='tile'?100:250}" value="${pl.scale}"></div>
           <div><label>Opacity <span id="csOv">${pl.op}%</span></label><input type="range" id="csO" min="10" max="100" value="${pl.op}"></div>
           <div><label>Left ↔ right</label><input type="range" id="csX" min="0" max="100" value="${pl.x}"></div>
           <div><label>Up ↕ down</label><input type="range" id="csY" min="0" max="100" value="${pl.y}"></div></div>
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button type="button" id="csCenter">⊕ Center</button>${['↖ Top left:0:0','↗ Top right:100:0','↙ Bottom left:0:100','↘ Bottom right:100:100'].map(t=>{const [l,x,y]=t.split(':');return`<button type="button" data-snap="${x},${y}">${l}</button>`}).join('')}</div></div></div></div>
     <h3>My shop items</h3><div class="list">${myItems.map(i=>{const s=st[i.status]||['?',''];return`<div class="cr-proj"><div class="cs-mini">${cosPreview(i.type,i.id)}</div><div class="info"><b>${esc(i.name)}</b><span><em class="pill ${s[1]}">${s[0]}</em> ${CTYPES[i.type]?.[1]||''} · ✦ ${fmtN(i.price)} · ${fmtN(i.sales||0)} sold · earned ✦ ${fmtN(i.earned||0)}</span></div>
-      ${i.status==='approved'?`<button class="ib" data-cseq="${i.id}" title="${C().profile()?.[i.type]===i.id?'Unequip':'Equip (free for you)'}">${C().profile()?.[i.type]===i.id?'✅':'👕'}</button>`:''}<button class="ib" data-csedit="${i.id}" title="Edit">✏️</button><button class="ib" data-csdel="${i.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">None yet.</p>'}</div></div>`}
+      ${i.status==='approved'?(i.type==='sticker'?`<button class="ib" data-cseq="${i.id}" title="Place on my profile bar (free for you)">📌</button>`:`<button class="ib" data-cseq="${i.id}" title="${C().profile()?.[i.type]===i.id?'Unequip':'Equip (free for you)'}">${C().profile()?.[i.type]===i.id?'✅':'👕'}</button>`):''}<button class="ib" data-csedit="${i.id}" title="Edit">✏️</button><button class="ib" data-csdel="${i.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">None yet.</p>'}</div></div>`}
 function applyPl(){if(!shopImg)return;L.cos.previewRule(PREV,shopImg,pl);const q=id=>$(id);if(q('#csS')){q('#csS').value=pl.scale;q('#csSv').textContent=Math.round(pl.scale)+'%';q('#csO').value=pl.op;q('#csOv').textContent=pl.op+'%';q('#csX').value=pl.x;q('#csY').value=pl.y}}
 function bindShop(box){
-  box.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{shopType=b.dataset.ct;const ms=CTYPES[shopType][3];if(!ms.includes(pl.mode))pl=plDefault(shopType,ms[0]);keepForm();renderCreator()});
+  box.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{if(b.dataset.ct==='sticker'&&!L.plan?.lite()){toast('Making stickers needs Lumen Lite (Shop → Lumen Lite)');return}shopType=b.dataset.ct;const ms=CTYPES[shopType][3];if(!ms.includes(pl.mode))pl=plDefault(shopType,ms[0]);keepForm();renderCreator()});
   box.querySelectorAll('[data-src]').forEach(b=>b.onclick=()=>{if(shopSrc===b.dataset.src)return;shopSrc=b.dataset.src;keepForm();renderCreator()});
   box.querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>{pl=plDefault(shopType,b.dataset.cm);keepForm();renderCreator()});
   if(shopImg)L.cos.previewRule(PREV,shopImg,pl);
@@ -238,6 +242,7 @@ async function photoFrom(file){const mb=Math.max(3,L.plan?.uploadMB()||3);if(fil
     c.getContext('2d').drawImage(img,0,0,c.width,c.height);let out=c.toDataURL('image/webp',q);if(!out.startsWith('data:image/webp'))out=c.toDataURL(file.type==='image/jpeg'?'image/jpeg':'image/png',q);if(out.length<880000)return out}
   toast('Couldn’t shrink that photo enough');return null}
 async function saveItem(){const {F,D,db}=C();const name=$('#csName').value.trim(),desc=$('#csDesc').value.trim(),price=Math.round((+$('#csPrice').value||0)/10)*10;
+  if(shopType==='sticker'&&!L.plan?.lite())return toast('Making stickers needs Lumen Lite');
   if(name.length<2)return toast('Give it a name');if(!(price>=50&&price<=5000))return toast('The price must be between 50 and 5,000 Glow');if(!shopImg)return toast('Choose a GIF or photo');
   const mode=CTYPES[shopType][3].includes(pl.mode)?pl.mode:CTYPES[shopType][3][0];
   const big=!shopEdit||shopEdit._new||shopType!==shopEdit.type; // a new picture or type needs review (the admin skips it)

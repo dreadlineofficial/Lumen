@@ -119,7 +119,7 @@ function ruleCSS(id,data,o={}){const u=`url("${data}")`,m=['fill','tile','place'
   // decorations and nameplates keep the picture's own shape in every size (rows, chips, cards): a wide picture is sized by width, a tall one by height
   const ar=+o.ar||1,dsz=(m==='fill')===(ar>=1)?`auto ${s}%`:`${s}% auto`; // fill = covers the round frame, place/tile = whole picture visible
   const plate=m==='place'?`${u} ${x}% ${y}%/auto ${s}% no-repeat`:m==='tile'?`${u} ${x}% ${y}%/auto 100% repeat-x`:`${u} ${x}% ${y}%/cover no-repeat`;
-  return`.cfx-${id}{background-image:${u};${fx};opacity:${op}}.cdeco-${id}{background-image:${u};background-size:${dsz};background-position:${x}% ${y}%;background-repeat:no-repeat;opacity:${op}}.cplate-${id}::before{background:${plate}!important;opacity:${(op*.85).toFixed(2)}}`}
+  return`.cstk-${id}{background-image:${u}}.cfx-${id}{background-image:${u};${fx};opacity:${op}}.cdeco-${id}{background-image:${u};background-size:${dsz};background-position:${x}% ${y}%;background-repeat:no-repeat;opacity:${op}}.cplate-${id}::before{background:${plate}!important;opacity:${(op*.85).toFixed(2)}}`}
 const rules=new Map();
 function addRule(id,data,o){o={...(o||{})};custom.set(id,{mode:o.mode});
   if(!o.ar){const im=new Image();im.onload=()=>{if(im.naturalWidth&&im.naturalHeight&&rules.get(id)?.dataset.src===String(data.length))addRule(id,data,{...o,ar:im.naturalWidth/im.naturalHeight})};im.src=data}let el=rules.get(id);if(!el){el=document.createElement('style');el.dataset.cos=id;document.head.appendChild(el);rules.set(id,el)}el.dataset.src=String(data.length);el.textContent=ruleCSS(id,data,o)}
@@ -179,6 +179,10 @@ let buddyLoad=null;
 const BUDDIES_ON=true; // buddies are back as a premium beta (buying one needs Lumen Lite)
 // u = whose buddy it is: buddies only show for people with an active Lite/Pro/Ultimate plan (shop previews pass no u)
 const premOn=u=>!!u?.tier&&((u.tierUntil?.toMillis?.()||(u.tierUntil instanceof Date?+u.tierUntil:0))>Date.now());
+// stickers (beta): little creator-made pictures placed anywhere on someone's profile bar; u = whose bar (only Lite members show them)
+function stickerLayer(list,u){if(u&&!premOn(u))return'';list=Array.isArray(list)?list.slice(0,3):[];const ok=list.filter(s=>CID.test(s?.id||''));if(!ok.length)return'';
+  const n=(v,d,a,b)=>{v=Math.round(+v);return Number.isFinite(v)?Math.min(b,Math.max(a,v)):d};
+  return`<span class="stk-layer" aria-hidden="true">${ok.map((s,i)=>{ensure(s.id);return`<i class="stk cstk-${s.id}" data-si="${i}" style="left:${n(s.x,70,0,100)}%;top:${n(s.y,50,0,100)}%;--s:${n(s.s,100,50,200)/100};--r:${n(s.r,0,-45,45)}deg"></i>`}).join('')}</span>`}
 function buddyCanvas(id,size,key,u){if(!BUDDIES_ON)return'';if(byId[id]?.type!=='buddy')return'';if(u&&!premOn(u))return'';
   const bx=size==='bar'&&u&&Number.isInteger(u.buddyX)&&u.buddyX>=0&&u.buddyX<=100?` data-bx="${u.buddyX}"`:'';if(!buddyLoad)buddyLoad=import('./buddies.js?v=5').catch(e=>{console.warn('buddies failed',e);buddyLoad=null});
   return`<canvas class="buddy buddy-${size}" data-buddy="${id}"${key?` data-bkey="${key}"`:''}${bx} aria-hidden="true"></canvas>`}
@@ -193,6 +197,6 @@ const BUNDLES=[
  {id:'bundle_dream',name:'Daydream',emoji:'🌸',desc:'Sakura petals, an angel halo, a blossom plate and the Sakura theme.',items:['fx_sakura','deco_halo','plate_sakura','theme_sakura'],price:850,g:'linear-gradient(135deg,#5a1a3a,#ff8fb8 55%,#ffd9e6)'},
  {id:'bundle_space',name:'Deep Space',emoji:'🪐',desc:'Galaxy swirl, meteor shower, galaxy plate and orbiting hearts.',items:['fx_galaxy','fx_meteor','plate_galaxy','deco_orbit'],price:1150,g:'linear-gradient(135deg,#0a0420,#3b1a78 55%,#1c3b8f)'},
  {id:'bundle_names',name:'Name Glow-Up',emoji:'🔤',desc:'Four new name effects: Frostbite, Toxic, Glitch and Starlight.',items:['nfx_ice','nfx_toxic','nfx_glitch','nfx_sparkle'],price:1000,g:'linear-gradient(135deg,#0b2a3f,#3aa8ff 50%,#7dff3a)'}];
-window.Lumen.cos={BUNDLES,CID,ensure,previewRule,BUDDIES_ON,CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
+window.Lumen.cos={stickerLayer,premOn,BUNDLES,CID,ensure,previewRule,BUDDIES_ON,CATALOG,byId,fxLayer,deco,plateCls,nfxCls,applyTheme,buddyCanvas};
 applyTheme(window.Lumen.cfg.theme);
 })();

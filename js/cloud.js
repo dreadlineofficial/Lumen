@@ -79,7 +79,7 @@ async function doSync(){if(!me||!myProfile||syncing||!subReady)return;const t=pl
   const tu=t?mySub[t]:0;if((p.tier||'')!==t||(t&&tsMs(p.tierUntil)!==tsMs(tu))){d.tier=t;d.tierUntil=t?tu:0}
   const up=plan.up();if(!!p.up!==up||(up&&tsMs(p.upUntil)!==tsMs(mySub.upgrade))){d.up=up;d.upUntil=up?mySub.upgrade:0}
   for(const k of['fx','deco','plate','nfx'])if(p[k]&&plan.wears(p[k])===false&&!(p.owned||[]).includes(p[k]))d[k]='';
-  if(p.buddy&&!plan.lite())d.buddy='';
+  if(p.buddy&&!plan.lite())d.buddy='';if((p.stickers||[]).length&&!plan.lite())d.stickers=[];
   if(!plan.lite()){if(['script','pixel','gothic','wide'].includes(p.nameFont))d.nameFont='sans';if(p.cardBorder&&p.cardBorder!=='none')d.cardBorder='';
     if(['aurora','holo','midnight'].includes(p.cardStyle))d.cardStyle='glass';if(/^media:/.test(p.avatar||''))d.avatar='';if(/^media:/.test(p.banner||''))d.banner=''}
   if(!Object.keys(d).length)return;syncing=true;try{await F.updateDoc(D('users',me.uid),d)}catch(e){console.warn('plan sync',e.code||e.message)}syncing=false}
@@ -135,6 +135,7 @@ function renderMe(){if(!myProfile)return;const mc=$('#meChip'),cls='me-chip'+(L.
   const bh=L.cos?.buddyCanvas(myProfile.buddy,'bar','me:chip',myProfile)||'';const oldB=mc.querySelector('canvas.buddy');
   if((oldB?.dataset.buddy||'')!==(bh?myProfile.buddy:'')){oldB?.remove();if(bh)mc.insertAdjacentHTML('afterbegin',bh)}else if(oldB)oldB.dataset.bx=myProfile.buddyX>=0?String(myProfile.buddyX):'';
   const ph=pic(myProfile,38,me.uid).replace('class="pic','id="mePic" class="pic'),mp=$('#mePic');if(mp._src!==ph){const t=document.createElement('template');t.innerHTML=ph;const n=t.content.firstElementChild;if(mp._src)morphEl(mp,n);else mp.replaceWith(n);$('#mePic')._src=ph}
+  const sh=L.cos?.stickerLayer(myProfile.stickers,myProfile)||'';if(mc._stk!==sh){mc.querySelector(':scope>.stk-layer')?.remove();if(sh)mc.insertAdjacentHTML('beforeend',sh);mc._stk=sh}
   const nh=nameHTML(myProfile,{badges:false});if($('#meName')._src!==nh){$('#meName').innerHTML=nh;$('#meName')._src=nh}const st=statusText(me.uid);if($('#meSt').textContent!==st)$('#meSt').textContent=st}
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();mySub={};adminOn=false;
   if(!u){myProfile=null;L.onProfile?.(null);$('#meChip').className='me-chip';$('#meChip canvas.buddy')?.remove();$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
@@ -142,7 +143,9 @@ F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();mySub={};adm
   unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();syncTier();
     if((myProfile.theme||'')!==(cfg.theme||'')){cfg.theme=myProfile.theme||'';save();L.cos?.applyTheme(cfg.theme)}L.onProfile?.(myProfile);if(!sideUid.chat)showSide('chat',u.uid)}));
   if(!panes.dm.convo)panes.dm.msgs.innerHTML='<div class="sysmsg">Pick a friend on the left to start chatting.</div>';
-  mySub={};adminOn=false;subReady=false;unsubs.push(F.onSnapshot(D('subs',u.uid),s=>{mySub=s.data()||{};subReady=!s.metadata.hasPendingWrites;startAdmin();syncTier();renderMe();applyLabs();L.onPlan?.(plan)},()=>{}));
+  mySub={};adminOn=false;subReady=false;unsubs.push(F.onSnapshot(D('subs',u.uid),s=>{mySub=s.data()||{};subReady=!s.metadata.hasPendingWrites;
+    // the Lumen owner always has Ultimate (and its control panel), for good
+    if(u.uid===ADMIN_UID&&!s.metadata.hasPendingWrites&&!(tsMs(mySub.ultimate)>Date.now()+3e11&&tsMs(mySub.ultAdmin)>Date.now()+3e11)){const forever=new Date('2126-01-01T00:00:00Z');F.setDoc(D('subs',u.uid),{ultimate:forever,ultAdmin:forever},{merge:true}).catch(e=>console.warn('owner plan',e.code||e.message))}startAdmin();syncTier();renderMe();applyLabs();L.onPlan?.(plan)},()=>{}));
   startPresence();listenFriends();listenServer();listenFeed();listenMyPosts();startAdmin();renderRooms();openConvo(panes.room,panes.room.convo||{type:'room',id:rooms()[0]||'general'})});
 function renderSignedOut(){$('#navAdmin').style.display='none';document.body.classList.remove('is-banned');const b=`<div class="banner">Sign in (bottom-left) to use this.</div>`;$('#friendList').innerHTML=b;$('#reqList').innerHTML='';$('#feed').innerHTML=b;
   Object.values(panes).forEach(p=>{p.unsub?.();p.convo=null;p.msgs.innerHTML=b;p.status.className='status';p.status.innerHTML=''});$('#roomList').innerHTML='';$('#chatSide').innerHTML='';$('#frSide').innerHTML='';$('#reqBadge').style.display='none'}
@@ -188,12 +191,33 @@ function preview(){formToDraft();draft.buddyX=$('#pBuddyWander').checked?-1:Math
   $('#pPreview').innerHTML=card(draft,{uid:me?.uid});$$('#pSwatches button').forEach((b,i)=>b.style.outline=!safeImg(draft.banner)&&!mediaId(draft.banner)&&(+draft.bannerG||0)===i?'2px solid #fff':'none')}
 // premium options are visible to everyone (so people know they exist) but only pickable with Lite
 function lockPrem(){const on=plan.lite();$$('#v-profile option[data-lite]').forEach(o=>{o.disabled=!on;o.textContent=o.textContent.replace(/ 🔒$/,'')+(on?'':' 🔒')});$('#pPremNote').style.display=on?'none':''}
+/* stickers (beta, Lite): pick up to 3 of your stickers, drag them anywhere on your profile bar, size and tilt them */
+let stkSel=0;
+function stickerEditor(){const box=$('#pStkBox');if(!box)return;const own=(L.shopStickers?.()||[]).filter(i=>(myProfile?.owned||[]).includes(i.id)||i.uid===me?.uid);
+  box.style.display=plan.lite()?'':'none';if(!plan.lite())return;const st=draft.stickers=Array.isArray(draft.stickers)?draft.stickers.slice(0,3):[];if(stkSel>=st.length)stkSel=Math.max(0,st.length-1);
+  const bar=`<div class="person stk-edit${L.cos?.plateCls(draft.plate)||''}" id="pStkBar">${L.cos?.stickerLayer(st)||''}${pic(draft,40)}<div class="info"><b>${nameHTML(draft,{badges:false})}</b><span>Online</span></div></div>`;
+  const cur=st[stkSel];
+  $('#pStkArea').innerHTML=(own.length?`<div class="stk-pick">${own.map(i=>`<button type="button" class="stk-chip" data-addstk="${i.id}" title="Add ${esc(i.name)}"><i class="stk-thumb cstk-${i.id}"></i><span>${esc(i.name)}</span></button>`).join('')}</div>`:'<p class="muted" style="font-size:12px;margin:4px 0">You don’t have any stickers yet. Find them in <b>Shop → Stickers</b>.</p>')
+    +bar+(cur?`<div class="stk-ctl"><span class="muted" style="font-size:12px">Sticker ${stkSel+1} of ${st.length} · drag it on the bar</span><label>Size <input type="range" id="pStkS" min="50" max="200" value="${cur.s}"></label><label>Tilt <input type="range" id="pStkR" min="-45" max="45" value="${cur.r}"></label><button type="button" id="pStkDel">Remove</button></div>`:st.length?'':'<p class="muted" style="font-size:12px;margin:6px 0 0">Tap a sticker above to put it on your bar (up to 3).</p>');
+  $$('#pStkArea [data-addstk]').forEach(b=>b.onclick=()=>{if(st.length>=3)return toast('Up to 3 stickers');st.push({id:b.dataset.addstk,x:[70,85,55][st.length]||70,y:50,s:100,r:0});stkSel=st.length-1;stickerEditor()});
+  if(cur){$('#pStkS').oninput=e=>{cur.s=+e.target.value;paintStk()};$('#pStkR').oninput=e=>{cur.r=+e.target.value;paintStk()};$('#pStkDel').onclick=()=>{st.splice(stkSel,1);stkSel=0;stickerEditor()}}
+  const barEl=$('#pStkBar');barEl.querySelectorAll('.stk').forEach(el=>{el.onpointerdown=e=>{e.preventDefault();stkSel=+el.dataset.si;const r=barEl.getBoundingClientRect(),s=st[stkSel];
+      barEl.querySelectorAll('.stk').forEach(x=>x.classList.toggle('sel',x===el));
+      const mv=ev=>{s.x=Math.max(0,Math.min(100,Math.round((ev.clientX-r.left)/r.width*100)));s.y=Math.max(0,Math.min(100,Math.round((ev.clientY-r.top)/r.height*100)));el.style.left=s.x+'%';el.style.top=s.y+'%'};
+      const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);stickerEditor()};addEventListener('pointermove',mv);addEventListener('pointerup',up)}});
+  barEl.querySelector(`.stk[data-si="${stkSel}"]`)?.classList.add('sel')}
+function paintStk(){const el=$(`#pStkBar .stk[data-si="${stkSel}"]`),s=draft.stickers?.[stkSel];if(el&&s){el.style.setProperty('--s',s.s/100);el.style.setProperty('--r',s.r+'deg')}}
+L.onPlan=(prev=>p=>{prev?.(p);if($('#v-profile')?.classList.contains('on'))stickerEditor()})(L.onPlan);
+L.onStickers=()=>{if($('#v-profile')?.classList.contains('on')&&$('#pStkBox'))stickerEditor()};
+// "Place on my bar" from the Shop: open your profile with the sticker added
+L.placeSticker=id=>{if(!plan.lite())return L.shopGo?.('premium');L.go('profile');setTimeout(()=>{draft.stickers=draft.stickers||[];if(!draft.stickers.some(s=>s.id===id)){if(draft.stickers.length>=3){toast('You can have up to 3 stickers. Remove one first.');}else{draft.stickers.push({id,x:[70,85,55][draft.stickers.length]||70,y:50,s:100,r:0});stkSel=draft.stickers.length-1}}
+  stickerEditor();$('#pStkBox')?.scrollIntoView({behavior:'smooth',block:'center'});toast('Drag your sticker where you want it, then press Save profile')},120)};
 function openProfile(){const p=myProfile||{};draft={...p};
   const def={nameStyle:'solid',nameFont:'sans',ring:'none',cardStyle:'glass',cardBorder:'none',buddyX:-1};lockPrem();
   $('#pBuddyWander').checked=!(p.buddyX>=0);
   for(const[k,s]of Object.entries(PF))$(s).value=k==='buddyX'?(p.buddyX>=0?p.buddyX:50):k==='color'?okColor(p.color):k==='nameC1'?okColor(p.nameC1||p.color):k==='nameC2'?okColor(p.nameC2,'#9ff0e6'):(p[k]??def[k]??'');
   $('#pShare').checked=cfg.share;$('#pShareGame').checked=cfg.shareGame;$('#pShareYt').checked=cfg.shareYt;$('#pShareWeb').checked=cfg.shareWeb;$('#pSeeOthers').checked=cfg.seeOthers;
-  $('#pEmail').textContent='Signed in as '+(me?.email||'');preview()}
+  $('#pEmail').textContent='Signed in as '+(me?.email||'');draft.stickers=(p.stickers||[]).map(s=>({...s}));stkSel=0;stickerEditor();preview()}
 $('#pSwatches').innerHTML=GRADS.map((g,i)=>`<button type="button" data-g="${i}" style="background:${g}" title="Banner colour"></button>`).join('');
 $$('#pSwatches button').forEach(b=>b.onclick=()=>{draft.banner='';draft.bannerG=+b.dataset.g;preview()});
 Object.values(PF).forEach(s=>{$(s).addEventListener('input',preview);$(s).addEventListener('change',preview)});$('#pBuddyWander').addEventListener('change',preview);
@@ -212,7 +236,7 @@ const pick=(v,list,d)=>list.includes(v)?v:d;
 $('#pSave').onclick=async()=>{if(!me)return openModal('authModal');formToDraft();const name=draft.name.slice(0,24);if(name.length<2)return toast('Name needs 2+ characters');
   const d={name,nameLower:name.toLowerCase(),bio:String(draft.bio||'').slice(0,300),avatar:draft.avatar||'',banner:draft.banner||'',bannerG:+draft.bannerG||0,color:okColor(draft.color),
     pronouns:draft.pronouns.slice(0,20),emoji:draft.emoji.slice(0,4),status:draft.status.slice(0,80),favGame:draft.favGame.slice(0,40),links:String(draft.links||'').slice(0,400),
-    nameStyle:pick(draft.nameStyle,['solid','gradient','animated','glow'],'solid'),nameC1:okColor(draft.nameC1),nameC2:okColor(draft.nameC2,'#9ff0e6'),nameFont:pick(draft.nameFont,['sans','serif','mono','round','display',...(plan.lite()?['script','pixel','gothic','wide']:[])],'sans'),buddyX:$('#pBuddyWander').checked?-1:Math.max(0,Math.min(100,Math.round(+$('#pBuddyX').value||0))),cardBorder:plan.lite()?pick(draft.cardBorder,['none','gold','neon','rainbow','glow','ice'],'none'):'',
+    nameStyle:pick(draft.nameStyle,['solid','gradient','animated','glow'],'solid'),nameC1:okColor(draft.nameC1),nameC2:okColor(draft.nameC2,'#9ff0e6'),nameFont:pick(draft.nameFont,['sans','serif','mono','round','display',...(plan.lite()?['script','pixel','gothic','wide']:[])],'sans'),stickers:plan.lite()?(draft.stickers||[]).slice(0,3).map(s=>({id:String(s.id),x:Math.round(s.x),y:Math.round(s.y),s:Math.round(s.s),r:Math.round(s.r)})):[],buddyX:$('#pBuddyWander').checked?-1:Math.max(0,Math.min(100,Math.round(+$('#pBuddyX').value||0))),cardBorder:plan.lite()?pick(draft.cardBorder,['none','gold','neon','rainbow','glow','ice'],'none'):'',
     badges:graphemes(draft.badges).filter(x=>x.trim()).slice(0,5).join(''),ring:pick(draft.ring,['none','solid','gradient','rainbow'],'none'),cardStyle:pick(draft.cardStyle,['glass','tint','gradient','dark',...(plan.lite()?['aurora','holo','midnight']:[])],'glass')};
   cfg.share=$('#pShare').checked;cfg.shareGame=$('#pShareGame').checked;cfg.shareYt=$('#pShareYt').checked;cfg.shareWeb=$('#pShareWeb').checked;cfg.seeOthers=$('#pSeeOthers').checked;save();
   $('#pSave').disabled=true;
@@ -248,7 +272,7 @@ function listenFriends(){unsubs.push(F.onSnapshot(F.query(C('friendships'),F.whe
   const t=setInterval(soon,30000);unsubs.push(()=>clearInterval(t))}
 const rank=uid=>({online:0,idle:1,offline:2}[status(uid)]??3);
 async function personRow(uid,{buttons='',sub='',click=''}={}){const u=await getUser(uid);
-  return`<div data-k="${uid}" class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${click==='dm'?L.cos?.buddyCanvas(u.buddy,'bar',uid+':bar:dm',u)||'':''}${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
+  return`<div data-k="${uid}" class="person${L.cos?.plateCls(u.plate)||''}${click?' clickable':''}${panes.dm.convo?.id===uid&&click==='dm'?' on':''}" ${click==='dm'?`data-open="${uid}"`:''}>${L.cos?.stickerLayer(u.stickers,u)||''}${click==='dm'?L.cos?.buddyCanvas(u.buddy,'bar',uid+':bar:dm',u)||'':''}${pic(u,40,uid)}<div class="info"><b data-user="${uid}">${nameHTML(u)}</b><span class="${sub.includes('<b>')?'act':''}">${sub}</span></div>${buttons}</div>`}
 async function renderFriends(){if(!me)return;
   const acc=friendIds().sort((a,b)=>rank(a)-rank(b)),inc=friendships.filter(f=>f.status==='pending'&&f.from!==me.uid),out=friendships.filter(f=>f.status==='pending'&&f.from===me.uid);
   const other=f=>f.users.find(x=>x!==me.uid);const online=acc.filter(u=>status(u)!=='offline').length;
@@ -277,7 +301,7 @@ const rooms=()=>serverChannels||cfg.rooms.split(',').map(s=>s.trim().toLowerCase
 function mkPane(sel){const el=$(sel);const ty=document.createElement('div');ty.className='typing';el.querySelector('form').before(ty);return{el,ty,msgs:el.querySelector('.msgs'),pt:el.querySelector('.pt'),status:el.querySelector('.status'),form:el.querySelector('form'),input:el.querySelector('form input'),convo:null,unsub:null}}
 const panes={room:mkPane('#roomPane'),dm:mkPane('#dmPane')};
 async function renderRooms(){if(!me)return;const on=friendIds().filter(u=>status(u)!=='offline').sort((a,b)=>rank(a)-rank(b));
-  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button data-k="${uid}" class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
+  const fr=await Promise.all(on.map(async uid=>{const u=await getUser(uid);return`<button data-k="${uid}" class="room${L.cos?.plateCls(u.plate)||''}" data-user="${uid}">${L.cos?.stickerLayer(u.stickers,u)||''}${pic(u,26,uid)}<span>${nameHTML(u,{badges:false})}</span></button>`}));
   morph($('#roomList'),rooms().map(r=>`<button class="room ${panes.room.convo?.id===r?'on':''}" data-room="${r}"><span class="hash">#</span>${r}</button>`).join('')+
     `<div class="dc-title" style="margin-top:16px">Friends online — ${on.length}</div>`+(fr.join('')||'<p class="muted" style="font-size:12px;padding:0 10px">Nobody online right now.</p>'));
   $$('#roomList [data-room]').forEach(b=>b.onclick=()=>openConvo(panes.room,{type:'room',id:b.dataset.room}));

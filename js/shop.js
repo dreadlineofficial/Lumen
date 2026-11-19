@@ -3,7 +3,7 @@ const L=window.Lumen,{esc,toast}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const TABS=[['home','🛍','Featured'],['premium','💎','Lumen Lite'],['bundles','🎁','Bundles'],['fx','✨','Profile effects'],['deco','💫','Decorations'],['plate','🎴','Nameplates'],['nfx','🔤','Name effects'],['theme','🎨','Themes'],['buddy','🧸','Buddies','Beta'],['creator','🛠','Creator'],['owned','🎒','Owned']];
 const SLOT={buddy:'buddy',fx:'fx',deco:'deco',plate:'plate',nfx:'nfx',theme:'theme'};
-const TYPE_LABEL={fx:'Profile effect',deco:'Avatar decoration',plate:'Nameplate',nfx:'Name effect',theme:'App theme',buddy:'3D buddy'};
+const TYPE_LABEL={fx:'Profile effect',deco:'Avatar decoration',plate:'Nameplate',nfx:'Name effect',theme:'App theme',buddy:'3D buddy',sticker:'Sticker'};
 const TIER_NAME={lite:'Lite',upgrade:'Upgrade',pro:'Pro',ultimate:'Ultimate'};
 let tab='home',prof=null,busy=false,citems=[],cunsub=null,openId=null,view='';const cnames={};
 const P=()=>L.plan||{lite:()=>false,up:()=>false,pro:()=>false,ult:()=>false,price:p=>p,bonus:x=>x,wears:()=>null,top:()=>'',until:()=>0};
@@ -19,11 +19,12 @@ const sumOf=b=>b.items.reduce((s,i)=>s+(L.cos.byId[i]?.price||0),0);
 /* ---------- what you can do with an item ---------- */
 function state(it){const own=owned().includes(it.id),prem=it.tier||'',wear=prem?P().wears(it.id)===true:false,mine=!!prof&&it.uid&&it.uid===prof.uid;
   const eq=!!prof&&prof[SLOT[it.type]]===it.id,cost=P().price(it.price||0);
-  return{own:own||wear,eq,prem,wear,mine,cost,full:it.price||0,locked:it.type==='buddy'&&!P().lite()}}
+  return{own:own||wear,eq,prem,wear,mine,cost,full:it.price||0,locked:(it.type==='buddy'||it.type==='sticker')&&!P().lite()}}
 function priceHTML(it,s=state(it)){if(s.prem)return`<span class="price prem-price">💎 ${TIER_NAME[s.prem]}</span>`;if(s.own)return'<span class="price muted">Owned</span>';if(s.mine)return'<span class="price">Yours</span>';
   return`<span class="price">✦ ${fmt(s.cost)}${s.cost<s.full?` <s>${fmt(s.full)}</s>`:''}</span>`}
 function buttonHTML(it,s=state(it),big){const c=big?' big':'';
   if(!prof)return`<button disabled class="${c}">Sign in</button>`;
+  if(it.type==='sticker'&&(s.own||s.mine))return P().lite()?`<button class="btn-acc${c}" data-place="${it.id}">Place on my bar</button>`:`<button class="btn-gold${c}" data-gotab="premium">💎 Lite only</button>`;
   if(s.eq)return`<button class="${c}" data-unequip="${it.id}">Unequip</button>`;
   if(s.own)return`<button class="btn-acc${c}" data-equip="${it.id}">${s.prem?'Wear':'Equip'}</button>`;
   if(s.prem)return`<button class="btn-gold${c}" data-gotab="premium">Get ${TIER_NAME[s.prem]}</button>`;
@@ -39,7 +40,8 @@ const BANNER='linear-gradient(135deg,#4b5cff,#a65cff 55%,#ff8f7a)';
 function miniCard(u){const c=L.cloud;return`<div class="mini-card">${L.cos.fxLayer(u.fx)}<div class="mc-ban" style="background:${BANNER}"></div><div class="mc-row">${c.pic(u,46)}<div class="mc-name">${c.nameHTML(u,{badges:false})}</div></div><div class="mc-lines"><i></i><i></i></div></div>`}
 function barRow(u,big,key){const c=L.cloud;return`<div class="person${L.cos.plateCls(u.plate)}">${u.buddy?L.cos.buddyCanvas(u.buddy,'bar',key):''}${c.pic(u,big?40:36)}<div class="info"><b>${c.nameHTML(u,{badges:false})}</b><span>🎮 Playing <b>Nightbound</b></span></div></div>`}
 function preview(it,{size='small',as=''}={}){const c=L.cloud,me=meBase(),slot=SLOT[it.type],u={...me,[slot]:it.id},big=size==='big';
-  const v=as||({fx:'card',deco:'pic',plate:'bar',nfx:'name',theme:'theme',buddy:'buddy'})[it.type];
+  const v=as||({fx:'card',deco:'pic',plate:'bar',nfx:'name',theme:'theme',buddy:'buddy',sticker:'stk'})[it.type];
+  if(v==='stk')return`<div class="prev-bars stk-prev${big?' big':''}">${big?'':`<div class="stk-big small"><i class="stk-thumb cstk-${it.id}"></i></div>`}<div class="person${L.cos.plateCls(me.plate)}">${L.cos.stickerLayer([{id:it.id,x:86,y:50,s:big?120:100,r:-8}])}${c.pic(me,big?40:32)}<div class="info"><b>${c.nameHTML(me,{badges:false})}</b><span>Online</span></div></div>${big?`<div class="stk-big"><i class="stk-thumb cstk-${it.id}"></i></div>`:''}</div>`;
   if(v==='card')return big?c.card({...u,bio:me.bio||'This is how your profile card looks to everyone.'},{preview:true}):miniCard(u);
   if(v==='pic')return`<div class="prev-pic">${c.pic(u,big?150:78)}</div>`;
   if(v==='bar')return`<div class="prev-bars${big?' big':''}">${barRow(u,big,'shop:'+it.id+':bar:'+size)}${big?`<div class="person${L.cos.plateCls(u.plate)}" style="opacity:.92">${c.pic(u,32)}<div class="info"><b>${c.nameHTML(u,{badges:false})}</b><span>Online</span></div></div>`:''}</div>`;
@@ -47,7 +49,7 @@ function preview(it,{size='small',as=''}={}){const c=L.cloud,me=meBase(),slot=SL
   if(v==='buddy')return`<div class="buddy-stage${big?' big':''}">${L.cos.buddyCanvas(it.id,'card','shop:'+it.id+':'+size)}</div>`;
   if(v==='theme')return`<div class="theme-sw${big?' big':''}">${it.sw.map((x,i)=>`<div style="background:${i===2?x:`linear-gradient(160deg,${x},${it.sw[2]})`}"></div>`).join('')}</div>`;
   return''}
-const VIEWS={fx:[['card','Profile card']],deco:[['pic','Picture'],['card','Profile card'],['bar','Profile bar']],plate:[['bar','Profile bar']],nfx:[['name','Name'],['card','Profile card'],['bar','Profile bar']],theme:[['theme','Colours']],buddy:[['buddy','Stage'],['bar','Profile bar'],['card','Profile card']]};
+const VIEWS={fx:[['card','Profile card']],deco:[['pic','Picture'],['card','Profile card'],['bar','Profile bar']],plate:[['bar','Profile bar']],nfx:[['name','Name'],['card','Profile card'],['bar','Profile bar']],theme:[['theme','Colours']],sticker:[['stk','Profile bar']],buddy:[['buddy','Stage'],['bar','Profile bar'],['card','Profile card']]};
 
 function card(it){const s=state(it);
   return`<div class="card sitem t-${it.type}${s.eq?' equipped':''}${s.prem?' prem prem-'+s.prem:''}" data-k="${it.id}"><button class="prev" data-view="${it.id}" title="Preview ${esc(it.name)}">
@@ -110,14 +112,14 @@ function premiumPage(){const me=meBase(),demo={...me,nfx:'nfx_gold',fx:'fx_goldd
 
 /* ---------- the store: departments on the left, aisles and a toolbar on the right ---------- */
 const NAV=[['Discover',[['home','🛍','Featured'],['premium','💎','Lumen Lite'],['bundles','🎁','Bundles'],['new','🆕','New arrivals']]],
-  ['Departments',[['fx','✨','Profile effects'],['deco','💫','Decorations'],['plate','🎴','Nameplates'],['nfx','🔤','Name effects'],['theme','🎨','Themes'],['buddy','🧸','Buddies','BETA']]],
+  ['Departments',[['fx','✨','Profile effects'],['deco','💫','Decorations'],['plate','🎴','Nameplates'],['nfx','🔤','Name effects'],['theme','🎨','Themes'],['buddy','🧸','Buddies','BETA'],['sticker','🏷️','Stickers','BETA']]],
   ['Community',[['creator','🛠','Creator shop']]],['Yours',[['owned','🎒','Owned']]]];
-const DEPT={fx:'Profile effects',deco:'Decorations',plate:'Nameplates',nfx:'Name effects',theme:'Themes',buddy:'Buddies',creator:'Creator shop',owned:'Owned',new:'New arrivals'};
-const DEPT_SUB={fx:'Animated layers that play across your whole profile card.',deco:'Frames and extras around your profile picture, shown everywhere.',plate:'The animated background of your profile bar in lists and the sidebar.',nfx:'Make your name itself move, glow and shine.',theme:'A new colour scheme for all of Lumen.',buddy:'3D characters that live on your profile bar and card. Buying one needs Lumen Lite.',creator:'Made by Lumen creators and checked by the Lumen team. Creators keep 90% of every sale.',owned:'Everything you own or can wear. Equip anything in one tap.',new:'Fresh this week.'};
+const DEPT={sticker:'Stickers',fx:'Profile effects',deco:'Decorations',plate:'Nameplates',nfx:'Name effects',theme:'Themes',buddy:'Buddies',creator:'Creator shop',owned:'Owned',new:'New arrivals'};
+const DEPT_SUB={sticker:'Little pictures made by Lumen creators that you place anywhere on your profile bar, up to 3 at once. Beta, for Lumen Lite members.',fx:'Animated layers that play across your whole profile card.',deco:'Frames and extras around your profile picture, shown everywhere.',plate:'The animated background of your profile bar in lists and the sidebar.',nfx:'Make your name itself move, glow and shine.',theme:'A new colour scheme for all of Lumen.',buddy:'3D characters that live on your profile bar and card. Buying one needs Lumen Lite.',creator:'Made by Lumen creators and checked by the Lumen team. Creators keep 90% of every sale.',owned:'Everything you own or can wear. Equip anything in one tap.',new:'Fresh this week.'};
 let q='',sort='featured',filt='all';
-const count=k=>k==='owned'?ownedList().length:k==='creator'?citems.length:k==='new'?L.cos.CATALOG.filter(i=>i.tag==='new').length:k==='bundles'?BUN().length:L.cos.CATALOG.filter(i=>i.type===k).length;
+const count=k=>k==='sticker'?citems.filter(i=>i.type==='sticker').length:k==='owned'?ownedList().length:k==='creator'?citems.length:k==='new'?L.cos.CATALOG.filter(i=>i.tag==='new').length:k==='bundles'?BUN().length:L.cos.CATALOG.filter(i=>i.type===k).length;
 function ownedList(){return[...L.cos.CATALOG.filter(i=>owned().includes(i.id)||(i.tier&&P().wears(i.id)===true)),...citems.filter(i=>owned().includes(i.id)||(prof&&i.uid===prof.uid))]}
-function deptList(){return tab==='creator'?citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0)):tab==='owned'?ownedList():tab==='new'?L.cos.CATALOG.filter(i=>i.tag==='new'):catalog(tab).filter(i=>i.type!=='buddy'||L.cos.BUDDIES_ON)}
+function deptList(){return tab==='sticker'?citems.filter(i=>i.type==='sticker').sort((a,b)=>(b.sales||0)-(a.sales||0)):tab==='creator'?citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0)):tab==='owned'?ownedList():tab==='new'?L.cos.CATALOG.filter(i=>i.tag==='new'):catalog(tab).filter(i=>i.type!=='buddy'||L.cos.BUDDIES_ON)}
 function shaped(list){let l=list;const qq=q.trim().toLowerCase();if(qq)l=l.filter(i=>(i.name+' '+(i.desc||'')).toLowerCase().includes(qq));
   if(filt==='notowned')l=l.filter(i=>!state(i).own);else if(filt==='owned')l=l.filter(i=>state(i).own);else if(filt==='afford')l=l.filter(i=>{const st=state(i);return!st.own&&!st.prem&&st.cost<=coins()});
   const pr=i=>i.tier?1e9:state(i).cost;
@@ -128,14 +130,14 @@ function toolbarHTML(){return`<div class="st-head"><div><h2>${DEPT[tab]||''}</h2
   <div class="st-tools"><label class="st-search"><span>🔎</span><input id="shopQ" placeholder="Search ${esc((DEPT[tab]||'').toLowerCase())}" value="${esc(q)}" autocomplete="off"></label>
     <select id="shopSort" title="Sort"><option value="featured">Sort: Featured</option><option value="new">Newest first</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option><option value="az">Name: A to Z</option></select>
     <div class="st-chips">${[['all','All'],['notowned','Not owned'],['owned','Owned'],['afford','I can afford']].map(([k,l])=>`<button data-f="${k}" class="${filt===k?'on':''}">${l}</button>`).join('')}</div></div>`}
-function deptBody(){const list=shaped(deptList());if(tab==='creator')list.forEach(i=>{if(!cnames[i.uid])L.cloud?.getUser(i.uid).then(u=>{if(!cnames[i.uid]){cnames[i.uid]=u.name||'a creator';render()}})});
-  const empty=q?`Nothing matches “${esc(q)}”.`:tab==='owned'?'Nothing yet. Claim your Glow and treat yourself.':tab==='creator'?'No creator items yet. Lumen creators can make them on their Creator page.':'Nothing here.';
-  const beta=tab==='buddy'?`<div class="banner beta-note">🧪 <b>Buddies are in beta.</b> They live on your profile bar and card, and only show while you have Lumen Lite, Pro or Ultimate. Pick where yours stands in <b>Profile</b>.</div>`:'';
-  if(sort!=='featured'||q||filt!=='all'||['creator','owned','new'].includes(tab))return beta+`<p class="st-count">${list.length} item${list.length===1?'':'s'}</p>`+grid(list,empty);
+function deptBody(){const list=shaped(deptList());if(tab==='creator'||tab==='sticker')list.forEach(i=>{if(!cnames[i.uid])L.cloud?.getUser(i.uid).then(u=>{if(!cnames[i.uid]){cnames[i.uid]=u.name||'a creator';render()}})});
+  const empty=q?`Nothing matches “${esc(q)}”.`:tab==='sticker'?'No stickers yet. Lumen creators with Lite can make them on their Creator page.':tab==='owned'?'Nothing yet. Claim your Glow and treat yourself.':tab==='creator'?'No creator items yet. Lumen creators can make them on their Creator page.':'Nothing here.';
+  const beta=tab==='sticker'?`<div class="banner beta-note">🧪 <b>Stickers are in beta.</b> Buy one (Lumen Lite needed), then press <b>Place on my bar</b> or go to <b>Profile → Stickers</b> to drag it anywhere on your profile bar. Lumen creators with Lite can make and sell their own in the Creator page.</div>`:tab==='buddy'?`<div class="banner beta-note">🧪 <b>Buddies are in beta.</b> They live on your profile bar and card, and only show while you have Lumen Lite, Pro or Ultimate. Pick where yours stands in <b>Profile</b>.</div>`:'';
+  if(sort!=='featured'||q||filt!=='all'||['creator','owned','new','sticker'].includes(tab))return beta+`<p class="st-count">${list.length} item${list.length===1?'':'s'}</p>`+grid(list,empty);
   return beta+aisles(tab,list).map(([i,n,g])=>`<section class="aisle" data-k="a-${n}"><div class="aisle-h"><h3>${i} ${n}</h3><span>${g.length}</span></div>${grid(g)}</section>`).join('')||grid([],empty)}
 function home(){const fresh=L.cos.CATALOG.filter(i=>i.tag==='new').slice(0,8),picks=['fx_galaxy','deco_flame','plate_holo','nfx_fire','fx_aurora','theme_synthwave','deco_halo','fx_lanterns'].map(i=>L.cos.byId[i]).filter(Boolean);
   const pop=citems.slice().sort((a,b)=>(b.sales||0)-(a.sales||0)).slice(0,4),cheap=L.cos.CATALOG.filter(i=>!i.tier&&i.price&&i.price<=250).slice(0,4);
-  const tiles=[['fx','✨','Profile effects','#3b1a78,#7a2b9e'],['deco','💫','Decorations','#5a1a3a,#ff5c8a'],['plate','🎴','Nameplates','#062a52,#1aa0d8'],['nfx','🔤','Name effects','#3a2600,#e8a920'],['theme','🎨','Themes','#04140c,#2fd67a'],['buddy','🧸','Buddies','#2b0b3f,#7c4dff']].filter(t=>t[0]!=='buddy'||L.cos.BUDDIES_ON);
+  const tiles=[['fx','✨','Profile effects','#3b1a78,#7a2b9e'],['deco','💫','Decorations','#5a1a3a,#ff5c8a'],['plate','🎴','Nameplates','#062a52,#1aa0d8'],['nfx','🔤','Name effects','#3a2600,#e8a920'],['theme','🎨','Themes','#04140c,#2fd67a'],['buddy','🧸','Buddies','#2b0b3f,#7c4dff'],['sticker','🏷️','Stickers','#3a0b2b,#ff5ca8']].filter(t=>t[0]!=='buddy'||L.cos.BUDDIES_ON);
   return`<button class="lite-banner" data-gotab="premium">${L.cos.fxLayer('fx_golddust')}<span class="lb-copy"><span class="ph-kicker">✦ NEW · LUMEN PREMIUM</span><b>Your name, in <span class="gold-text">liquid gold</span>.</b><span>Lumen Lite: 10% off everything, +5% Glow, 10 MB uploads, pictures in chat and 5,000 Glow to start.</span></span><span class="lb-name">${L.cloud.nameHTML({...meBase(),nfx:'nfx_gold',tier:'lite',tierUntil:new Date(Date.now()+864e5)})}</span><span class="lb-go">See Lite →</span></button>
   <div class="dept-tiles">${tiles.map(([k,i,l,g])=>`<button class="dept-tile" data-gotab="${k}" style="--g:linear-gradient(135deg,${g})"><span>${i}</span><b>${l}</b><small>${count(k)} items</small></button>`).join('')}</div>
   <div class="shop-sec"><div class="sec-h"><h2>🆕 New arrivals</h2><button data-gotab="new">See all →</button></div>${grid(fresh)}</div>
@@ -167,6 +169,7 @@ function bind(root){
   root.querySelectorAll('[data-equip]').forEach(b=>b.onclick=e=>{e.stopPropagation();equip(b.dataset.equip,true)});
   root.querySelectorAll('[data-ownequip]').forEach(b=>b.onclick=e=>{e.stopPropagation();equipOwn(b.dataset.ownequip)});
   root.querySelectorAll('[data-unequip]').forEach(b=>b.onclick=e=>{e.stopPropagation();equip(b.dataset.unequip,false)});
+  root.querySelectorAll('[data-place]').forEach(b=>b.onclick=e=>{e.stopPropagation();closeItem();L.placeSticker?.(b.dataset.place)});
   root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>openItem(b.dataset.view));
   root.querySelectorAll('[data-gotab]').forEach(b=>b.onclick=()=>go(b.dataset.gotab));
   root.querySelectorAll('[data-buybundle]').forEach(b=>b.onclick=()=>buyBundle(b.dataset.buybundle));
@@ -198,22 +201,23 @@ addEventListener('keydown',e=>{if(e.key==='Escape'&&openId)closeItem()});
 
 /* ---------- creator-made items ---------- */
 async function equipOwn(id){if(!prof)return;const it=getItem(id)||{id,type:(await L.cloud.F.getDoc(L.cloud.D('shopItems',id))).data()?.type,name:'Your item'};
+  if(it.type==='sticker'){try{if(!owned().includes(id))await upd({owned:[...owned(),id],lastBuy:id});L.placeSticker?.(id)}catch(e){toast('Couldn’t add it: '+(e.code==='permission-denied'?'it has to be approved first':e.message))}return}
   if(prof[SLOT[it.type]]===id)return equip(id,false);
   try{if(!owned().includes(id))await upd({owned:[...owned(),id],lastBuy:id});await upd({[SLOT[it.type]]:id});toast(`${it.name||'Item'} equipped`)}catch(e){toast('Couldn’t equip: '+(e.code==='permission-denied'?'it has to be approved first':e.message))}}
 L.equipOwn=equipOwn;
 function listenCreator(){cunsub?.();cunsub=null;citems=[];if(!prof||!L.cloud)return;const {F,db}=L.cloud;
-  cunsub=F.onSnapshot(F.query(F.collection(db,'shopItems'),F.where('status','==','approved')),s=>{citems=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{})}
-L.shopItem=getItem;
+  cunsub=F.onSnapshot(F.query(F.collection(db,'shopItems'),F.where('status','==','approved')),s=>{citems=s.docs.map(d=>({id:d.id,...d.data()}));render();L.onStickers?.()},()=>{})}
+L.shopItem=getItem;L.shopStickers=()=>citems.filter(i=>i.type==='sticker');
 
 /* ---------- buying ---------- */
 async function upd(data){const {F,D,me}=L.cloud;await F.updateDoc(D('users',me().uid),data)}
 async function claim(){if(busy||!prof)return;busy=true;const bonus=P().bonus(prof.lastClaim?150:500);
   try{await upd({coins:coins()+bonus,lastClaim:L.cloud.F.serverTimestamp()});toast(`+${bonus} ✦ Glow${P().lite()?' (Lite +5%)':''}`)}catch(e){toast('Couldn’t claim: '+(e.code==='permission-denied'?'not ready yet':e.message))}busy=false}
 async function buy(id){const it=getItem(id);if(busy||!prof||!it)return;const cost=P().price(it.price);if(coins()<cost)return toast('Not enough Glow');
-  if(it.type==='buddy'&&!P().lite())return go('premium');
+  if((it.type==='buddy'||it.type==='sticker')&&!P().lite())return go('premium');
   if(!confirm(`Buy ${it.name} for ✦ ${fmt(cost)}${cost<it.price?' (Lite 10% off)':''}?`))return;busy=true;
   if(L.cos.CID.test(id)){const {F,D,db,me}=L.cloud;const b=F.writeBatch(db);b.update(D('users',me().uid),{coins:coins()-cost,owned:[...owned(),id],lastBuy:id});b.update(D('shopItems',id),{sales:F.increment(1),earned:F.increment(it.cut),lastBuyer:me().uid});
-    try{await b.commit();toast(`${it.name} unlocked!`);await equip(id,true,true)}catch(e){toast('Purchase failed: '+(e.code==='permission-denied'?'this item isn’t for sale right now':e.message))}busy=false;return}
+    try{await b.commit();toast(`${it.name} unlocked!`);if(it.type==='sticker')setTimeout(()=>L.placeSticker?.(id),400);else await equip(id,true,true)}catch(e){toast('Purchase failed: '+(e.code==='permission-denied'?'this item isn’t for sale right now':e.message))}busy=false;return}
   try{await upd({coins:coins()-cost,owned:[...owned(),id],lastBuy:id});toast(`${it.name} unlocked!`);await equip(id,true,true)}catch(e){toast('Purchase failed: '+(e.code==='permission-denied'?'re-publish the latest rules, or check your plan':e.message))}busy=false}
 async function buyBundle(bid){const b=BUN().find(x=>x.id===bid);if(!b||busy||!prof)return;const cost=P().price(b.price);if(coins()<cost)return toast('Not enough Glow');
   if(!confirm(`Buy the ${b.name} bundle (${b.items.length} items) for ✦ ${fmt(cost)}?`))return;busy=true;

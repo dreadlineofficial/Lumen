@@ -525,3 +525,20 @@ button.big{padding:13px 22px;font-size:15px;border-radius:14px}
 /* nameplates with animated creator pictures: their own layer, so other things moving in the row don't make them flicker */
 .plate.cplate::before{transform:translateZ(0);backface-visibility:hidden}
 .person>:not(canvas):not(.buddy),.room>:not(canvas),.me-chip>:not(canvas){position:relative;z-index:1}
+
+/* ===================== stickers (beta) ===================== */
+.stk-layer{position:absolute!important;inset:0;z-index:0!important;pointer-events:none;overflow:hidden;border-radius:inherit}
+.stk{position:absolute;width:42px;height:42px;background:center/contain no-repeat;transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(var(--s,1));filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.room .stk,.me-chip .stk{width:34px;height:34px}
+.stk-thumb{display:block;width:40px;height:40px;background:center/contain no-repeat}
+.stk-big{display:grid;place-items:center;padding:10px 0 0}.stk-big .stk-thumb{width:150px;height:150px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5))}
+.sitem.t-sticker .prev-bars .person{position:relative}
+.stk-pick{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.stk-chip{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border-radius:12px;background:rgba(255,255,255,.06);box-shadow:none;font-size:11px;max-width:86px}
+.stk-chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px}
+.person.stk-edit{position:relative;border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.05);min-height:56px;touch-action:none}
+.stk-edit .stk-layer{pointer-events:auto;z-index:3!important;overflow:visible}
+.stk-edit .stk{cursor:grab;pointer-events:auto}.stk-edit .stk.sel{outline:2px dashed rgba(255,255,255,.7);outline-offset:3px;border-radius:6px}
+.stk-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:8px;font-size:13px}.stk-ctl label{display:flex;align-items:center;gap:6px;margin:0}
+.stk-big.small{padding:0 0 6px}.stk-big.small .stk-thumb{width:78px;height:78px}
+.sitem .stk-prev .person{padding:6px 10px}
