@@ -44,7 +44,8 @@ service cloud.firestore {
         && d.get('bio', '').size() <= 300
         && ((okImage(d.get('avatar', '')) && d.get('avatar', '').size() < 120000) || (mediaRef(d.get('avatar', '')) && isLite()))
         && (!mediaRef(d.get('banner', '')) || isLite())
-        && (!('buddyX' in d) || (d.buddyX is int && d.buddyX >= -1 && d.buddyX <= 100));
+        && (!('buddyX' in d) || (d.buddyX is int && d.buddyX >= -1 && d.buddyX <= 100))
+        && (!('mutedPosts' in d) || (d.mutedPosts is list && d.mutedPosts.size() <= 300));
     }
     // the tier tag on your profile must match your plan; premium-only profile options need a plan
     function tierOk(d) {
@@ -197,7 +198,7 @@ service cloud.firestore {
       let pid = n.get('lastEarn', '');
       let pb = get(postPath(pid)).data;
       let pa = getAfter(postPath(pid)).data;
-      return pid != '' && pa.uid == uid()
+      return pid != '' && pa.uid == uid() && pa.get('flagged', null) == null
         && bonusOk(oc, nc, 50 * (pa.get('paidViews', 0) - pb.get('paidViews', 0)) + 150 * (pa.get('paidComments', 0) - pb.get('paidComments', 0)))
         && nc > oc;
     }
@@ -612,6 +613,16 @@ service cloud.firestore {
     }
 
     // Posts: likes, views and comments.
+    match /reports/{rid} {
+      allow get: if signedIn() && (resource == null || resource.data.by == uid() || isAdmin());
+      allow list, update, delete: if isAdmin();
+      allow create: if active() && rid == request.resource.data.post + '_' + uid()
+        && request.resource.data.keys().hasOnly(['post', 'postUid', 'by', 'reason', 'note', 'status', 'at'])
+        && request.resource.data.by == uid() && request.resource.data.status == 'open' && request.resource.data.at == request.time
+        && request.resource.data.reason in ['useless', 'spam', 'rude', 'other']
+        && request.resource.data.note is string && request.resource.data.note.size() <= 200
+        && get(postPath(request.resource.data.post)).data.uid == request.resource.data.postUid && request.resource.data.postUid != uid();
+    }
     match /posts/{post} {
       function d() { return request.resource.data; }
       function o() { return resource.data; }
@@ -642,6 +653,10 @@ service cloud.firestore {
       allow update: if active() && uid() == o().uid && keys().hasOnly(['paidViews', 'paidComments'])
         && d().paidViews == o().get('views', 0) && d().paidComments == o().get('ecomments', 0)
         && d().paidViews >= o().get('paidViews', 0) && d().paidComments >= o().get('paidComments', 0);
+      // the Lumen team accepts a report: the post earns no more Glow, and its author sees why
+      allow update: if isAdmin() && keys().hasOnly(['flagged'])
+        && (d().get('flagged', null) == null || (d().flagged is map && d().flagged.keys().hasOnly(['reason', 'note', 'at'])
+          && d().flagged.reason is string && d().flagged.reason.size() <= 60 && d().flagged.get('note', '') is string && d().flagged.get('note', '').size() <= 300));
       allow delete: if (signedIn() && o().uid == uid()) || isAdmin();
 
       match /views/{v} {

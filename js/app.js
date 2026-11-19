@@ -286,7 +286,8 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-19a',items:[
+const NEWS={id:'2026-11-19b',items:[
+  ['🙈','Mute and report posts','Tap ⋯ on a post to hide posts from that person, or report a useless post. If the Lumen team agrees, it earns no Glow.','posts'],
   ['🎮','Two new games','Lumi\'s Leap, a brand-new platformer with six worlds, and Fixing Good, a desert crime story. Both are in the Games tab.','games'],
   ['🏷️','Stickers (beta)','Place little pictures anywhere on your profile bar. Stickers are made by Lumen creators and need Lumen Lite.','shop'],
   ['🛍','A proper store','Departments, aisles, search, sorting and filters in the Shop.','shop'],

@@ -24,7 +24,7 @@ const ms=t=>t?.toMillis?.()??Date.now();
 const ago=m=>{const d=Date.now()-m;return d<60e3?'just now':d<36e5?Math.floor(d/6e4)+'m ago':d<864e5?Math.floor(d/36e5)+'h ago':Math.floor(d/864e5)+'d ago'};
 const when=t=>{const d=new Date(ms(t));return Date.now()-d<864e5?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString()};
 const pairId=(a,b)=>[a,b].sort().join('_');
-let me=null,myProfile=null;
+let me=null,myProfile=null,lastMuted='[]';
 /* update a list in place: only what changed is touched, so animated GIFs, nameplates and buddies keep playing */
 function morph(el,html){if(!el)return;const t=document.createElement('template');t.innerHTML=html;morphKids(el,t.content)}
 function morphKids(a,b){const an=[...a.childNodes],bn=[...b.childNodes];
@@ -34,7 +34,10 @@ function morphKids(a,b){const an=[...a.childNodes],bn=[...b.childNodes];
     if(x.nodeName==='CANVAS'){if(x.dataset.buddy!==y.dataset.buddy)a.replaceChild(y,x);else if((x.dataset.bx||'')!==(y.dataset.bx||''))x.dataset.bx=y.dataset.bx||'';continue}
     morphEl(x,y)}
   for(let i=an.length-1;i>=bn.length;i--)an[i].remove()}
-function morphEl(x,y){for(const at of [...x.attributes])if(!y.hasAttribute(at.name))x.removeAttribute(at.name);
+function morphEl(x,y){const media=x.hasAttribute('data-media')&&x.getAttribute('data-media')===y.getAttribute('data-media');
+  // a big picture (chat photo/GIF, animated avatar or banner) that finished loading keeps its picture even if the new HTML was made before it loaded
+  if(media&&mediaNow(x.getAttribute('data-media'))){const u=mediaNow(x.getAttribute('data-media'));if(x.tagName==='IMG'&&!y.hasAttribute('src'))y.setAttribute('src',u);else if(x.tagName!=='IMG'&&!/background-image/.test(y.getAttribute('style')||''))y.setAttribute('style',(y.getAttribute('style')||'')+`;background-image:url('${u}')`)}
+  for(const at of [...x.attributes])if(!y.hasAttribute(at.name))x.removeAttribute(at.name);
   for(const at of [...y.attributes])if(x.getAttribute(at.name)!==at.value)x.setAttribute(at.name,at.value);
   if(x.nodeName!=='INPUT'&&x.nodeName!=='TEXTAREA')morphKids(x,y)}
 L.morph=morph;
@@ -140,7 +143,7 @@ function renderMe(){if(!myProfile)return;const mc=$('#meChip'),cls='me-chip'+(L.
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();mySub={};adminOn=false;
   if(!u){myProfile=null;L.onProfile?.(null);$('#meChip').className='me-chip';$('#meChip canvas.buddy')?.remove();$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
-  unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();syncTier();
+  unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();syncTier();if(JSON.stringify(myProfile.mutedPosts||[])!==lastMuted){lastMuted=JSON.stringify(myProfile.mutedPosts||[]);if(allFeed.length)drawFeed()}
     if((myProfile.theme||'')!==(cfg.theme||'')){cfg.theme=myProfile.theme||'';save();L.cos?.applyTheme(cfg.theme)}L.onProfile?.(myProfile);if(!sideUid.chat)showSide('chat',u.uid)}));
   if(!panes.dm.convo)panes.dm.msgs.innerHTML='<div class="sysmsg">Pick a friend on the left to start chatting.</div>';
   mySub={};adminOn=false;subReady=false;unsubs.push(F.onSnapshot(D('subs',u.uid),s=>{mySub=s.data()||{};subReady=!s.metadata.hasPendingWrites;
@@ -169,8 +172,8 @@ function card(u,{uid,buttons='',compact=false,preview=false}={}){const links=Str
    ${u.favGame?`<div class="sect"><b>Favourite game</b><p>🎮 ${esc(u.favGame)}</p></div>`:''}
    ${links.length?`<div class="sect"><b>Links</b>${links.map(l=>`<a href="${esc(l)}" target="_blank" rel="noopener">${esc(l.replace(/^https?:\/\//,''))}</a>`).join('')}</div>`:''}
    ${buttons?`<div class="row" style="margin-top:16px;flex-wrap:wrap">${buttons}</div>`:''}</div></div>`}
-function relButtons(uid,{close=false}={}){const fr=friendships.find(f=>f.users.includes(uid));
-  return(uid===me?.uid?`<button class="btn-acc" data-goprof>Edit profile</button>`:fr?.status==='accepted'?`<button class="btn-acc" data-dm="${uid}">Message</button><button data-unfriend="${fr.id}">Remove</button>`:fr?`<button disabled>Request ${fr.from===me.uid?'sent':'received'}</button>`:`<button class="btn-acc" data-add="${uid}">Add friend</button>`)+(close?'<button data-close>Close</button>':'')}
+function relButtons(uid,{close=false}={}){const fr=friendships.find(f=>f.users.includes(uid));const mb=uid!==me?.uid&&me?`<button data-mute="${uid}">${muted().includes(uid)?'🙉 Show their posts':'🙈 Hide their posts'}</button>`:'';
+  return mb+(uid===me?.uid?`<button class="btn-acc" data-goprof>Edit profile</button>`:fr?.status==='accepted'?`<button class="btn-acc" data-dm="${uid}">Message</button><button data-unfriend="${fr.id}">Remove</button>`:fr?`<button disabled>Request ${fr.from===me.uid?'sent':'received'}</button>`:`<button class="btn-acc" data-add="${uid}">Add friend</button>`)+(close?'<button data-close>Close</button>':'')}
 
 /* side panels (Discord-style profile on the right) */
 const sideUid={chat:null,fr:null};
@@ -285,6 +288,7 @@ function bindPeople(root){
   root.querySelectorAll('[data-open]').forEach(r=>r.onclick=e=>{if(e.target.closest('button'))return;openDm(r.dataset.open)});
   root.querySelectorAll('[data-user]').forEach(b=>b.onclick=e=>{if(b.closest('[data-open]'))return;e.stopPropagation();showUser(b.dataset.user)});
   root.querySelectorAll('[data-dm]').forEach(b=>b.onclick=()=>{closeModal('userModal');openDm(b.dataset.dm)});
+  root.querySelectorAll('[data-mute]').forEach(b=>b.onclick=async()=>{const on=!muted().includes(b.dataset.mute);await setMuted(b.dataset.mute,on);b.textContent=on?'🙉 Show their posts':'🙈 Hide their posts'});
   root.querySelectorAll('[data-goprof]').forEach(b=>b.onclick=()=>{closeModal('userModal');L.go('profile')});
   root.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{const o=b.dataset.add;try{await F.setDoc(D('friendships',pairId(me.uid,o)),{users:[me.uid,o].sort(),from:me.uid,status:'pending',at:F.serverTimestamp()});toast('Request sent');b.disabled=true;b.textContent='✓'}catch(e){toast('Could not send: '+e.message)}});
   root.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>F.updateDoc(D('friendships',b.dataset.accept),{status:'accepted'}).then(()=>toast('Friend added')).catch(e=>toast(e.message)));
@@ -430,7 +434,7 @@ $('#gifUrlForm').onsubmit=e=>{e.preventDefault();const u=$('#gifUrl').value.trim
 /* ---------- posts ---------- */
 let postImage='';const openCmts=new Map();
 $('#postImgBtn').onclick=()=>$('#postImg').click();
-$('#postImg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;postImage=await L.shrinkImage(f,1100,.8);$('#postThumb').src=postImage;$('#postThumb').style.display='';$('#postImgClear').style.display=''};
+$('#postImg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;postImage=f.type==='image/gif'&&f.size<640000?await readURL(f):await L.shrinkImage(f,1100,.8);if(f.type==='image/gif'&&f.size>=640000)toast('That GIF is too big to stay animated in a post (max 600 KB), so it’s posted as a still');$('#postThumb').src=postImage;$('#postThumb').style.display='';$('#postImgClear').style.display=''};
 $('#postImgClear').onclick=()=>{postImage='';$('#postThumb').style.display='none';$('#postImgClear').style.display='none'};
 $('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=$('#postText').value.trim().slice(0,2000);if(!text&&!postImage)return toast('Write something or add an image');
   $('#postBtn').disabled=true;try{const data={uid:me.uid,text,image:postImage,at:F.serverTimestamp()},ref=F.doc(C('posts')),ment=L.hub?.mentionsIn(text)||[];const b=F.writeBatch(db);b.set(ref,data);
@@ -439,10 +443,16 @@ $('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=
 const postAgo=t=>ago(ms(t));
 let feedPosts=new Map();
 const VIEW_GLOW=50,COMMENT_GLOW=150;
-function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at','desc'),F.limit(40)),async s=>{
-  const posts=s.docs.map(d=>({id:d.id,...d.data()}));feedPosts=new Map(posts.map(p=>[p.id,p]));L.onFeed?.();const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
-  $('#feed').innerHTML=posts.map((p,i)=>{const u=us[i],img=safeImg(p.image),sid=fr.includes(p.uid)||p.uid===me.uid?p.uid:null,likes=p.likes||[],liked=likes.includes(me.uid);
-    return`<div class="card post" id="p-${p.id}" data-pid="${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div>${isAdmin()&&p.uid!==me.uid?`<button class="ib" data-delpost="${p.id}" title="Remove post (admin)" style="margin-left:auto">🗑</button>`:''}</div>
+const REASONS={useless:'Useless or low-effort post',spam:'Spam or repeated posts',rude:'Rude or harmful',other:'Something else'};
+const muted=()=>myProfile?.mutedPosts||[];
+let allFeed=[];
+function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at','desc'),F.limit(40)),s=>{allFeed=s.docs.map(d=>({id:d.id,...d.data()}));drawFeed()}));
+  unsubs.push(()=>{openCmts.forEach(u=>u());openCmts.clear()})}
+async function drawFeed(){const all=allFeed,mu=muted(),posts=all.filter(p=>!mu.includes(p.uid)),hidden=all.length-posts.length;
+  feedPosts=new Map(all.map(p=>[p.id,p]));L.onFeed?.();const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
+  $('#feed').innerHTML=(hidden||mu.length?`<div class="feed-muted">🙈 ${hidden?`${hidden} post${hidden>1?'s':''} hidden from people you muted.`:'You have muted some people.'} <button data-mutelist>Manage</button></div>`:'')+posts.map((p,i)=>{const u=us[i],img=safeImg(p.image),sid=fr.includes(p.uid)||p.uid===me.uid?p.uid:null,likes=p.likes||[],liked=likes.includes(me.uid);
+    return`<div class="card post" id="p-${p.id}" data-pid="${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div><div class="post-tools">${isAdmin()&&p.uid!==me.uid?`<button class="ib" data-delpost="${p.id}" title="Remove post (admin)">🗑</button>`:''}${p.uid!==me.uid?`<button class="ib" data-pmore="${p.id}" title="More">⋯</button>`:''}</div></div>
+    ${p.flagged?`<div class="post-flag">🚩 Reported and checked by the Lumen team${p.uid===me.uid?`: <b>${esc(p.flagged.reason||'')}</b>. This post earns no Glow.${p.flagged.note?` <i>“${esc(p.flagged.note)}”</i>`:''}`:'. It earns no Glow.'}</div>`:''}
     ${p.text?`<div class="post-t">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
     <div class="post-a"><button class="like${liked?' on':''}" data-like="${p.id}">${liked?'❤️':'🤍'} <span>${likes.length}</span></button><button data-cm="${p.id}">💬 ${p.ecomments?p.ecomments:''} Comments</button><span class="views" title="Views">👁 ${p.views||0}</span>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||'<p class="muted">No posts yet. Be the first!</p>';
   bindPeople($('#feed'));L.hub?.linkMentions($('#feed'));
@@ -450,8 +460,28 @@ function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at'
   $$('#feed [data-like]').forEach(b=>b.onclick=()=>toggleLike(b.dataset.like,b));
   $$('#feed [data-delpost]').forEach(b=>b.onclick=()=>{if(confirm('Delete this post?'))F.deleteDoc(D('posts',b.dataset.delpost)).catch(e=>toast(e.message))});
   $$('#feed .post').forEach(el=>viewObs.observe(el));
-  [...openCmts.entries()].forEach(([id,u])=>{u();openCmts.delete(id);if($('#c-'+id))toggleCmts(id)})}));
-  unsubs.push(()=>{openCmts.forEach(u=>u());openCmts.clear()})}
+  $$('#feed [data-pmore]').forEach(b=>b.onclick=e=>{e.stopPropagation();postMenu(b,feedPosts.get(b.dataset.pmore))});
+  $('#feed [data-mutelist]')&&($('#feed [data-mutelist]').onclick=muteList);
+  [...openCmts.entries()].forEach(([id,u])=>{u();openCmts.delete(id);if($('#c-'+id))toggleCmts(id)})}
+/* the ⋯ menu on someone's post */
+function postMenu(btn,p){if(!p)return;document.querySelector('.pmenu')?.remove();const m=document.createElement('div');m.className='pmenu card';
+  m.innerHTML=`<button data-a="mute">🙈 Hide posts from this person</button><button data-a="report">🚩 Report this post</button>`;btn.closest('.post').appendChild(m);
+  getUser(p.uid).then(u=>{const b=m.querySelector('[data-a=mute]');if(b)b.textContent=`🙈 Hide posts from ${u.name||'this person'}`});
+  m.querySelector('[data-a=mute]').onclick=()=>{m.remove();setMuted(p.uid,true)};m.querySelector('[data-a=report]').onclick=()=>{m.remove();reportPost(p)};
+  setTimeout(()=>addEventListener('click',function off(e){if(!m.contains(e.target)){m.remove();removeEventListener('click',off)}}))}
+async function setMuted(uid,on){if(!me)return;const list=muted().filter(x=>x!==uid);if(on)list.push(uid);
+  try{await F.updateDoc(D('users',me.uid),{mutedPosts:list.slice(-300)});const u=await getUser(uid);toast(on?`Posts from ${u.name||'them'} are hidden. Undo any time in Posts → Manage.`:`Showing posts from ${u.name||'them'} again`)}catch(e){toast('Couldn’t change that: '+e.message)}}
+L.setMuted=setMuted;L.isMuted=uid=>muted().includes(uid);
+async function muteList(){const ids=muted();const rows=await Promise.all(ids.map(async id=>{const u=await getUser(id);return`<div class="person">${pic(u,34)}<div class="info"><b>${nameHTML(u,{badges:false})}</b><span>Posts hidden</span></div><button data-unmute="${id}">Show again</button></div>`}));
+  $('#userCard').innerHTML=`<h2>🙈 Muted people</h2><p class="muted" style="font-size:13px">You won't see posts from these people. They aren't told.</p><div class="list">${rows.join('')||'<p class="muted">Nobody muted.</p>'}</div><div class="row" style="margin-top:14px"><button data-close>Close</button></div>`;
+  $$('#userCard [data-unmute]').forEach(b=>b.onclick=async()=>{await setMuted(b.dataset.unmute,false);b.closest('.person').remove()});openModal('userModal')}
+function reportPost(p){$('#userCard').innerHTML=`<h2>🚩 Report post</h2><p class="muted" style="font-size:13px">The Lumen team checks every report. If they agree, the post earns no Glow and its author is told why. Only the team sees who reported it.</p>
+    <div class="rep-reasons">${Object.entries(REASONS).map(([k,l],i)=>`<label class="chk"><input type="radio" name="repR" value="${k}" ${i?'':'checked'}> ${l}</label>`).join('')}</div>
+    <label>Anything else? (optional)</label><input id="repNote" maxlength="200" placeholder="e.g. it's just the letter a">
+    <div class="row" style="margin-top:14px"><button class="btn-acc" id="repGo">Send report</button><button data-close>Cancel</button></div>`;openModal('userModal');
+  $('#repGo').onclick=async()=>{const reason=document.querySelector('input[name=repR]:checked')?.value||'useless';
+    try{await F.setDoc(D('reports',p.id+'_'+me.uid),{post:p.id,postUid:p.uid,by:me.uid,reason,note:$('#repNote').value.trim().slice(0,200),status:'open',at:F.serverTimestamp()});closeModal('userModal');toast('Report sent. Thanks for keeping Posts good.')}
+    catch(e){toast(e.code==='permission-denied'?'You’ve already reported this post':'Couldn’t send: '+e.message)}}}
 async function toggleLike(pid,btn){if(banned)return toast('Your account is banned');const p=feedPosts.get(pid);if(!p)return;const liked=(p.likes||[]).includes(me.uid);
   btn.classList.toggle('on',!liked);btn.innerHTML=`${liked?'🤍':'❤️'} <span>${(p.likes||[]).length+(liked?-1:1)}</span>`;if(!liked)btn.classList.add('pop');
   try{await F.updateDoc(D('posts',pid),{likes:liked?F.arrayRemove(me.uid):F.arrayUnion(me.uid)})}catch(e){toast('Couldn’t like: '+e.message)}}
@@ -488,15 +518,19 @@ function toggleCmts(id){const box=$('#c-'+id);if(openCmts.has(id)){openCmts.get(
 
 /* ---------- post analytics + collecting Glow ---------- */
 let myPosts=[];
-function listenMyPosts(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.where('uid','==',me.uid)),s=>{myPosts=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAnalytics()}))}
-const unpaid=p=>((p.views||0)-(p.paidViews||0))*VIEW_GLOW+((p.ecomments||0)-(p.paidComments||0))*COMMENT_GLOW;
+function listenMyPosts(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.where('uid','==',me.uid)),s=>{myPosts=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAnalytics();
+    // tell the author when the Lumen team accepts a report on one of their posts (once per post, on this device)
+    const seen=cfg.seenFlags||(cfg.seenFlags=[]);for(const p of myPosts){if(!p.flagged||seen.includes(p.id))continue;seen.push(p.id);cfg.seenFlags=seen.slice(-100);save();
+      const msg=`Your post “${(p.text||'Image post').slice(0,40)}” was reported and the Lumen team agreed: ${p.flagged.reason||''}${p.flagged.note?' ('+p.flagged.note+')':''}. It earns no Glow.`;
+      L.notify?.pop?.('🚩','Your post was reported',msg,'posts');toast(msg)}}))}
+const unpaid=p=>p.flagged?0:((p.views||0)-(p.paidViews||0))*VIEW_GLOW+((p.ecomments||0)-(p.paidComments||0))*COMMENT_GLOW;
 function renderAnalytics(){const box=$('#analytics');if(!box||!me)return;
   const tot=myPosts.reduce((a,p)=>({views:a.views+(p.views||0),likes:a.likes+(p.likes||[]).length,comments:a.comments+(p.ecomments||0),earned:a.earned+(p.paidViews||0)*VIEW_GLOW+(p.paidComments||0)*COMMENT_GLOW,owed:a.owed+unpaid(p)}),{views:0,likes:0,comments:0,earned:0,owed:0});
   const max=Math.max(1,...myPosts.map(p=>p.views||0));
   box.innerHTML=`<div class="an-stats">${[['👁','Views',tot.views],['❤️','Likes',tot.likes],['💬','Comments',tot.comments],['✦','Glow earned',tot.earned]].map(([i,l,v])=>`<div class="card an-stat"><span>${i} ${l}</span><b>${v.toLocaleString()}</b></div>`).join('')}</div>
     <div class="card an-collect"><div><b>✦ ${tot.owed.toLocaleString()} Glow waiting</b><span class="muted">Every view from someone else earns ${VIEW_GLOW} Glow (up to 2 per person per day) and every comment from someone else earns ${COMMENT_GLOW}.</span></div><button class="claim" id="collectBtn" ${tot.owed?'':'disabled'}>Collect</button></div>
     <div class="card"><table class="an-table"><thead><tr><th>Post</th><th>Views</th><th>Likes</th><th>Comments</th><th>Glow</th></tr></thead><tbody>${myPosts.map(p=>`<tr><td><div class="an-post">${safeImg(p.image)?`<img src="${safeImg(p.image)}" alt="">`:''}<span>${esc((p.text||'Image post').replace(/^#{1,3}\s*/gm,'').slice(0,70))}</span></div><small class="muted">${postAgo(p.at)}</small></td>
-      <td><div class="an-bar"><i style="width:${Math.round((p.views||0)/max*100)}%"></i></div>${p.views||0}</td><td>${(p.likes||[]).length}</td><td>${p.ecomments||0}</td><td>${unpaid(p)?`<span class="price">+${unpaid(p)}</span>`:'✓'}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">You haven’t posted yet.</td></tr>'}</tbody></table></div>`;
+      <td><div class="an-bar"><i style="width:${Math.round((p.views||0)/max*100)}%"></i></div>${p.views||0}</td><td>${(p.likes||[]).length}</td><td>${p.ecomments||0}</td><td>${p.flagged?`<span class="rep-tag" title="${esc((p.flagged.reason||'')+(p.flagged.note?': '+p.flagged.note:''))}">🚩 0</span>`:unpaid(p)?`<span class="price">+${unpaid(p)}</span>`:'✓'}</td></tr>${p.flagged?`<tr class="rep-row"><td colspan="5">🚩 This post was reported and the Lumen team agreed: <b>${esc(p.flagged.reason||'')}</b>${p.flagged.note?` · “${esc(p.flagged.note)}”`:''}. It earns no Glow.</td></tr>`:''}`).join('')||'<tr><td colspan="5" class="muted">You haven’t posted yet.</td></tr>'}</tbody></table></div>`;
   $('#collectBtn').onclick=collectAll}
 async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got=0;
   for(const p of myPosts.filter(p=>unpaid(p)>0)){const amt=plan.bonus(unpaid(p));const b=F.writeBatch(db);
@@ -516,15 +550,16 @@ function listenServer(){unsubs.push(F.onSnapshot(D('server','config'),s=>{const 
   unsubs.push(F.onSnapshot(C('inbox',me.uid,'from'),s=>{inbox=s.docs.map(d=>d.id);renderFriends()},()=>{}))}
 
 /* ---------- admin control panel ---------- */
-let allUsers=[],adminQ='',admTab='overview';
+let allUsers=[],adminQ='',admTab='overview';const adminPosts=new Map();
 L.onAdminData=()=>{if(['overview','creators','projects','hub','shop'].includes(admTab))renderAdmin()};
 function startAdmin(){$('#navAdmin').style.display=isAdmin()?'':'none';if(!isAdmin()||adminOn)return;adminOn=true;L.onAdminStart?.()
   unsubs.push(F.onSnapshot(F.query(C('users'),F.orderBy('nameLower'),F.limit(500)),s=>{allUsers=s.docs.map(d=>({uid:d.id,...d.data()}));renderAdmin()}));
   unsubs.push(F.onSnapshot(C('bans'),s=>{bannedSet=new Set(s.docs.map(d=>d.id));renderAdmin()}));
+  unsubs.push(F.onSnapshot(F.query(C('reports'),F.where('status','==','open')),s=>{reports=s.docs.map(d=>({id:d.id,...d.data()}));renderAdmin()},()=>{}));
   if(!isOwner())return;
   unsubs.push(F.onSnapshot(C('codes'),s=>{glowCodes=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAdmin()},()=>{}));
   unsubs.push(F.onSnapshot(C('pcodes'),s=>{premCodes=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.at)-ms(a.at));renderAdmin()},()=>{}))}
-let bannedSet=new Set(),glowCodes=[],premCodes=[];
+let bannedSet=new Set(),glowCodes=[],premCodes=[],reports=[];
 /* premium code presets (days per plan; Ultimate is for life, its control-panel access renews yearly) */
 const PRESETS=[['lite','Lumen Lite · 1 year',{lite:365},5000],['lite30','Lumen Lite · 30-day trial',{lite:30},0],['upgrade','Upgrade · 3 months',{upgrade:90},0],['liteup','Lite + Upgrade · 1 year',{lite:365,upgrade:365},5000],
   ['pro','Lumen Pro · 1 year',{pro:365},5000],['ultimate','Lumen Ultimate · forever (+1 yr control panel)',{ultimate:36500,ultAdmin:365},5000],['ultadmin','Ultimate control panel renewal · 1 year',{ultAdmin:365},0]];
@@ -533,7 +568,7 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
   if(document.activeElement&&box.contains(document.activeElement)&&document.activeElement.matches('textarea,input:not(#admQ)'))return; // don't wipe a form mid-typing
   const chans=serverChannels||rooms();const hc=L.hubCounts?.()||{apps:0,queue:0,creators:0,live:0};
   const list=allUsers.filter(u=>!adminQ||u.nameLower?.includes(adminQ)||u.uid.toLowerCase().includes(adminQ));
-  const TABS=[['overview','📊','Overview'],['users','👥','Users'],['creators','🛠','Creators',hc.apps],['projects','📦','Projects',hc.queue],['shop','🎨','Shop items',hc.shop],['hub','🏠','Hub'],['codes','✦','Glow codes'],['pcodes','💎','Premium codes'],['channels','#','Channels']].filter(t=>isOwner()||!['codes','pcodes'].includes(t[0]));
+  const TABS=[['overview','📊','Overview'],['users','👥','Users'],['creators','🛠','Creators',hc.apps],['projects','📦','Projects',hc.queue],['shop','🎨','Shop items',hc.shop],['hub','🏠','Hub'],['reports','🚩','Reports',reports.length?new Set(reports.map(r=>r.post)).size:0],['codes','✦','Glow codes'],['pcodes','💎','Premium codes'],['channels','#','Channels']].filter(t=>isOwner()||!['codes','pcodes'].includes(t[0]));
   if(!isOwner()&&['codes','pcodes'].includes(admTab))admTab='overview';
   const tabsHTML=`<div class="adm-tabs">${TABS.map(([k,i,l,n])=>`<button data-atab="${k}" class="${admTab===k?'on':''}"><span>${i}</span>${l}${n?`<em>${n}</em>`:''}</button>`).join('')}</div>`;
   const stat=(i,l,v,go)=>`<button class="card an-stat"${go?` data-atab="${go}"`:''}><span>${i} ${l}</span><b>${(+v||0).toLocaleString()}</b></button>`;
@@ -548,12 +583,18 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
      <div class="list">${premCodes.map(c=>`<div class="person"><div class="info"><b style="font-family:'JetBrains Mono',monospace;letter-spacing:.04em">${esc(c.id)}</b><span>${esc(grantTxt(c.grants))}${c.glow?' · ✦ '+(+c.glow).toLocaleString():''} · used ${c.uses}/${c.maxUses}</span></div><button class="ib" data-copycode="${esc(c.id)}" title="Copy">📋</button><button class="ib" data-delpcode="${esc(c.id)}" title="Delete">✕</button></div>`).join('')||'<p class="muted">No premium codes yet.</p>'}</div></div>`;
   const channels=`<div class="card"><h2>Global server channels</h2><p class="muted" style="font-size:13px">Everyone sees these rooms in Chat.</p><div class="list" style="margin:10px 0">${chans.map(c=>`<div class="person"><div class="info"><b># ${esc(c)}</b></div><button class="ib" data-rmch="${esc(c)}" title="Remove">✕</button></div>`).join('')}</div>
      <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div>`;
-  const todo=[hc.shop&&[`🎨 ${hc.shop} shop item${hc.shop>1?'s':''} to review`,'shop'],hc.apps&&[`🛠 ${hc.apps} creator application${hc.apps>1?'s':''} waiting`,'creators'],hc.queue&&[`📦 ${hc.queue} project${hc.queue>1?'s':''} to review`,'projects']].filter(Boolean);
+  const todo=[reports.length&&[`🚩 ${new Set(reports.map(r=>r.post)).size} reported post${new Set(reports.map(r=>r.post)).size>1?'s':''} to check`,'reports'],hc.shop&&[`🎨 ${hc.shop} shop item${hc.shop>1?'s':''} to review`,'shop'],hc.apps&&[`🛠 ${hc.apps} creator application${hc.apps>1?'s':''} waiting`,'creators'],hc.queue&&[`📦 ${hc.queue} project${hc.queue>1?'s':''} to review`,'projects']].filter(Boolean);
   const overview=`<div class="an-stats">${stat('👥','Accounts',allUsers.length,'users')}${stat('🟢','Online friends',friendIds().filter(u=>status(u)!=='offline').length)}${stat('⛔','Banned',bannedSet.size,'users')}${stat('🛠','Creators',hc.creators,'creators')}${stat('📦','Live projects',hc.live,'projects')}${isOwner()?stat('✦','Glow codes',glowCodes.length,'codes')+stat('💎','Premium',allUsers.filter(u=>tierOf(u)).length,'pcodes'):stat('💎','Premium members',allUsers.filter(u=>tierOf(u)).length)}</div>
      ${isOwner()?'':`<div class="banner" style="margin-bottom:14px">💎 You have the control panel through Lumen ${plan.ult()&&!liveK('pro')?'Ultimate':'Pro'}. Glow gifts and codes stay with the Lumen owner.</div>`}
      <div class="card"><h2>📥 To do</h2><div class="list">${todo.map(([t,k])=>`<button class="adm-todo" data-atab="${k}">${t}<span>Open →</span></button>`).join('')||'<p class="muted">All caught up. Nothing waiting for you.</p>'}</div></div>
      <div class="adm-quick">${[['users','👥','Manage accounts',isOwner()?'Rename, gift Glow, message, ban':'Rename, message, ban'],['hub','🏠','Customise the Hub','Banner, announcement, featured picks'],['projects','📦','Review projects','Approve, feature, hide or delete'],['channels','#','Chat channels','Add and remove global rooms']].map(([k,i,t,d])=>`<button class="card" data-atab="${k}"><span style="font-size:24px">${i}</span><b>${t}</b><span class="muted">${d}</span></button>`).join('')}</div>`;
-  const pane={overview,users,codes,pcodes,channels}[admTab];
+  const byPost=[...reports.reduce((m,r)=>{(m.get(r.post)||m.set(r.post,[]).get(r.post)).push(r);return m},new Map())];
+  const repPane=`<div class="card"><h2>🚩 Post reports</h2><p class="muted" style="font-size:13px">Accept a report and the post earns no more Glow; its author gets a notification with the reason. Dismiss it if the post is fine.</p>
+     <div class="list">${byPost.map(([pid,rs])=>{const p=feedPosts.get(pid)||adminPosts.get(pid);const counts=rs.reduce((a,r)=>(a[r.reason]=(a[r.reason]||0)+1,a),{});const top=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0]||'useless';
+       return`<div class="rep-item"><div class="rep-post">${p?`${safeImg(p.image)?`<img src="${safeImg(p.image)}" alt="">`:''}<span>${esc((p.text||'Image post').slice(0,200))}</span>`:'<span class="muted">Loading post…</span>'}</div>
+         <div class="rep-meta"><b data-repuser="${rs[0].postUid}">by …</b> · ${rs.length} report${rs.length>1?'s':''}: ${Object.entries(counts).map(([k,n])=>`${esc(REASONS[k]||k)} ×${n}`).join(', ')}${rs.filter(r=>r.note).map(r=>`<div class="muted" style="font-size:12px">“${esc(r.note)}”</div>`).join('')}</div>
+         <div class="row" style="gap:8px;flex-wrap:wrap"><input data-repnote="${pid}" maxlength="300" placeholder="Note for the author (optional)" style="flex:1;min-width:180px"><button class="btn-acc" data-repok="${pid}" data-reason="${top}">Accept · no Glow</button><button data-repno="${pid}">Dismiss</button></div></div>`}).join('')||'<p class="muted">No reports waiting. 🎉</p>'}</div></div>`;
+  const pane={overview,users,codes,pcodes,channels,reports:repPane}[admTab];
   box.innerHTML=tabsHTML+`<div class="adm-pane" id="admPane">${pane||''}</div>`;
   box.querySelectorAll('[data-atab]').forEach(b=>b.onclick=()=>{admTab=b.dataset.atab;renderAdmin();box.scrollIntoView({block:'start'})});
   if(!pane){L.hub?.renderAdminTab(admTab,$('#admPane'));return}
@@ -570,6 +611,13 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
   if($('#mkCode'))$('#mkCode').onsubmit=async e=>{e.preventDefault();const amount=Math.floor(+$('#codeAmt').value),maxUses=Math.max(1,Math.floor(+$('#codeUses').value||1));if(!(amount>0))return toast('Enter how much Glow the code is worth');
     const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint8Array(12));const raw=[...r].map(x=>A[x%A.length]).join('');const code=`LUMEN-${raw.slice(0,4)}-${raw.slice(4,8)}-${raw.slice(8)}`;
     try{await F.setDoc(D('codes',code),{amount,maxUses,uses:0,at:F.serverTimestamp()});try{await navigator.clipboard.writeText(code)}catch{}toast(`Code ${code} made and copied`)}catch(err){adminErr(err)}};
+  box.querySelectorAll('[data-repuser]').forEach(el=>getUser(el.dataset.repuser).then(u=>el.textContent='by '+(u.name||'someone')));
+  byPost.forEach(([pid])=>{if(!feedPosts.get(pid)&&!adminPosts.has(pid)){adminPosts.set(pid,null);F.getDoc(D('posts',pid)).then(s=>{adminPosts.set(pid,s.exists()?{id:pid,...s.data()}:{id:pid,text:'(post deleted)'});renderAdmin()}).catch(()=>{})}});
+  const settle=async(pid,ok,reason)=>{const bt=F.writeBatch(db);for(const r of reports.filter(r=>r.post===pid))bt.update(D('reports',r.id),{status:ok?'accepted':'dismissed'});
+    if(ok&&(adminPosts.get(pid)?.text!=='(post deleted)'))bt.update(D('posts',pid),{flagged:{reason:REASONS[reason]||reason,note:(box.querySelector(`[data-repnote="${pid}"]`)?.value||'').trim().slice(0,300),at:F.serverTimestamp()}});
+    try{await bt.commit();toast(ok?'Report accepted: the post earns no Glow and its author has been told':'Report dismissed')}catch(e){adminErr(e)}};
+  box.querySelectorAll('[data-repok]').forEach(b=>b.onclick=()=>settle(b.dataset.repok,true,b.dataset.reason));
+  box.querySelectorAll('[data-repno]').forEach(b=>b.onclick=()=>settle(b.dataset.repno,false));
   if($('#mkPCode'))$('#mkPCode').onsubmit=async e=>{e.preventDefault();const pr=PRESETS.find(p=>p[0]===$('#pcPreset').value);if(!pr)return;const maxUses=Math.max(1,Math.floor(+$('#pcUses').value||1));
     const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint8Array(12));const raw=[...r].map(x=>A[x%A.length]).join('');const code=`${{lite30:'LITE',liteup:'LITE',ultadmin:'ULT'}[pr[0]]||pr[0].slice(0,4).toUpperCase()}-${raw.slice(0,4)}-${raw.slice(4,8)}-${raw.slice(8)}`;
     try{await F.setDoc(D('pcodes',code),{grants:pr[2],glow:pr[3],maxUses,uses:0,label:pr[1],at:F.serverTimestamp()});try{await navigator.clipboard.writeText(code)}catch{}toast(`Code ${code} made and copied`)}catch(err){adminErr(err)}};
