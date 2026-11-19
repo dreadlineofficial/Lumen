@@ -286,7 +286,7 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 function guideKeys(){$$('.k-study').forEach(k=>k.textContent=cfg.studyKey);$$('.k-swap').forEach(k=>k.textContent=cfg.swapKey);$$('.k-panic').forEach(k=>k.textContent=cfg.panicKey)}
 
 /* ---------- What's New (shown when you come back from study mode or a cover page) ---------- */
-const NEWS={id:'2026-11-19d',items:[
+const NEWS={id:'2026-11-19e',items:[
   ['📅','Daily challenges','Minesweeper, Memory and Slide: new puzzles every day, ✦ 100 Glow each. Find them at the top of Games.','games'],
   ['🛠','Create from Games','The creator tools moved into Games → Create, and creators\' games now show up right on the Games page (free or priced in Glow).','games'],
   ['🙈','Mute and report posts','Tap ⋯ on a post to hide posts from that person, or report a useless post. If the Lumen team agrees, it earns no Glow.','posts'],

@@ -143,7 +143,7 @@ function renderMe(){if(!myProfile)return;const mc=$('#meChip'),cls='me-chip'+(L.
 F.onAuthStateChanged(auth,async u=>{stopAll();me=u;presence.clear();mySub={};adminOn=false;
   if(!u){myProfile=null;L.onProfile?.(null);$('#meChip').className='me-chip';$('#meChip canvas.buddy')?.remove();$('#mePic').outerHTML=`<div class="pic" id="mePic" style="width:38px;height:38px">?</div>`;$('#meName').textContent='Sign in';$('#meSt').textContent='Chat, friends & posts';renderSignedOut();return}
   await ensureProfile(u,u.displayName||u.email?.split('@')[0]);
-  unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();syncTier();if(JSON.stringify(myProfile.mutedPosts||[])!==lastMuted){lastMuted=JSON.stringify(myProfile.mutedPosts||[]);if(allFeed.length)drawFeed()}
+  unsubs.push(F.onSnapshot(D('users',u.uid),s=>{myProfile={uid:u.uid,...s.data()};users.set(u.uid,Promise.resolve(myProfile));fetchedAt.set(u.uid,Date.now()+1e12);renderMe();syncTier();if(JSON.stringify(myProfile.mutedPosts||[])!==lastMuted){lastMuted=JSON.stringify(myProfile.mutedPosts||[]);mutedCount();if(allFeed.length)drawFeed()}
     if((myProfile.theme||'')!==(cfg.theme||'')){cfg.theme=myProfile.theme||'';save();L.cos?.applyTheme(cfg.theme)}L.onProfile?.(myProfile);if(!sideUid.chat)showSide('chat',u.uid)}));
   if(!panes.dm.convo)panes.dm.msgs.innerHTML='<div class="sysmsg">Pick a friend on the left to start chatting.</div>';
   mySub={};adminOn=false;subReady=false;unsubs.push(F.onSnapshot(D('subs',u.uid),s=>{mySub=s.data()||{};subReady=!s.metadata.hasPendingWrites;
@@ -472,9 +472,14 @@ function postMenu(btn,p){if(!p)return;document.querySelector('.pmenu')?.remove()
 async function setMuted(uid,on){if(!me)return;const list=muted().filter(x=>x!==uid);if(on)list.push(uid);
   try{await F.updateDoc(D('users',me.uid),{mutedPosts:list.slice(-300)});const u=await getUser(uid);toast(on?`Posts from ${u.name||'them'} are hidden. Undo any time in Posts → Manage.`:`Showing posts from ${u.name||'them'} again`)}catch(e){toast('Couldn’t change that: '+e.message)}}
 L.setMuted=setMuted;L.isMuted=uid=>muted().includes(uid);
+// the Muted button (Posts) and Muted people (Profile → Privacy) open the same list
+function mutedCount(){const n=muted().length;const c=$('#mutedCount');if(c)c.textContent=n?n:'';const pn=$('#pMutedNote');if(pn)pn.textContent=n?`${n} ${n===1?'person':'people'} hidden from your feed.`:'Nobody muted. Hide someone from the ⋯ menu on their post.'}
+$('#mutedBtn')&&($('#mutedBtn').onclick=()=>{if(!me)return openModal('authModal');muteList()});$('#pMutedBtn')&&($('#pMutedBtn').onclick=()=>{if(!me)return openModal('authModal');muteList()});
 async function muteList(){const ids=muted();const rows=await Promise.all(ids.map(async id=>{const u=await getUser(id);return`<div class="person">${pic(u,34)}<div class="info"><b>${nameHTML(u,{badges:false})}</b><span>Posts hidden</span></div><button data-unmute="${id}">Show again</button></div>`}));
   $('#userCard').innerHTML=`<h2>🙈 Muted people</h2><p class="muted" style="font-size:13px">You won't see posts from these people. They aren't told.</p><div class="list">${rows.join('')||'<p class="muted">Nobody muted.</p>'}</div><div class="row" style="margin-top:14px"><button data-close>Close</button></div>`;
-  $$('#userCard [data-unmute]').forEach(b=>b.onclick=async()=>{await setMuted(b.dataset.unmute,false);b.closest('.person').remove()});openModal('userModal')}
+  $$('#userCard [data-unmute]').forEach(b=>b.onclick=async()=>{await setMuted(b.dataset.unmute,false);b.closest('.person').remove();if(!$('#userCard [data-unmute]'))$('#userCard .list').innerHTML='<p class="muted">Nobody muted.</p>'});
+  if(ids.length>1){$('#userCard .list').insertAdjacentHTML('afterend','<button id="unmuteAll" style="margin-top:10px">Show everyone again</button>');$('#unmuteAll').onclick=async()=>{try{await F.updateDoc(D('users',me.uid),{mutedPosts:[]});toast('Everyone’s posts are back in your feed');closeModal('userModal')}catch(e){toast(e.message)}}}
+  openModal('userModal')}
 function reportPost(p){$('#userCard').innerHTML=`<h2>🚩 Report post</h2><p class="muted" style="font-size:13px">The Lumen team checks every report. If they agree, the post earns no Glow and its author is told why. Only the team sees who reported it.</p>
     <div class="rep-reasons">${Object.entries(REASONS).map(([k,l],i)=>`<label class="chk"><input type="radio" name="repR" value="${k}" ${i?'':'checked'}> ${l}</label>`).join('')}</div>
     <label>Anything else? (optional)</label><input id="repNote" maxlength="200" placeholder="e.g. it's just the letter a">
