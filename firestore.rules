@@ -663,6 +663,21 @@ service cloud.firestore {
         && request.resource.data.note is string && request.resource.data.note.size() <= 200
         && get(postPath(request.resource.data.post)).data.uid == request.resource.data.postUid && request.resource.data.postUid != uid();
     }
+    // Content: a post can be a plain post, a poll (2-6 options, optional end time), a question, a link or a Store pick
+    function optOk(o, i) { return o.size() <= i || (o[i] is string && o[i].size() >= 1 && o[i].size() <= 80); }
+    function pollOk(p) {
+      return p is map && p.keys().hasOnly(['opts', 'ends']) && p.opts is list && p.opts.size() >= 2 && p.opts.size() <= 6
+        && optOk(p.opts, 0) && optOk(p.opts, 1) && optOk(p.opts, 2) && optOk(p.opts, 3) && optOk(p.opts, 4) && optOk(p.opts, 5)
+        && (p.get('ends', null) == null || (p.ends is timestamp && p.ends > request.time && p.ends < request.time + duration.value(32, 'd')));
+    }
+    function contentOk(d) {
+      let k = d.get('kind', 'post');
+      return k in ['post', 'poll', 'question', 'link', 'share']
+        && d.get('votes', {}).size() == 0 && d.get('best', '') == ''
+        && (k == 'poll') == ('poll' in d) && (!('poll' in d) || pollOk(d.poll))
+        && (k == 'link') == (d.get('link', '') != '') && (d.get('link', '') == '' || (d.link is string && d.link.size() <= 500 && d.link.matches('^https://.*')))
+        && (k == 'share') == (d.get('share', '') != '') && (d.get('share', '') == '' || (d.share is string && d.share.matches('^[pb]_[A-Za-z0-9]{1,40}$')));
+    }
     match /posts/{post} {
       function d() { return request.resource.data; }
       function o() { return resource.data; }
@@ -673,7 +688,15 @@ service cloud.firestore {
         && okImage(d().get('image', ''))
         && d().at == request.time
         && d().get('likes', []).size() == 0 && d().get('views', 0) == 0 && d().get('ecomments', 0) == 0
-        && d().get('paidViews', 0) == 0 && d().get('paidComments', 0) == 0;
+        && d().get('paidViews', 0) == 0 && d().get('paidComments', 0) == 0 && contentOk(d());
+      // vote in a poll: add only your own vote, once, while the poll is open
+      allow update: if active() && keys().hasOnly(['votes']) && o().get('kind', 'post') == 'poll'
+        && d().votes is map && d().votes.diff(o().get('votes', {})).affectedKeys().hasOnly([uid()])
+        && !(uid() in o().get('votes', {})) && d().votes[uid()] is int && d().votes[uid()] >= 0 && d().votes[uid()] < o().poll.opts.size()
+        && (o().poll.get('ends', null) == null || request.time < o().poll.ends);
+      // the person who asked a question picks (or clears) the best answer
+      allow update: if active() && uid() == o().uid && o().get('kind', 'post') == 'question' && keys().hasOnly(['best'])
+        && d().best is string && d().best.size() <= 40;
       // like or unlike: add or remove only your own id
       allow update: if active() && keys().hasOnly(['likes']) && d().likes.size() <= 5000
         && ((d().likes.toSet().difference(o().get('likes', []).toSet()) == [uid()].toSet() && o().get('likes', []).toSet().difference(d().likes.toSet()).size() == 0)

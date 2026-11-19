@@ -170,7 +170,7 @@ function productPage(it){const [ic,lb]=label(it),cc=catOf(it),up=reviews.filter(
           !it.price?'<div class="mk-big-price">Free</div><p class="muted">Get it once and keep it in your library.</p>':`<div class="mk-big-price">✦ ${fmtN(c)}${c<it.price?` <s>${fmtN(it.price)}</s> <em class="pill live">💎 Lite −10%</em>`:''}</div><p class="muted">${me()?coins()>=c?`You have ✦ ${fmtN(coins())}. After buying: ✦ ${fmtN(coins()-c)}.`:`You have ✦ ${fmtN(coins())}: ✦ ${fmtN(c-coins())} short. Claim free Glow daily at the top of the Store.`:'Sign in to buy it with ✦ Glow.'}</p>`}
         <div class="mk-btns">${own?`<button class="btn-acc mk-act big" data-use="${esc(it.key)}">${useLabel(it)}</button><button data-sell>✏️ Edit in Creator Dashboard</button>`:action(it,true)}
           ${!has(it)&&!own&&it.price>0&&me()?`<button class="mk-act big${cart.includes(it.key)?' in':''}" data-cart="${esc(it.key)}">${cart.includes(it.key)?'✓ In your cart':'🛒 Add to cart'}</button>`:''}
-          <button class="mk-act big${wish.includes(it.key)?' in':''}" data-wish="${esc(it.key)}">${wish.includes(it.key)?'♥ Wishlisted':'♡ Wishlist'}</button></div>
+          <button class="mk-act big${wish.includes(it.key)?' in':''}" data-wish="${esc(it.key)}">${wish.includes(it.key)?'♥ Wishlisted':'♡ Wishlist'}</button><button class="mk-act big" data-sharec="${esc(it.key)}">📣 Share</button></div>
         <ul class="mk-perks"><li><b>${wi}</b> <span><b>${wt}</b><br><span class="muted">${wd}</span></span></li><li><b>♾</b> <span>Yours forever, on any device you sign in on</span></li>${it.uid&&it.price?'<li><b>🤝</b> <span>90% goes straight to the creator</span></li>':''}</ul></div>
       ${it.type==='game'&&canOpen(it)?`<button class="mk-link" data-game="${esc(it.key)}">🎮 Open its game page →</button>`:''}</div></div>
   <div class="mk-cols"><div><div class="card mk-desc"><h2>About this ${lb.toLowerCase()}</h2>${it.desc?`<p>${esc(it.desc)}</p>`:'<p class="muted">The creator didn’t write a description.</p>'}</div>
@@ -220,6 +220,7 @@ $('#mkBox').addEventListener('click',e=>{const t=e.target;const g=s=>t.closest(s
   if((b=g('[data-price]'))){priceF=b.dataset.price;return render()}
   if(g('[data-home]')){e.preventDefault();cat='all';q='';$('#mkQ').value='';openKey=null;stopReviews();return render()}
   if(g('[data-sell]'))return L.go('creator');
+  if((b=g('[data-sharec]')))return L.shareToContent?.(b.dataset.sharec);
   if(g('[data-gohub]'))return L.go('games');
   if((b=g('[data-game]')))return H().openGame(b.dataset.game);
   if(g('[data-jump]')){e.preventDefault();return $('#mkReviews')?.scrollIntoView({behavior:'smooth'})}

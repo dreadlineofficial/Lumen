@@ -10,15 +10,15 @@
 <style>html.booting,html.booting body{background:#f6f8fc!important}html.booting body>*:not(#study){visibility:hidden!important}html.booting #study{display:block}</style>
 <script>
 /* make sure everyone runs the newest Lumen: GitHub Pages lets browsers reuse an old copy for a few minutes */
-window.LUMEN_VERSION='2026-11-19i';
+window.LUMEN_VERSION='2026-11-19j';
 (function(){try{var u=new URL(location.href);fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==window.LUMEN_VERSION&&u.searchParams.get('lv')!==j.v){u.searchParams.set('lv',j.v);location.replace(u.toString())}}).catch(function(){})}catch(e){}})();
 </script>
 <link rel="icon" id="fav" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Fredoka:wght@500;600&family=JetBrains+Mono:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Pacifico&family=Silkscreen&family=UnifrakturMaguntia&family=Michroma&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261119i">
-<link rel="stylesheet" href="css/cosmetics.css?v=20261119i">
+<link rel="stylesheet" href="css/app.css?v=20261119j">
+<link rel="stylesheet" href="css/cosmetics.css?v=20261119j">
 </head>
 <body>
 <div class="bgfx"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div></div><div class="grain"></div>
@@ -30,7 +30,7 @@ window.LUMEN_VERSION='2026-11-19i';
     <button class="nav-btn" data-v="web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span>Web</span></button>
     <button class="nav-btn" data-v="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
     <button class="nav-btn" data-v="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a7 7 0 0 1 14 0v1M17 11a4 4 0 0 0 0-8M23 21v-1a7 7 0 0 0-5-6.7"/></svg><span>Friends</span><em class="badge" id="reqBadge" style="display:none;font-style:normal"></em></button>
-    <button class="nav-btn" data-v="posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h6"/></svg><span>Posts</span></button>
+    <button class="nav-btn" data-v="posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h6"/></svg><span>Content</span></button>
     <button class="nav-btn" data-v="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg><span>Store</span></button>
     <button class="nav-btn" data-v="timetable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Timetable</span></button>
     <button class="nav-btn" data-v="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg><span>Profile</span></button>
@@ -113,16 +113,19 @@ window.LUMEN_VERSION='2026-11-19i';
     </section>
 
     <section class="view" id="v-posts">
-      <h1>What's <span class="serif iri">new.</span></h1><p class="sub">Post anything. Every view of your post earns ✦ 10 Glow and every comment earns ✦ 50.</p>
+      <h1><span class="serif iri">Content.</span></h1><p class="sub">Posts, polls, questions, links and Store picks from everyone on Lumen. Every view of your content earns ✦ 10 Glow and every comment earns ✦ 50.</p>
       <div class="shop-tabs" id="postTabs"><button data-pt="feed" class="on">📰 Feed</button><button data-pt="an">📊 My analytics</button><button id="mutedBtn" type="button">🙈 Muted <em id="mutedCount"></em></button></div>
       <div id="analytics" style="display:none;max-width:980px"></div>
       <div style="max-width:720px" id="feedWrap">
         <div class="card composer" style="margin-bottom:22px">
+          <div class="seg ck-kinds" id="ckKinds"><button type="button" data-k="post" class="on">📝 Post</button><button type="button" data-k="poll">📊 Poll</button><button type="button" data-k="question">❓ Question</button><button type="button" data-k="link">🔗 Link</button><button type="button" data-k="share">🛍 Store pick</button></div>
           <textarea id="postText" data-rich maxlength="2000" placeholder="Say something…"></textarea>
+          <div id="ckExtra"></div>
           <div class="fmt-bar"><button type="button" data-wrap="**" data-for="#postText" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" data-wrap="*" data-for="#postText" title="Italic (Ctrl+I)"><i>I</i></button><button type="button" data-wrap="__" data-for="#postText" title="Underline (Ctrl+U)"><u>U</u></button><button type="button" data-wrap="~~" data-for="#postText" title="Strikethrough (Ctrl+Shift+X)"><s>S</s></button><button type="button" data-wrap="`" data-for="#postText" title="Code (Ctrl+E)">&lt;/&gt;</button><button type="button" data-wrap="||" data-for="#postText" title="Spoiler (Ctrl+Shift+S)">▒</button><button type="button" data-emoji="#postText" title="Emoji">😊</button></div>
           <img id="postThumb" class="thumb" style="display:none">
           <div class="row" style="margin-top:10px"><button id="postImgBtn">🖼 Image</button><input type="file" id="postImg" accept="image/*" hidden><button id="postImgClear" style="display:none">Remove image</button><span class="spacer" style="flex:1"></span><button class="btn-acc" id="postBtn">Post</button></div>
         </div>
+        <div class="seg gh-chips ck-filter" id="ckFilter"><button data-f="all" class="on">All</button><button data-f="post">📝 Posts</button><button data-f="poll">📊 Polls</button><button data-f="question">❓ Questions</button><button data-f="link">🔗 Links</button><button data-f="share">🛍 Store picks</button><button data-f="friends">👥 Friends</button></div>
         <div id="feed"></div>
       </div>
     </section>
@@ -257,6 +260,7 @@ window.LUMEN_VERSION='2026-11-19i';
           <li><b>Messages:</b> hover a message to <b>react</b> 😊, <b>reply</b> ↩, <b>edit</b> ✏️ (your own), <b>copy</b> or <b>delete</b> 🗑 it. Double-click a message to reply, press <kbd>↑</kbd> in an empty box to edit your last message, <kbd>Esc</kbd> to cancel. 📷 sends a picture (Lumen Lite).</li>
           <li><b>Posts:</b> share text and an image (small GIFs stay animated). People can like ❤️ and comment. Tap <b>⋯</b> on someone's post to <b>hide posts from them</b> (undo any time with <b>🙈 Muted</b> at the top of Posts, in Profile → Privacy, or on their profile) or to <b>report</b> it. The Lumen team checks reports: if they agree, the post earns no Glow and its author is told why.</li>
           <li><b>Daily challenges:</b> right on the <b>Hub</b> (and at the top of <b>Games</b>): Minesweeper, Memory and Slide. Everyone gets the same puzzles each day; solve each one for ✦ 100 Glow (once a day, +5% with Lite).</li>
+          <li><b>Content:</b> share posts, polls (2 to 6 options, with an end time), questions (pick the best answer from the comments), links (YouTube shows a preview) and Store picks. Filter the feed by type or by friends.</li>
           <li><b>Store:</b> buy games, ebooks, documents and resources made by Lumen creators with ✦ Glow, or get free ones. Click any product to see its page, add things to your cart or wishlist, and find everything you own in <b>Store → My purchases</b>. Games you own live in the <b>Game hub</b>.</li>
           <li><b>Creators:</b> sell in the Store from <b>Games → Create</b>: upload an HTML game or a file up to 3 MB, or share a hosting link (MediaFire, Google Drive…) for anything bigger. Price it in ✦ Glow (you keep 90%) or make it free; every game also earns 10 Glow for each minute other people play it.</li>
           <li><b>In games</b>, double-tap your Study or Swap key to leave the game (a single press goes to the game). Panic is always one press.</li></ul></details>
@@ -271,7 +275,7 @@ window.LUMEN_VERSION='2026-11-19i';
         <details><summary>✦ Glow, the Shop and your profile</summary><ul>
           <li>Claim <b>500 Glow</b> the first time and <b>150 Glow</b> every day in the <b>Shop</b>.</li>
           <li><b>Glow codes:</b> got a code (LUMEN-…)? Type it into <b>Redeem</b> at the top of the Shop. Each code works once per person.</li>
-          <li><b>Earn from posts:</b> every view from someone else = 10 Glow (up to 2 per person per day), every comment from someone else = 50 Glow. Collect it in <b>Posts → My analytics</b>.</li>
+          <li><b>Earn from posts:</b> every view from someone else = 10 Glow (up to 2 per person per day), every comment from someone else = 50 Glow. Collect it in <b>Content → My analytics</b>.</li>
           <li>Spend it on profile effects, avatar decorations, nameplates, name effects and themes. Bought items appear in <b>Owned</b>; equip or unequip any time.</li>
           <li><b>Profile:</b> banner, picture, name style, status, about me, links, and what friends can see you doing.</li></ul></details>
         <details><summary>🧩 Make it yours</summary><ul>
@@ -439,19 +443,19 @@ window.LUMEN_VERSION='2026-11-19i';
 <div id="cover"><iframe id="coverFrame" allow="fullscreen; autoplay; encrypted-media"></iframe><div id="coverHot"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=20261119i"></script>
-<script src="js/study.js?v=20261119i"></script>
-<script src="js/app.js?v=20261119i"></script>
-<script src="js/cosmetics.js?v=20261119i"></script>
-<script src="js/rich.js?v=20261119i"></script>
-<script src="js/browser.js?v=20261119i"></script>
-<script src="js/bwsize.js?v=20261119i"></script>
-<script type="module" src="js/cloud.js?v=20261119i"></script>
-<script type="module" src="js/shop.js?v=20261119i"></script>
-<script type="module" src="js/hub.js?v=20261119i"></script>
-<script type="module" src="js/market.js?v=20261119i"></script>
-<script type="module" src="js/notify.js?v=20261119i"></script>
-<script type="module" src="js/lobbies.js?v=20261119i"></script>
-<script type="module" src="js/daily.js?v=20261119i"></script>
+<script src="js/config.js?v=20261119j"></script>
+<script src="js/study.js?v=20261119j"></script>
+<script src="js/app.js?v=20261119j"></script>
+<script src="js/cosmetics.js?v=20261119j"></script>
+<script src="js/rich.js?v=20261119j"></script>
+<script src="js/browser.js?v=20261119j"></script>
+<script src="js/bwsize.js?v=20261119j"></script>
+<script type="module" src="js/cloud.js?v=20261119j"></script>
+<script type="module" src="js/shop.js?v=20261119j"></script>
+<script type="module" src="js/hub.js?v=20261119j"></script>
+<script type="module" src="js/market.js?v=20261119j"></script>
+<script type="module" src="js/notify.js?v=20261119j"></script>
+<script type="module" src="js/lobbies.js?v=20261119j"></script>
+<script type="module" src="js/daily.js?v=20261119j"></script>
 </body>
 </html>

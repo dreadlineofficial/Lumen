@@ -436,27 +436,76 @@ let postImage='';const openCmts=new Map();
 $('#postImgBtn').onclick=()=>$('#postImg').click();
 $('#postImg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;postImage=f.type==='image/gif'&&f.size<640000?await readURL(f):await L.shrinkImage(f,1100,.8);if(f.type==='image/gif'&&f.size>=640000)toast('That GIF is too big to stay animated in a post (max 600 KB), so it’s posted as a still');$('#postThumb').src=postImage;$('#postThumb').style.display='';$('#postImgClear').style.display=''};
 $('#postImgClear').onclick=()=>{postImage='';$('#postThumb').style.display='none';$('#postImgClear').style.display='none'};
-$('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=$('#postText').value.trim().slice(0,2000);if(!text&&!postImage)return toast('Write something or add an image');
-  $('#postBtn').disabled=true;try{const data={uid:me.uid,text,image:postImage,at:F.serverTimestamp()},ref=F.doc(C('posts')),ment=L.hub?.mentionsIn(text)||[];const b=F.writeBatch(db);b.set(ref,data);
+/* Content composer: a post, a poll, a question, a link or a Store pick (firestore.rules → contentOk) */
+const KINDS={post:['📝','Post','Say something…'],poll:['📊','Poll','Ask your poll question…'],question:['❓','Question','What do you want to know? People answer in the comments.'],link:['🔗','Link','Say something about it (optional)'],share:['🛍','Store pick','Why do you recommend it? (optional)']};
+let ck='post',pollOpts=['',''],pollDays='1',ckLink='',ckShare='';
+const storeItems=()=>{const h=L.hub;if(!h?.data)return[];const d=h.data();return[...h.BUILTINS.filter(g=>!(d.hubCfg.hiddenBuiltins||[]).includes(g.key)).map(g=>({key:g.key,title:g.title})),...d.live.filter(x=>x.type!=='site').map(x=>({key:'p_'+x.id,title:x.title}))]};
+function renderCk(){$$('#ckKinds [data-k]').forEach(b=>b.classList.toggle('on',b.dataset.k===ck));$('#postText').placeholder=KINDS[ck][2];
+  const img=ck==='post'||ck==='question';$('#postImgBtn').style.display=img?'':'none';if(!img&&postImage)$('#postImgClear').click();
+  const x=$('#ckExtra');
+  if(ck==='poll')x.innerHTML=`<div class="ck-poll">${pollOpts.map((o,i)=>`<div class="row"><input data-po="${i}" maxlength="80" placeholder="Option ${i+1}" value="${esc(o)}">${pollOpts.length>2?`<button type="button" class="ib" data-porm="${i}" title="Remove">✕</button>`:''}</div>`).join('')}
+    <div class="row" style="flex-wrap:wrap">${pollOpts.length<6?'<button type="button" id="poAdd">＋ Add option</button>':''}<span class="spacer" style="flex:1"></span><label style="margin:0">Ends</label><select id="poDays" style="width:auto">${[['1','in 1 day'],['3','in 3 days'],['7','in 1 week'],['30','in 30 days'],['0','never']].map(([v,l])=>`<option value="${v}" ${pollDays===v?'selected':''}>${l}</option>`).join('')}</select></div></div>`;
+  else if(ck==='link')x.innerHTML=`<input id="ckLink" maxlength="500" placeholder="https://… (YouTube, a website, a Google Doc…)" value="${esc(ckLink)}" style="margin-top:10px">`;
+  else if(ck==='share'){const items=storeItems();x.innerHTML=`<select id="ckShare" style="margin-top:10px"><option value="">Pick something from the Store…</option>${items.map(i=>`<option value="${esc(i.key)}" ${ckShare===i.key?'selected':''}>${esc(i.title)}</option>`).join('')}</select>`}
+  else x.innerHTML='';
+  x.querySelectorAll('[data-po]').forEach(i=>i.oninput=()=>{pollOpts[+i.dataset.po]=i.value});
+  x.querySelectorAll('[data-porm]').forEach(b=>b.onclick=()=>{pollOpts.splice(+b.dataset.porm,1);renderCk()});
+  $('#poAdd')&&($('#poAdd').onclick=()=>{pollOpts.push('');renderCk();x.querySelector(`[data-po="${pollOpts.length-1}"]`)?.focus()});
+  $('#poDays')&&($('#poDays').onchange=e=>{pollDays=e.target.value});
+  $('#ckLink')&&($('#ckLink').oninput=e=>{ckLink=e.target.value.trim()});
+  $('#ckShare')&&($('#ckShare').onchange=e=>{ckShare=e.target.value})}
+$('#ckKinds').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;ck=b.dataset.k;renderCk()};
+L.shareToContent=key=>{L.go('posts');$('#postTabs [data-pt=feed]')?.click();ck='share';ckShare=key;renderCk();$('#postText').focus();$('#feedWrap')?.scrollIntoView({behavior:'smooth'})};
+renderCk();
+$('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=$('#postText').value.trim().slice(0,2000),k=ck;
+  if(k==='post'&&!text&&!postImage)return toast('Write something or add an image');
+  if((k==='question'||k==='poll')&&!text)return toast(k==='poll'?'Write the poll question':'Write your question');
+  const opts=pollOpts.map(o=>o.trim().slice(0,80)).filter(Boolean);
+  if(k==='poll'){if(opts.length<2)return toast('Add at least two options');if(new Set(opts.map(o=>o.toLowerCase())).size<opts.length)return toast('Each option needs to be different')}
+  if(k==='link'&&!/^https:\/\/\S+$/i.test(ckLink))return toast('Paste a link that starts with https://');
+  if(k==='share'&&!ckShare)return toast('Pick something from the Store');
+  $('#postBtn').disabled=true;try{const data={uid:me.uid,text,image:k==='post'||k==='question'?postImage:'',kind:k,at:F.serverTimestamp()};
+    if(k==='poll')data.poll={opts,...(pollDays!=='0'?{ends:new Date(Date.now()+ +pollDays*864e5)}:{})};
+    if(k==='link')data.link=ckLink.slice(0,500);if(k==='share')data.share=ckShare;
+    const ref=F.doc(C('posts')),ment=L.hub?.mentionsIn(text)||[];const b=F.writeBatch(db);b.set(ref,data);
     for(const id of ment){b.set(D('projects',id,'mentions',ref.id),{uid:me.uid,at:F.serverTimestamp()});b.update(D('projects',id),{mentions:F.increment(1),lastMention:ref.id})}
-    try{await b.commit()}catch(err){if(!ment.length)throw err;await F.setDoc(ref,data)}$('#postText').value='';$('#postImgClear').click();toast('Posted')}catch(e){toast('Could not post: '+e.message)}$('#postBtn').disabled=false};
+    try{await b.commit()}catch(err){if(!ment.length)throw err;await F.setDoc(ref,data)}
+    $('#postText').value='';$('#postImgClear').click();pollOpts=['',''];ckLink='';ckShare='';ck='post';renderCk();toast(KINDS[k][1]+' posted')}
+  catch(e){toast('Could not post: '+(e.code==='permission-denied'?'Firebase refused it (re-publish the latest rules?)':e.message))}$('#postBtn').disabled=false};
 const postAgo=t=>ago(ms(t));
 let feedPosts=new Map();
 const VIEW_GLOW=10,COMMENT_GLOW=50; // must match earnOk in firestore.rules
 const REASONS={useless:'Useless or low-effort post',spam:'Spam or repeated posts',rude:'Rude or harmful',other:'Something else'};
 const muted=()=>myProfile?.mutedPosts||[];
-let allFeed=[];
-function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at','desc'),F.limit(40)),s=>{allFeed=s.docs.map(d=>({id:d.id,...d.data()}));drawFeed()}));
+let allFeed=[],feedF='all';
+const leftTime=m=>{const d=m-Date.now();return d<36e5?Math.max(1,Math.round(d/6e4))+'m':d<864e5?Math.round(d/36e5)+'h':Math.round(d/864e5)+'d'};
+function pollHTML(p){const o=p.poll?.opts||[],v=p.votes||{},n=Object.keys(v).length,mine=v[me.uid],ends=p.poll?.ends?ms(p.poll.ends):0,closed=!!ends&&ends<Date.now(),show=mine!=null||closed||p.uid===me.uid;
+  const c=o.map((_,i)=>Object.values(v).filter(x=>x===i).length),top=Math.max(0,...c),pc=i=>n?Math.round(c[i]/n*100):0;
+  return`<div class="poll">${o.map((t,i)=>show?`<div class="poll-r${mine===i?' mine':''}${closed&&top>0&&c[i]===top?' win':''}"><i style="width:${pc(i)}%"></i><span>${esc(t)}${mine===i?' ✓':''}</span><b>${pc(i)}%</b></div>`:`<button class="poll-o" data-vote="${p.id}" data-i="${i}">${esc(t)}</button>`).join('')}
+    <div class="poll-f">${n} vote${n===1?'':'s'} · ${closed?'Final results':ends?'Ends in '+leftTime(ends):'Open'}${!show?' · vote to see the results':''}</div></div>`}
+function linkHTML(p){let u;try{u=new URL(p.link)}catch{return''}const yt=L.ytId?.(p.link);
+  return`<a class="lcard" href="${esc(p.link)}" data-openlink="${esc(p.link)}" rel="noopener">${yt?`<div class="lc-img" style="background-image:url('https://i.ytimg.com/vi/${yt}/hqdefault.jpg')"><span>▶</span></div>`:''}<div class="lc-b"><img src="${esc(L.favUrl?.(u.hostname)||'')}" alt=""><div><b>${esc(u.hostname.replace(/^www\./,''))}</b><span>${esc((u.pathname+u.search).slice(0,90))}</span></div><em>Open ↗</em></div></a>`}
+function shareHTML(p){const it=L.hub?.findItem?.(p.share);if(!it)return'<div class="scard gone">🛍 This isn’t in the Store any more.</div>';const t=(L.hub.PTYPES[it.type]||L.hub.PTYPES.other);
+  return`<button class="scard" data-shareopen="${esc(p.share)}"><div class="sc-art" style="${L.hub.art(it)}"></div><div class="sc-b"><span class="hkick">🛍 Store pick · ${t[0]} ${t[1]}</span><b>${esc(it.title)}</b><span>${it.price>0?'✦ '+(+it.price).toLocaleString():'Free'}</span></div><em>View →</em></button>`}
+async function vote(pid,i){if(banned)return toast('Your account is banned');const p=feedPosts.get(pid);if(!p||(p.votes||{})[me.uid]!=null)return;
+  try{await F.updateDoc(D('posts',pid),{['votes.'+me.uid]:i})}catch(e){toast(e.code==='permission-denied'?'This poll has closed':'Couldn’t vote: '+e.message)}}
+function listenFeed(){unsubs.push(F.onSnapshot(F.query(C('posts'),F.orderBy('at','desc'),F.limit(60)),s=>{allFeed=s.docs.map(d=>({id:d.id,...d.data()}));drawFeed()}));
   unsubs.push(()=>{openCmts.forEach(u=>u());openCmts.clear()})}
-async function drawFeed(){const all=allFeed,mu=muted(),posts=all.filter(p=>!mu.includes(p.uid)),hidden=all.length-posts.length;
-  feedPosts=new Map(all.map(p=>[p.id,p]));L.onFeed?.();const us=await Promise.all(posts.map(p=>getUser(p.uid)));const fr=friendIds();
+async function drawFeed(){const all=allFeed,mu=muted(),fr=friendIds(),vis=all.filter(p=>!mu.includes(p.uid)),hidden=all.length-vis.length;
+  const posts=vis.filter(p=>feedF==='all'||(feedF==='friends'?fr.includes(p.uid)||p.uid===me.uid:(p.kind||'post')===feedF));
+  feedPosts=new Map(all.map(p=>[p.id,p]));L.onFeed?.();const us=await Promise.all(posts.map(p=>getUser(p.uid)));
   $('#feed').innerHTML=(hidden||mu.length?`<div class="feed-muted">🙈 ${hidden?`${hidden} post${hidden>1?'s':''} hidden from people you muted.`:'You have muted some people.'} <button data-mutelist>Manage</button></div>`:'')+posts.map((p,i)=>{const u=us[i],img=safeImg(p.image),sid=fr.includes(p.uid)||p.uid===me.uid?p.uid:null,likes=p.likes||[],liked=likes.includes(me.uid);
     return`<div class="card post" id="p-${p.id}" data-pid="${p.id}"><div class="post-h"><div data-user="${p.uid}" style="cursor:pointer">${pic(u,42,sid)}</div><div><b data-user="${p.uid}">${nameHTML(u)}</b><span>${postAgo(p.at)}</span></div><div class="post-tools">${isAdmin()&&p.uid!==me.uid?`<button class="ib" data-delpost="${p.id}" title="Remove post (admin)">🗑</button>`:''}${p.uid!==me.uid?`<button class="ib" data-pmore="${p.id}" title="More">⋯</button>`:''}</div></div>
     ${p.flagged?`<div class="post-flag">🚩 Reported and checked by the Lumen team${p.uid===me.uid?`: <b>${esc(p.flagged.reason||'')}</b>. This post earns no Glow.${p.flagged.note?` <i>“${esc(p.flagged.note)}”</i>`:''}`:'. It earns no Glow.'}</div>`:''}
-    ${p.text?`<div class="post-t">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
-    <div class="post-a"><button class="like${liked?' on':''}" data-like="${p.id}">${liked?'❤️':'🤍'} <span>${likes.length}</span></button><button data-cm="${p.id}">💬 ${p.ecomments?p.ecomments:''} Comments</button><span class="views" title="Views">👁 ${p.views||0}</span>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||'<p class="muted">No posts yet. Be the first!</p>';
+    ${p.kind&&p.kind!=='post'?`<div class="ck-tag k-${p.kind}">${KINDS[p.kind]?.[0]||''} ${KINDS[p.kind]?.[1]||''}${p.kind==='question'&&p.best?' <em class="pill live">✓ Answered</em>':''}</div>`:''}
+    ${p.text?`<div class="post-t${p.kind==='question'||p.kind==='poll'?' q':''}">${fmt(p.text)}</div>`:''}${img?`<img class="post-img" src="${img}" alt="">`:''}
+    ${p.kind==='poll'?pollHTML(p):p.kind==='link'?linkHTML(p):p.kind==='share'?shareHTML(p):''}
+    <div class="post-a"><button class="like${liked?' on':''}" data-like="${p.id}">${liked?'❤️':'🤍'} <span>${likes.length}</span></button><button data-cm="${p.id}">💬 ${p.ecomments?p.ecomments:''} ${p.kind==='question'?'Answers':'Comments'}</button><span class="views" title="Views">👁 ${p.views||0}</span>${p.uid===me.uid?`<button data-delpost="${p.id}">Delete</button>`:''}</div><div class="cmts" id="c-${p.id}" style="display:none"></div></div>`}).join('')||`<p class="muted">${feedF==='all'?'Nothing here yet. Be the first!':'Nothing like that in the latest content.'}</p>`;
   bindPeople($('#feed'));L.hub?.linkMentions($('#feed'));
   $$('#feed [data-cm]').forEach(b=>b.onclick=()=>toggleCmts(b.dataset.cm));
+  $$('#feed [data-vote]').forEach(b=>b.onclick=()=>vote(b.dataset.vote,+b.dataset.i));
+  $$('#feed [data-openlink]').forEach(a=>a.onclick=e=>{e.preventDefault();L.browser?L.browser.open(a.dataset.openlink):window.open(a.dataset.openlink,'_blank','noopener')});
+  $$('#feed [data-shareopen]').forEach(b=>b.onclick=()=>L.market?.open(b.dataset.shareopen));
   $$('#feed [data-like]').forEach(b=>b.onclick=()=>toggleLike(b.dataset.like,b));
   $$('#feed [data-delpost]').forEach(b=>b.onclick=()=>{if(confirm('Delete this post?'))F.deleteDoc(D('posts',b.dataset.delpost)).catch(e=>toast(e.message))});
   $$('#feed .post').forEach(el=>viewObs.observe(el));
@@ -510,9 +559,11 @@ async function countView(pid){if(!me||banned||seenThisVisit.has(pid)||document.h
 function toggleCmts(id){const box=$('#c-'+id);if(openCmts.has(id)){openCmts.get(id)();openCmts.delete(id);box.style.display='none';return}
   box.style.display='';box.innerHTML='<span class="muted">Loading…</span>';
   openCmts.set(id,F.onSnapshot(F.query(C('posts',id,'comments'),F.orderBy('at','asc'),F.limit(100)),async s=>{const cs=s.docs.map(d=>({id:d.id,...d.data()}));const us=await Promise.all(cs.map(c=>getUser(c.uid)));
-    const draftTxt=box.querySelector('input')?.value||'';const owner=feedPosts.get(id)?.uid;
-    box.innerHTML=cs.map((c,i)=>{const g=safeImg(c.gif);return`<div class="cmt"><div data-user="${c.uid}" style="cursor:pointer">${pic(us[i],30)}</div><div class="bub"><small><b data-user="${c.uid}">${nameHTML(us[i])}</b> · ${postAgo(c.at)}${c.uid===me.uid||owner===me.uid||isAdmin()?` · <a href="#" data-delc="${c.id}" style="color:inherit">delete</a>`:''}</small>${fmt(c.text||'')}${g?`<img class="gif" src="${g}" alt="GIF">`:''}</div></div>`}).join('')+
-      `<form class="cmt-in"><button type="button" class="ib" data-emoji="#ci-${id}">😊</button><button type="button" class="ib gif-b" data-gif>GIF</button><input id="ci-${id}" data-rich placeholder="Write a comment…" maxlength="500" value="${esc(draftTxt)}"><button class="btn-acc">Send</button></form>`;
+    const draftTxt=box.querySelector('input')?.value||'';const post=feedPosts.get(id),owner=post?.uid,isQ=post?.kind==='question',best=post?.best||'';
+    const ord=cs.map((c,i)=>[c,us[i]]);if(isQ&&best)ord.sort((a,b)=>(b[0].id===best)-(a[0].id===best));
+    box.innerHTML=ord.map(([c,u])=>{const g=safeImg(c.gif);return`<div class="cmt${isQ&&c.id===best?' best':''}"><div data-user="${c.uid}" style="cursor:pointer">${pic(u,30)}</div><div class="bub">${isQ&&c.id===best?'<em class="pill live">✓ Best answer</em> ':''}<small><b data-user="${c.uid}">${nameHTML(u)}</b> · ${postAgo(c.at)}${c.uid===me.uid||owner===me.uid||isAdmin()?` · <a href="#" data-delc="${c.id}" style="color:inherit">delete</a>`:''}${isQ&&owner===me.uid&&c.uid!==me.uid?` · <a href="#" data-best="${c.id===best?'':c.id}" style="color:inherit">${c.id===best?'unmark best':'✓ best answer'}</a>`:''}</small>${fmt(c.text||'')}${g?`<img class="gif" src="${g}" alt="GIF">`:''}</div></div>`}).join('')+
+      `<form class="cmt-in"><button type="button" class="ib" data-emoji="#ci-${id}">😊</button><button type="button" class="ib gif-b" data-gif>GIF</button><input id="ci-${id}" data-rich placeholder="${isQ?'Write an answer…':'Write a comment…'}" maxlength="500" value="${esc(draftTxt)}"><button class="btn-acc">Send</button></form>`;
+    box.querySelectorAll('[data-best]').forEach(a=>a.onclick=e=>{e.preventDefault();F.updateDoc(D('posts',id),{best:a.dataset.best}).then(()=>toast(a.dataset.best?'Marked as the best answer':'Best answer cleared')).catch(err=>toast(err.message))});
     bindPeople(box);
     box.querySelectorAll('[data-delc]').forEach(a=>a.onclick=e=>{e.preventDefault();F.deleteDoc(D('posts',id,'comments',a.dataset.delc)).catch(err=>toast(err.message))});
     const send=async(text,gif)=>{if(banned)return toast('Your account is banned');const data={uid:me.uid,text:(text||'').slice(0,500),gif:gif||'',at:F.serverTimestamp()};
@@ -543,6 +594,7 @@ async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got
     b.update(D('users',me.uid),{coins:(+myProfile.coins||0)+got+amt,lastEarn:p.id});
     try{await b.commit();got+=amt}catch(e){toast('Couldn’t collect: '+e.message);break}}
   if(got)toast(`+${got.toLocaleString()} ✦ Glow collected`);renderAnalytics()}
+$('#ckFilter')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;feedF=b.dataset.f;$$('#ckFilter button').forEach(x=>x.classList.toggle('on',x===b));drawFeed()});
 $('#postTabs')?.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;$$('#postTabs button').forEach(x=>x.classList.toggle('on',x===b));$('#feedWrap').style.display=b.dataset.pt==='feed'?'':'none';$('#analytics').style.display=b.dataset.pt==='an'?'':'none';if(b.dataset.pt==='an')renderAnalytics()});
 
 /* ---------- server channels, bans, admin inbox ---------- */
