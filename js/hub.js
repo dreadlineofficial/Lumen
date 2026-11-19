@@ -7,7 +7,7 @@ const L=window.Lumen,{esc,toast,safeImg}=L;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const BUILTINS=[{key:'b_nightbound',title:'Nightbound',type:'game',desc:'1v4 asymmetric horror · online multiplayer',url:()=>L.cfg.nbUrl,art:'radial-gradient(circle at 30% 20%,#5a1020,#1a0608 60%,#06070b)'},
   {key:'b_offal',title:'OFFAL',type:'game',desc:'Horror · demo',url:()=>'games/offal.html',image:'games/offal-poster.webp'},
-  {key:'b_fixinggood',title:'Fixing Good',type:'game',desc:'Desert crime action · story mode',url:()=>'games/fixing-good.html',image:'games/fixing-good-poster.webp'},
+  {key:'b_fixinggood',title:'Fixing Good',type:'game',price:800,desc:'Desert crime action · story mode',url:()=>'games/fixing-good.html',image:'games/fixing-good-poster.webp'},
   {key:'b_lumisleap',title:"Lumi's Leap",type:'game',desc:'2D platformer · six worlds',url:()=>'games/lumis-leap.html',image:'games/lumis-leap-poster.webp'}];
 let me=null,hubCfg={},live=[],plays={},trend={},myItems=[],allItems=[],myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
 const C=()=>L.cloud;
@@ -17,7 +17,10 @@ const isCreator=()=>myApp?.status==='approved'||!!isAdmin();
 const projKey=p=>'p_'+p.id;
 const fmtN=n=>(+n||0).toLocaleString();
 const DAY=()=>Math.floor(Date.now()/864e5);
-const RATE={min:20,mention:50,review:50};
+const RATE={min:10,mention:50,review:50}; // must match projEarnOk in firestore.rules
+// Marketplace product types (projects): websites stay in Web → Featured, everything else is sold in the Store
+const PTYPES={game:['🎮','Game','Games'],site:['🌐','Website','Websites'],ebook:['📚','eBook','eBooks'],doc:['📄','Document','Documents'],asset:['🧰','Resource','Resources'],other:['📦','Other','Other']};
+const MAX_FILE=3*1024*1024; // uploads above 3 MB need a hosting link (MediaFire, Google Drive…)
 const unpaid=p=>RATE.min*Math.max(0,(p.minutes||0)-(p.paidMin||0))+RATE.mention*Math.max(0,(p.mentions||0)-(p.paidMent||0))+RATE.review*Math.max(0,(p.upReviews||0)-(p.paidRev||0))+Math.max(0,(p.sold||0)-(p.paidSold||0));
 const earned=p=>RATE.min*(p.minutes||0)+RATE.mention*(p.mentions||0)+RATE.review*(p.upReviews||0)+(p.sold||0);
 
@@ -41,7 +44,7 @@ L.onAdminStart=(prev=>()=>{prev?.();startAdminHub()})(L.onAdminStart);
 const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
   if($('#navCreator'))$('#navCreator').style.display='none';if(me&&C())start();refresh()};
 L.onFeed=()=>{if($('#v-hub')?.classList.contains('on'))renderHub()};
-function refresh(){renderHub();renderCreator();renderGameHub();if(gpKey&&$('#v-gamepage')?.classList.contains('on'))renderGamePage();L.browser?.refresh?.()}
+function refresh(){renderHub();renderCreator();renderGameHub();L.market?.refresh?.();if(gpKey&&$('#v-gamepage')?.classList.contains('on'))renderGamePage();L.browser?.refresh?.()}
 
 /* ---------- plays: +1 per person per game per day ---------- */
 async function play(key){if(!me||!C())return;const {F,D,db}=C();const day=Math.floor(Date.now()/864e5),rec=`${me}_${day}`;
@@ -56,19 +59,26 @@ function art(it){const img=safeImg(it.image)||(it.image&&it.image.startsWith('ga
   if(img){const x=it.ix??50,y=it.iy??50,z=it.iz||100,ar=(+it.ar||0)/100,size=!ar?(z===100?'cover':`${z}% auto`):ar>=1.6?`auto ${z}%`:`${z}% auto`;return`background-image:url('${esc(img)}');background-size:${size};background-position:${x}% ${y}%;background-repeat:no-repeat`}
   return img?'':`background:${it.art||`linear-gradient(135deg,hsl(${(it.title||'x').length*47%360} 70% 45%),hsl(${(it.title||'x').length*47%360+60} 70% 20%))`}`}
 function card(it,{small=false}={}){const pl=plays[it.key]||0;
-  return`<button class="hcard${small?' small':''}" data-open="${esc(it.key)}"><div class="hart" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}<em class="htype">${it.type==='site'?'🌐 Website':'🎮 Game'}</em>${it.featured||(hubCfg.pinned||[]).includes(it.key)?'<em class="hfeat">⭐ Featured</em>':''}${it.price>0?`<em class="hprice">${unlocked(it)?'✓ Unlocked':'✦ '+fmtN(it.price)}</em>`:''}</div>
+  return`<button class="hcard${small?' small':''}" data-open="${esc(it.key)}"><div class="hart" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}<em class="htype">${(PTYPES[it.type]||PTYPES.game).slice(0,2).join(' ')}</em>${it.featured||(hubCfg.pinned||[]).includes(it.key)?'<em class="hfeat">⭐ Featured</em>':''}${it.type!=='site'&&(it.price>0||!inLib(it))?`<em class="hprice">${inLib(it)?'✓ Owned':it.price>0?'✦ '+fmtN(it.price):'Free'}</em>`:''}</div>
     <div class="hmeta"><b>${esc(it.title)}</b><span class="by" data-by="${esc(it.uid||'')}">${it.uid?'':'Lumen'}</span><span class="pl">▶ ${fmtN(pl)} play${pl===1?'':'s'}${it.upReviews?` · 👍 ${fmtN(it.upReviews)}`:''}${trend[it.key]&&it.type!=='site'?` · 📈 ${fmtN(trend[it.key])} this week`:''}</span></div></button>`}
 async function fillCreators(root){for(const el of root.querySelectorAll('[data-by]')){const uid=el.dataset.by;if(!uid)continue;const u=await C().getUser(uid);el.textContent='by '+(u.name||'a creator')}}
 function bindOpen(root){root.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openItem(b.dataset.open))}
-function openItem(key){const it=findItem(key);if(!it)return toast('That isn’t available any more');if(it.type==='site'){play(key);L.browser.open(it.url)}else openGame(key)}
-const unlocked=it=>!(it.price>0)||it.uid===me||isAdmin()||(C()?.profile?.()?.owned||[]).includes(it.key||'p_'+it.id);
+function openItem(key){const it=findItem(key);if(!it)return toast('That isn’t available any more');if(it.type==='site'){play(key);L.browser.open(it.url)}
+  else if(it.type==='game'&&(inLib(it)||unlocked(it)))openGame(key);else if(L.market)L.market.open(key);else openGame(key)}
+const ownedKeys=()=>C()?.profile?.()?.owned||[];
+// in your library: free Lumen originals, your own products, and everything you bought or got from the Store
+const inLib=it=>{const k=it.key||'p_'+it.id;return(k.startsWith('b_')&&!(it.price>0))||(!!me&&it.uid===me)||ownedKeys().includes(k)};
+// allowed to open: in your library, the admin, or an older free game whose link is public
+const unlocked=it=>inLib(it)||isAdmin()||(!(it.price>0)&&!!it.url);
 const linkCache=new Map();
 async function gameLink(p){if(p.url)return p.url;if(linkCache.has(p.id))return linkCache.get(p.id);
   try{const s=await C().F.getDoc(C().D('projects',p.id,'private','link'));const u=s.data()?.url||'';if(u)linkCache.set(p.id,u);return u}catch{return''}}
 async function launch(key){const it=findItem(key);if(!it)return toast('That isn’t available any more');
   if(!unlocked(it)){openGame(key);return toast(`Unlock ${it.title} first (✦ ${fmtN(it.price)})`)}
+  if(it.deliver==='html'){toast('Loading '+it.title+'…');const html=await L.market?.html(it.id).catch(()=>'');if(!html)return toast('Couldn’t open this game');
+    play(key);L.openView('about:blank',it.title,{kind:'game',label:it.title,key},{html});startTimer(key);return}
   const url=await gameLink(it);if(!url)return toast('Couldn’t open this game');play(key);L.openView(url,it.title,{kind:'game',label:it.title,key});startTimer(key)}
-async function unlockGame(key){const it=findItem(key),prof=C().profile();if(!it||!prof)return toast('Sign in first');const coins=+prof.coins||0;const cost=L.plan?.price(it.price)??it.price;
+async function unlockGame(key){if(L.market)return L.market.buyNow(key);const it=findItem(key),prof=C().profile();if(!it||!prof)return toast('Sign in first');const coins=+prof.coins||0;const cost=L.plan?.price(it.price)??it.price;
   if(coins<cost)return toast(`You need ✦ ${fmtN(cost)} Glow (you have ${fmtN(coins)})`);
   if(!confirm(`Unlock ${it.title} for ✦ ${fmtN(cost)}${cost<it.price?' (Lite 10% off)':''}? You keep it forever.`))return;
   const {F,D,db}=C();const b=F.writeBatch(db);b.update(D('users',me),{coins:coins-cost,owned:[...(prof.owned||[]),key],lastBuy:key});b.update(D('projects',it.id),{sales:F.increment(1),sold:F.increment(it.cut),lastBuyer:me});
@@ -103,7 +113,8 @@ function bindGo(root){root.querySelectorAll('[data-goto]').forEach(b=>b.onclick=
   root.querySelectorAll('[data-daily-jump]').forEach(b=>b.onclick=()=>$('#hubDaily')?.scrollIntoView({behavior:'smooth',block:'center'}))}
 
 /* ---------- Games tab: creator games + hidden built-ins ---------- */
-L.hub={gamesTab,play,openGame,mentionsIn,linkMentions,builtinHidden:key=>(hubCfg.hiddenBuiltins||[]).includes(key),
+L.hub={gamesTab,play,openGame,mentionsIn,linkMentions,launch,art,inLib,unlocked,gameLink,PTYPES,BUILTINS,findItem,openItem,
+  data:()=>({me,live,plays,trend,hubCfg,isCreator:isCreator()}),builtinHidden:key=>(hubCfg.hiddenBuiltins||[]).includes(key),
   featuredPage(el,openUrl){const sites=live.filter(p=>p.type==='site').sort((a,b)=>(plays[projKey(b)]||0)-(plays[projKey(a)]||0));
     el.innerHTML=`<div class="ytp"><div class="yt-top"><span class="yt-logo" style="background:linear-gradient(135deg,#ffd76a,#ff9a5c)">⭐</span><b>Featured</b><span class="muted" style="font-size:13px">Websites made by Lumen creators</span></div>
       ${sites.length?`<div class="hgrid">${sites.map(p=>card({...p,key:projKey(p)})).join('')}</div>`:`<p class="muted">No featured websites yet.${me?' Lumen creators can add theirs from the Creator Dashboard.':' Sign in to see them.'}</p>`}</div>`;
@@ -130,6 +141,15 @@ async function gifInfo(file){const buf=new Uint8Array(await file.arrayBuffer());
 
 /* ---------- Creator Dashboard ---------- */
 let editing=null,newImage=null,cov={ix:50,iy:50,iz:100,ar:0};
+// the product form: type, how it's delivered (an uploaded HTML game, an uploaded file up to 3 MB, or a link) and the chosen file
+let crT=null,crD=null,newFile=null,pfKeep=null;
+const DELS={game:[['html','🧩 Upload HTML game'],['link','🔗 Game link']],site:[['link','🔗 Link']],_:[['file','📎 Upload file'],['link','🔗 Hosting link']]};
+const delsFor=t=>DELS[t]||DELS._;
+const curT=()=>crT||editing?.type||'game';
+const curD=()=>{const ok=delsFor(curT()).map(d=>d[0]);const d=crD||(editing?editing.deliver||'link':ok[0]);return ok.includes(d)?d:ok[0]};
+const fmtSize=b=>b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
+const keepPF=()=>{pfKeep={'#crTitle':$('#crTitle')?.value,'#crUrl':$('#crUrl')?.value,'#crPrice':$('#crPrice')?.value,'#crDesc':$('#crDesc')?.value}};
+const resetPF=()=>{editing=null;newImage=null;newFile=null;crT=null;crD=null;pfKeep=null;cov={ix:50,iy:50,iz:100,ar:0}};
 function renderCreator(){const box=$('#creatorBox');if(!box)return;
   const ae=document.activeElement;if(ae&&box.contains(ae)&&ae.matches('input:not([type=file]),textarea'))return; // don't wipe a form mid-typing
   if(!me){box.innerHTML='<div class="banner">Sign in (bottom-left) to apply as a Lumen creator.</div>';return}
@@ -144,35 +164,53 @@ function renderCreator(){const box=$('#creatorBox');if(!box)return;
     $('#crApply')?.addEventListener('click',apply);return}
   const sum=f=>myProjects.reduce((a,p)=>a+f(p),0),itemWait=myItems.reduce((a,i)=>a+Math.max(0,(i.earned||0)-(i.paidEarned||0)),0),wait=sum(unpaid)+itemWait,itemTot=myItems.reduce((a,i)=>a+(i.earned||0),0);
   const tot=myProjects.reduce((a,p)=>a+(plays[projKey(p)]||0),0),liveN=myProjects.filter(p=>p.status==='approved').length,pend=myProjects.filter(p=>p.status==='pending').length,feat=myProjects.filter(p=>(hubCfg.pinned||[]).includes(projKey(p))).length;
-  const f=editing||{};
+  const f=editing||{},t=curT(),dl=curD();
   box.innerHTML=`<div class="card cr-earn"><div><span class="hkick">✦ Creator earnings</span><b class="cr-big">${fmtN(wait)} <small>Glow waiting</small></b>
-      <span class="muted" style="font-size:13px">You've earned ✦ ${fmtN(sum(earned)+itemTot)} in total. Other people playing your games earn you <b>${RATE.min} per minute</b>, every post that mentions a game <b>${RATE.mention}</b>, every positive review <b>${RATE.review}</b>, and you keep <b>90% of every sale</b> of your shop items. Your own plays, posts and reviews don't count.</span></div>
+      <span class="muted" style="font-size:13px">You've earned ✦ ${fmtN(sum(earned)+itemTot)} in total. Other people playing your games earn you <b>${RATE.min} per minute</b>, every post that mentions a game <b>${RATE.mention}</b>, every positive review <b>${RATE.review}</b>, and you keep <b>90% of every sale</b> in the Store and of your shop items. Your own plays, posts and reviews don't count.</span></div>
       <button class="btn-acc" id="crCollect" ${wait?'':'disabled'}>Collect ✦ ${fmtN(wait)}</button></div>
-    <div class="an-stats">${[['📦','Projects',myProjects.length],['✅','Live',liveN],['⏳','In review',pend],['▶','Total plays',tot],['⏱','Minutes played',sum(p=>p.minutes||0)],['💬','Mentions',sum(p=>p.mentions||0)],['👍','Positive reviews',sum(p=>p.upReviews||0)],['⭐','Featured',feat]].map(([i,l,v])=>`<div class="card an-stat"><span>${i} ${l}</span><b>${fmtN(v)}</b></div>`).join('')}</div>
-    <div class="cr-grid"><div class="card"><h2>${editing?'Edit project':'New project'}</h2><p class="muted" style="font-size:13px">${isAdmin()?'You’re the admin, so it goes live straight away.':editing?'Changing the link, picture or type sends it back for review. Title, description, framing and price changes go live right away.':'It goes live once the admin approves it.'}</p>
-      <label>Type</label><div class="seg" id="crType"><button type="button" data-t="game" class="${(f.type||'game')==='game'?'on':''}">🎮 Game</button><button type="button" data-t="site" class="${f.type==='site'?'on':''}">🌐 Website</button></div>
-      <label>Title</label><input id="crTitle" maxlength="60" value="${esc(f.title||'')}" placeholder="My awesome game">
-      <label>Link (must start with https://)</label><input id="crUrl" maxlength="500" value="${esc(f.url||linkCache.get(f.id)||'')}" placeholder="https://…">
-      <div id="crPriceRow" ${(f.type||'game')==='game'?'':'hidden'}><label>Price to play in ✦ Glow <span class="muted" style="font-size:12px">(0 = free; you keep 90% of every unlock)</span></label><input id="crPrice" type="number" min="0" max="5000" step="10" value="${f.price||0}">
-        <p class="muted" style="font-size:12px;margin:6px 0 0">Paid games are unlocked once per person. Their link is hidden until someone unlocks them.</p></div>
-      <label>Short description</label><textarea id="crDesc" rows="2" maxlength="300">${esc(f.desc||'')}</textarea>
+    <div class="an-stats">${[['📦','Products',myProjects.length],['✅','Live',liveN],['⏳','In review',pend],['▶','Total plays',tot],['⏱','Minutes played',sum(p=>p.minutes||0)],['💬','Mentions',sum(p=>p.mentions||0)],['👍','Positive reviews',sum(p=>p.upReviews||0)],['⭐','Featured',feat]].map(([i,l,v])=>`<div class="card an-stat"><span>${i} ${l}</span><b>${fmtN(v)}</b></div>`).join('')}</div>
+    <div class="cr-grid"><div class="card"><h2>${editing?'Edit product':'New product'}</h2><p class="muted" style="font-size:13px">${isAdmin()?'You’re the admin, so it goes live straight away.':editing?'Changing the file, link, picture or type sends it back for review. Title, description, framing and price changes go live right away.':'It goes live once the admin approves it.'}</p>
+      <label>What are you making?</label><div class="seg" id="crType">${Object.entries(PTYPES).map(([k,[i,l]])=>`<button type="button" data-t="${k}" class="${t===k?'on':''}">${i} ${l}</button>`).join('')}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">${t==='site'?'Websites show up in Web → Featured and are always free.':t==='game'?'Sold or given away in the Store. Everyone who buys or gets it finds it in their Game hub.':'Sold or given away in the Store. Buyers find it in Store → My purchases.'}</p>
+      <label>Title</label><input id="crTitle" maxlength="60" value="${esc(f.title||'')}" placeholder="${t==='game'?'My awesome game':t==='ebook'?'My first novel':'What it’s called'}">
+      <div ${t==='site'?'hidden':''}><label>How people get it</label><div class="seg" id="crDel">${delsFor(t).map(([k,l])=>`<button type="button" data-d="${k}" class="${dl===k?'on':''}">${l}</button>`).join('')}</div></div>
+      <div id="crUrlRow" ${dl==='link'?'':'hidden'}><label>${t==='site'?'Website link (must start with https://)':t==='game'?'Game link (must start with https:// and work inside a page)':'Download link: MediaFire, Google Drive, Dropbox… (must start with https://)'}</label><input id="crUrl" maxlength="500" value="${esc(dl==='link'?(f.url||linkCache.get(f.id)||''):'')}" placeholder="https://…">
+        ${t!=='site'?'<p class="muted" style="font-size:12px;margin:6px 0 0">People only see this link once they’ve bought or got it.</p>':''}</div>
+      <div id="crFileRow" ${dl==='link'?'hidden':''}><label>${dl==='html'?'Your game as one HTML file (up to 3 MB)':'Your file: PDF, ebook, ZIP, image, anything (up to 3 MB)'}</label>
+        <div class="row"><button type="button" id="crFileBtn">${dl==='html'?'🧩 Choose HTML file':'📎 Choose file'}</button><input type="file" id="crFile" ${dl==='html'?'accept=".html,.htm,text/html"':''} hidden><span class="muted" id="crFileName" style="font-size:12px">${newFile?`✓ ${esc(newFile.name)} (${fmtSize(newFile.size)})`:f.fname&&f.deliver===dl?`Current file: ${esc(f.fname)} (${fmtSize(f.fsize||0)})`:''}</span></div>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Bigger than 3 MB? Upload it to MediaFire or Google Drive and choose <b>${t==='game'?'Game link':'Hosting link'}</b> instead.${dl==='html'?' Uploaded games run in a safe sandbox, so they can’t use saved data.':''}</p></div>
+      <div id="crPriceRow" ${t==='site'?'hidden':''}><label>Price in ✦ Glow <span class="muted" style="font-size:12px">(0 = free; you keep 90% of every sale)</span></label><input id="crPrice" type="number" min="0" max="5000" step="10" value="${f.price||0}">
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Free products go into people’s library with one click.${t==='game'?` Every game earns you ${RATE.min} Glow for each minute other people play it.`:''}</p></div>
+      <label>Description</label><textarea id="crDesc" rows="4" maxlength="1500" placeholder="${t==='site'?'What’s on it?':'What is it, what’s inside, how to use it…'}">${esc(f.desc||'')}</textarea>
       <label>Cover image <span class="muted" style="font-size:12px">(up to 3 MB; small GIFs stay animated)</span></label><div class="row"><button type="button" id="crImgBtn">🖼 Upload</button><input type="file" id="crImg" accept="image/*" hidden><span class="muted" id="crImgName" style="font-size:12px">${f.image?'Image set':''}</span></div>
       <div class="pl-ed" id="covEd" ${(newImage||f.image)?'':'hidden'}><div class="hcard cov-prev"><div class="hart" id="covPrev" style="${art({image:newImage||f.image,...cov})}"></div><div class="hmeta"><b>${esc(f.title||'Your game')}</b><span class="pl">How it looks on the Hub and Game hub</span></div></div>
         <div class="pl-sl"><label>Zoom <span id="covZv">${cov.iz}%</span></label><input type="range" id="covZ" min="100" max="300" value="${cov.iz}">
           <label>Left ↔ right</label><input type="range" id="covX" min="0" max="100" value="${cov.ix}"><label>Up ↕ down</label><input type="range" id="covY" min="0" max="100" value="${cov.iy}">
           <button type="button" id="covC">⊕ Center</button><p class="muted">Tip: drag the picture to move it.</p></div></div>
       <div class="row" style="margin-top:16px"><button class="btn-acc" id="crSave" style="flex:1">${editing?'Save and resubmit':'Submit for review'}</button>${editing?'<button id="crCancel">Cancel</button>':''}</div>
-      <p class="muted" style="font-size:12px;margin:10px 0 0">Tip: games must work when opened inside another page (most HTML5 games on itch.io, GitHub Pages or your own site do). Sites that refuse to be embedded will open in a new tab.</p></div>
-    <div class="card"><h2>My projects</h2><div class="list">${myProjects.map(p=>{const st=(hubCfg.pinned||[]).includes(projKey(p))&&p.status==='approved'?['⭐ Featured','feat']:{approved:['● Live','live'],pending:['⏳ In review','pend'],rejected:['✕ Not approved','rej']}[p.status]||['?',''];
-      return`<div class="cr-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span><em class="pill ${st[1]}">${st[0]}</em> ${p.type==='site'?'Website':'Game'} · ▶ ${fmtN(plays[projKey(p)]||0)}${p.type==='game'?` · ⏱ ${fmtN(p.minutes||0)} min · 💬 ${fmtN(p.mentions||0)} · 👍 ${fmtN(p.upReviews||0)}${p.price>0?` · ✦ ${fmtN(p.price)} · ${fmtN(p.sales||0)} unlocked`:''}`:''}</span></div>
-        ${p.status==='approved'&&p.type==='game'?`<button class="ib" data-page="${p.id}" title="Open its game page">↗</button>`:''}<button class="ib" data-edit="${p.id}" title="Edit">✏️</button><button class="ib" data-del="${p.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">Nothing yet. Submit your first project on the left.</p>'}</div></div></div>`+shopSection();
-  $$('#crType button').forEach(b=>b.onclick=()=>{$$('#crType button').forEach(x=>x.classList.toggle('on',x===b));$('#crPriceRow').hidden=b.dataset.t!=='game'});
+      ${dl==='link'&&(t==='game'||t==='site')?'<p class="muted" style="font-size:12px;margin:10px 0 0">Tip: games must work when opened inside another page (most HTML5 games on itch.io, GitHub Pages or your own site do). Sites that refuse to be embedded will open in a new tab.</p>':''}</div>
+    <div class="card"><h2>My products</h2><div class="list">${myProjects.map(p=>{const st=(hubCfg.pinned||[]).includes(projKey(p))&&p.status==='approved'?['⭐ Featured','feat']:{approved:['● Live','live'],pending:['⏳ In review','pend'],rejected:['✕ Not approved','rej']}[p.status]||['?',''];
+      return`<div class="cr-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span><em class="pill ${st[1]}">${st[0]}</em> ${(PTYPES[p.type]||PTYPES.game)[1]}${p.type==='game'||p.type==='site'?` · ▶ ${fmtN(plays[projKey(p)]||0)}`:''}${p.type==='game'?` · ⏱ ${fmtN(p.minutes||0)} min · 💬 ${fmtN(p.mentions||0)}`:''}${p.type!=='site'?` · 👍 ${fmtN(p.upReviews||0)} · ${p.price>0?'✦ '+fmtN(p.price):'Free'} · ${fmtN(p.sales||0)} ${p.price>0?'sold':'got it'}`:''}</span></div>
+        ${p.status==='approved'&&p.type!=='site'?`<button class="ib" data-page="${p.id}" title="Open its Store page">↗</button>`:''}<button class="ib" data-edit="${p.id}" title="Edit">✏️</button><button class="ib" data-del="${p.id}" title="Delete">🗑</button></div>`}).join('')||'<p class="muted">Nothing yet. Submit your first product on the left.</p>'}</div></div></div>`+shopSection();
+  if(pfKeep){for(const [k,v] of Object.entries(pfKeep)){const el=$(k);if(el&&v!=null)el.value=v}pfKeep=null}
+  $$('#crType button').forEach(b=>b.onclick=()=>{if(crT===b.dataset.t)return;keepPF();crT=b.dataset.t;crD=null;newFile=null;renderCreator()});
+  $$('#crDel button').forEach(b=>b.onclick=()=>{if(curD()===b.dataset.d)return;keepPF();crD=b.dataset.d;newFile=null;renderCreator()});
+  $('#crFileBtn').onclick=()=>$('#crFile').click();
+  $('#crFile').onchange=async e=>{const fl=e.target.files[0];if(!fl)return;e.target.value='';
+    if(fl.size>MAX_FILE){toast(`That file is ${fmtSize(fl.size)}. Anything over 3 MB needs a hosting link: upload it to MediaFire or Google Drive and paste the share link here.`);keepPF();crD='link';newFile=null;renderCreator();return}
+    if(curD()==='html'&&!/\.html?$/i.test(fl.name))return toast('Choose an .html file (your whole game in one file)');
+    const data=await readURL(fl);newFile={name:fl.name.slice(0,120),mime:(curD()==='html'?'text/html':fl.type||'application/octet-stream').slice(0,100),size:fl.size,data};
+    $('#crFileName').textContent=`✓ ${newFile.name} (${fmtSize(fl.size)})`;if(!$('#crTitle').value.trim())$('#crTitle').value=fl.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').slice(0,60)};
   bindCover();
   $('#crImgBtn').onclick=()=>$('#crImg').click();$('#crImg').onchange=async e=>{const fl=e.target.files[0];if(!fl)return;const out=await thumbFrom(fl);if(!out)return;newImage=out;cov={ix:50,iy:50,iz:100,ar:await imgRatio(out)};$('#covEd').hidden=false;bindCover();$('#crImgName').textContent=`✓ ${fl.name} (${(fl.size/1048576).toFixed(1)} MB${out.startsWith('data:image/gif')?', animated':''})`};
-  $('#crSave').onclick=saveProject;$('#crCancel')?.addEventListener('click',()=>{editing=null;newImage=null;cov={ix:50,iy:50,iz:100,ar:0};renderCreator()});
-  $('#crCollect').onclick=collect;bindShop(box);box.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>openGame('p_'+b.dataset.page));
-  box.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{editing=myProjects.find(p=>p.id===b.dataset.edit);if(editing.price>0)await gameLink(editing);newImage=null;cov={ix:editing.ix??50,iy:editing.iy??50,iz:editing.iz||100,ar:editing.ar||0};renderCreator();box.scrollIntoView({behavior:'smooth'})});
-  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this project?'))return;try{await C().F.deleteDoc(C().D('projects',b.dataset.del))}catch(e){toast(e.message)}})}
+  $('#crSave').onclick=saveProject;$('#crCancel')?.addEventListener('click',()=>{resetPF();renderCreator()});
+  $('#crCollect').onclick=collect;bindShop(box);box.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>L.market?L.market.open('p_'+b.dataset.page):openGame('p_'+b.dataset.page));
+  box.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{resetPF();editing=myProjects.find(p=>p.id===b.dataset.edit);if(editing.type!=='site'&&(editing.deliver||'link')==='link')await gameLink(editing);cov={ix:editing.ix??50,iy:editing.iy??50,iz:editing.iz||100,ar:editing.ar||0};renderCreator();box.scrollIntoView({behavior:'smooth'})});
+  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delProject(b.dataset.del,'Delete this product? People who bought it lose access to it.'))}
+// a product and its hidden link / uploaded file
+async function delProject(id,msg){if(!confirm(msg))return;const {F,D,db}=C();const bt=F.writeBatch(db);
+  for(let i=0;i<6;i++)bt.delete(D('projects',id,'private','file','parts',String(i)));bt.delete(D('projects',id,'private','file'));bt.delete(D('projects',id,'private','link'));bt.delete(D('projects',id));
+  try{await bt.commit();toast('Deleted')}catch(e){try{await F.deleteDoc(D('projects',id));toast('Deleted')}catch(e2){toast(e2.message)}}}
 const imgRatio=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(Math.round(i.naturalWidth/i.naturalHeight*100)||160);i.onerror=()=>res(160);i.src=src});
 /* drag a preview to move the picture; f(dxPercent,dyPercent) */
 function dragMove(el,f){if(!el)return;el.style.touchAction='none';el.style.cursor='grab';el.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();el.setPointerCapture(e.pointerId);let lx=e.clientX,ly=e.clientY;const r=el.getBoundingClientRect();el.style.cursor='grabbing';
@@ -273,21 +311,31 @@ async function saveItem(){const {F,D,db}=C();const name=$('#csName').value.trim(
 
 async function apply(){const about=$('#crAbout').value.trim();if(about.length<10)return toast('Tell the admin a little about what you’ll make');
   try{await C().F.setDoc(C().D('creatorApps',me),{uid:me,about:about.slice(0,600),links:$('#crLinks').value.trim().slice(0,400),status:'pending',at:C().F.serverTimestamp()});toast('Application sent')}catch(e){toast('Couldn’t apply: '+e.message)}}
-async function saveProject(){const {F,D,db}=C();const type=$('#crType .on')?.dataset.t||'game',title=$('#crTitle').value.trim(),url=$('#crUrl').value.trim(),desc=$('#crDesc').value.trim();
-  if(title.length<2)return toast('Give it a title');if(!/^https:\/\/\S+$/i.test(url))return toast('The link must start with https://');
-  const price=type==='game'?Math.max(0,Math.min(5000,Math.round((+$('#crPrice')?.value||0)/10)*10)):0,cut=price*9/10;
+async function saveProject(){const {F,D,db}=C();const type=curT(),del=curD(),title=$('#crTitle').value.trim(),url=($('#crUrl')?.value||'').trim(),desc=$('#crDesc').value.trim();
+  if(title.length<2)return toast('Give it a title');
+  if(del==='link'&&!/^https:\/\/\S+$/i.test(url))return toast('The link must start with https://');
+  const oldDel=editing?(editing.deliver||'link'):'',keepFile=!!editing&&oldDel===del&&!!editing.fname;
+  if(del!=='link'&&!newFile&&!keepFile)return toast(del==='html'?'Choose your game’s HTML file':'Choose the file to sell');
+  const price=type==='site'?0:Math.max(0,Math.min(5000,Math.round((+$('#crPrice')?.value||0)/10)*10)),cut=price*9/10;
   const image=newImage??editing?.image??'';const framing={};
   if(image){if(!cov.ar)cov.ar=await imgRatio(image);Object.assign(framing,{ix:Math.round(cov.ix),iy:Math.round(cov.iy),iz:Math.round(cov.iz),ar:Math.max(5,Math.min(2000,Math.round(cov.ar)||160))})}
-  const oldUrl=editing?(editing.url||linkCache.get(editing.id)||''):'';
-  // the link, picture, type or free/paid switch changed: that needs review (the admin skips it)
-  const big=!editing||newImage||type!==editing.type||url!==oldUrl||(price>0)!==(editing.price>0);
+  const oldUrl=editing&&oldDel==='link'?(editing.url||linkCache.get(editing.id)||''):'';
+  // the file, link, picture, type or free/paid switch changed: that needs review (the admin skips it)
+  const big=!editing||!!newImage||!!newFile||type!==editing.type||del!==oldDel||(del==='link'&&url!==oldUrl)||(price>0)!==(editing.price>0);
   const b=F.writeBatch(db);const ref=editing?D('projects',editing.id):F.doc(F.collection(db,'projects'));
-  if(!big){b.update(ref,{title:title.slice(0,60),desc:desc.slice(0,300),...framing,price,cut,at:F.serverTimestamp()})}
-  else{const data={type,title:title.slice(0,60),url:price>0?'':url.slice(0,500),desc:desc.slice(0,300),image,...framing,price,cut,status:isAdmin()?'approved':'pending',at:F.serverTimestamp()};
+  const priv=(...p)=>F.doc(db,'projects',ref.id,'private',...p);
+  if(!big){b.update(ref,{title:title.slice(0,60),desc:desc.slice(0,1500),...framing,price,cut,at:F.serverTimestamp()})}
+  else{const meta=del==='link'?{fname:'',fsize:0,fmime:''}:newFile?{fname:newFile.name,fsize:newFile.size,fmime:newFile.mime}:{fname:editing.fname,fsize:editing.fsize||0,fmime:editing.fmime||''};
+    const data={type,title:title.slice(0,60),url:type==='site'?url.slice(0,500):'',deliver:del,...meta,desc:desc.slice(0,1500),image,...framing,price,cut,status:isAdmin()?'approved':'pending',at:F.serverTimestamp()};
     if(editing)b.update(ref,data);else b.set(ref,{...data,uid:me,featured:false});
-    if(price>0)b.set(F.doc(db,'projects',ref.id,'private','link'),{url:url.slice(0,500)})}
-  try{await b.commit();if(price>0)linkCache.set(ref.id,url);toast(!big?'Saved: your changes are live':isAdmin()?'Published':editing?'Saved: back in review':'Submitted for review');editing=null;newImage=null;cov={ix:50,iy:50,iz:100,ar:0};renderCreator()}
-  catch(e){toast('Couldn’t save: '+(e.code==='permission-denied'?'Firebase refused it (re-publish the latest rules?)':e.message))}}
+    // links and files are private: only the creator, the admin and people who own it can read them
+    if(type!=='site'&&del==='link')b.set(priv('link'),{url:url.slice(0,500)});else if(editing&&oldDel==='link'&&editing.type!=='site')b.delete(priv('link'));
+    if(newFile){const parts=Math.ceil(newFile.data.length/PART);if(parts>6)return toast('That file is too big (3 MB at most)');
+      b.set(priv('file'),{name:newFile.name,mime:newFile.mime,bytes:newFile.size,parts});for(let i=0;i<parts;i++)b.set(priv('file','parts',String(i)),{d:newFile.data.slice(i*PART,(i+1)*PART)})}
+    else if(del==='link'&&editing?.fname){b.delete(priv('file'));for(let i=0;i<6;i++)b.delete(priv('file','parts',String(i)))}}
+  const btn=$('#crSave');btn.disabled=true;if(newFile)toast('Uploading '+newFile.name+'…');
+  try{await b.commit();if(del==='link'&&type!=='site')linkCache.set(ref.id,url);if(newFile&&L.market)L.market.forget(ref.id);toast(!big?'Saved: your changes are live':isAdmin()?'Published':editing?'Saved: back in review':'Submitted for review');resetPF();renderCreator()}
+  catch(e){btn.disabled=false;toast('Couldn’t save: '+(e.code==='permission-denied'?'Firebase refused it (re-publish the latest rules?)':e.message))}}
 
 /* ---------- admin tabs ---------- */
 function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{try{await F.updateDoc(ref,data);if(msg)toast(msg)}catch(e){toast(e.code==='permission-denied'?'Firebase refused this. Re-publish the latest firestore.rules.':e.message)}};
@@ -300,18 +348,21 @@ function renderAdminTab(tab,el){const {F,D}=C();const upd=async(ref,data,msg)=>{
     el.querySelectorAll('[data-appno]').forEach(b=>b.onclick=()=>upd(D('creatorApps',b.dataset.appno),{status:'rejected'},'Application rejected'));
     el.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=()=>{if(confirm('Remove this person’s creator access? Their projects stay until you delete them.'))upd(D('creatorApps',b.dataset.revoke),{status:'rejected'},'Creator access removed')});return}
   if(tab==='projects'){const pend=allProjects.filter(p=>p.status==='pending'),liveP=allProjects.filter(p=>p.status==='approved'),rej=allProjects.filter(p=>p.status==='rejected');
-    const row=(p,acts)=>`<div class="adm-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span>${p.type==='site'?'🌐 Website':'🎮 Game'} · <span data-uname="${p.uid}">…</span> · ▶ ${fmtN(plays[projKey(p)]||0)}</span>${p.price>0?`<span class="muted" style="font-size:12px">🔒 Paid game · ✦ ${fmtN(p.price)} · ${fmtN(p.sales||0)} unlocked · <a href="#" data-showlink="${p.id}">show link</a></span>`:`<a href="${esc(p.url)}" target="_blank" rel="noopener" class="muted" style="font-size:12px;word-break:break-all">${esc(p.url)}</a>`}${p.desc?`<p class="muted" style="font-size:12.5px;margin:4px 0 0">${esc(p.desc)}</p>`:''}</div><div class="acts">${acts}</div></div>`;
+    const row=(p,acts)=>`<div class="adm-proj"><div class="hart mini" style="${art(p)}"></div><div class="info"><b>${esc(p.title)}</b><span>${(PTYPES[p.type]||PTYPES.game).slice(0,2).join(' ')} · <span data-uname="${p.uid}">…</span> · ▶ ${fmtN(plays[projKey(p)]||0)}</span>${p.type!=='site'&&!(p.url&&!(p.price>0))?`<span class="muted" style="font-size:12px">${p.price>0?'✦ '+fmtN(p.price):'Free'} · ${fmtN(p.sales||0)} sold · ${p.deliver==='file'?`📎 ${esc(p.fname||'file')} (${fmtSize(p.fsize||0)}) · <a href="#" data-try="${p.id}">download</a>`:p.deliver==='html'?`🧩 HTML game (${fmtSize(p.fsize||0)})`:`<a href="#" data-showlink="${p.id}">show link</a>`}</span>`:`<a href="${esc(p.url)}" target="_blank" rel="noopener" class="muted" style="font-size:12px;word-break:break-all">${esc(p.url)}</a>`}${p.desc?`<p class="muted" style="font-size:12.5px;margin:4px 0 0">${esc(p.desc)}</p>`:''}</div><div class="acts">${acts}</div></div>`;
     el.innerHTML=`<div class="card"><h2>⏳ Review queue <em class="count">${pend.length}</em></h2><div class="list">${pend.map(p=>row(p,`<button class="ib" data-try="${p.id}" title="Try it">▶</button><button class="btn-acc" data-pok="${p.id}">Approve</button><button data-pno="${p.id}">Reject</button>`)).join('')||'<p class="muted">Nothing waiting for review.</p>'}</div></div>
       <div class="card" style="margin-top:16px"><h2>● Live on Lumen <em class="count">${liveP.length}</em></h2><div class="list">${liveP.map(p=>row(p,`<button class="ib" data-try="${p.id}" title="Try it">▶</button><button class="ib" data-pin="${p.id}" title="${(hubCfg.pinned||[]).includes(projKey(p))?'Unfeature':'Feature on the Hub'}">${(hubCfg.pinned||[]).includes(projKey(p))?'⭐':'☆'}</button><button class="ib" data-pno="${p.id}" title="Hide (send back to rejected)">🙈</button><button class="ib" data-pdel="${p.id}" title="Delete">🗑</button>`)).join('')||'<p class="muted">No creator projects live yet.</p>'}</div></div>
       <div class="card" style="margin-top:16px"><h2>🎮 Built-in games</h2><div class="list">${BUILTINS.map(g=>`<div class="person"><div class="info"><b>${g.title}</b><span>▶ ${fmtN(plays[g.key]||0)} plays · ${(hubCfg.hiddenBuiltins||[]).includes(g.key)?'hidden':'showing'}</span></div><button class="ib" data-pin="${g.key}" title="Feature on the Hub">${(hubCfg.pinned||[]).includes(g.key)?'⭐':'☆'}</button><button class="ib" data-hideb="${g.key}" title="Show or hide on the Games tab">${(hubCfg.hiddenBuiltins||[]).includes(g.key)?'🙈':'👁'}</button></div>`).join('')}</div></div>
       ${rej.length?`<div class="card" style="margin-top:16px"><h2>✕ Not approved / hidden <em class="count">${rej.length}</em></h2><div class="list">${rej.map(p=>row(p,`<button class="ib" data-pok="${p.id}" title="Approve">✓</button><button class="ib" data-pdel="${p.id}" title="Delete">🗑</button>`)).join('')}</div></div>`:''}`;
     el.querySelectorAll('[data-uname]').forEach(async b=>{const u=await C().getUser(b.dataset.uname);b.textContent=u.name||'creator'});
     const get=id=>allProjects.find(p=>p.id===id);
-    el.querySelectorAll('[data-try]').forEach(b=>b.onclick=async()=>{const p=get(b.dataset.try);const u=await gameLink(p);if(!u)return toast('No link');if(p.type==='site')L.browser.open(u);else L.openView(u,p.title,{kind:'game',label:p.title})});
+    el.querySelectorAll('[data-try]').forEach(b=>b.onclick=async e=>{e.preventDefault();const p=get(b.dataset.try);
+      if(p.deliver==='html'){const html=await L.market?.html(p.id).catch(()=>'');if(!html)return toast('Couldn’t load the file');return L.openView('about:blank',p.title,{kind:'game',label:p.title},{html})}
+      if(p.deliver==='file')return L.market?.download(p);
+      const u=await gameLink(p);if(!u)return toast('No link');if(p.type==='site')L.browser.open(u);else if(p.type==='game')L.openView(u,p.title,{kind:'game',label:p.title});else window.open(u,'_blank','noopener')});
     el.querySelectorAll('[data-showlink]').forEach(a=>a.onclick=async e=>{e.preventDefault();const u=await gameLink(get(a.dataset.showlink));a.outerHTML=u?`<a href="${esc(u)}" target="_blank" rel="noopener" style="word-break:break-all">${esc(u)}</a>`:'no link'});
     el.querySelectorAll('[data-pok]').forEach(b=>b.onclick=()=>upd(D('projects',b.dataset.pok),{status:'approved'},'Approved: it’s live'));
     el.querySelectorAll('[data-pno]').forEach(b=>b.onclick=()=>upd(D('projects',b.dataset.pno),{status:'rejected'},'Hidden from Lumen'));
-    el.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this project for good?'))return;try{await F.deleteDoc(D('projects',b.dataset.pdel));toast('Deleted')}catch(e){toast(e.message)}});
+    el.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>delProject(b.dataset.pdel,'Delete this product for good?'));
     el.querySelectorAll('[data-pin]').forEach(b=>b.onclick=()=>{const key=b.dataset.pin.startsWith('b_')?b.dataset.pin:'p_'+b.dataset.pin;const pin=new Set(hubCfg.pinned||[]);pin.has(key)?pin.delete(key):pin.add(key);saveHub({pinned:[...pin]})});
     el.querySelectorAll('[data-hideb]').forEach(b=>b.onclick=()=>{const h=new Set(hubCfg.hiddenBuiltins||[]);h.has(b.dataset.hideb)?h.delete(b.dataset.hideb):h.add(b.dataset.hideb);saveHub({hiddenBuiltins:[...h]})});return}
   if(tab==='shop'){const pend=allItems.filter(i=>i.status==='pending'),liveI=allItems.filter(i=>i.status==='approved'),rej=allItems.filter(i=>i.status==='rejected');
@@ -384,24 +435,24 @@ function linkMentions(root){const games=mentionable();if(!root||!games.length)re
       if(frag){frag.append(txt);n.replaceWith(frag)}}})}
 document.addEventListener('click',e=>{const a=e.target.closest('.gmention');if(!a)return;e.preventDefault();openGame(a.dataset.game)});
 
-/* ---------- Game hub (Games tab) ---------- */
+/* ---------- Game hub (Games tab): your library. New games are sold or given away in the Store ---------- */
 let ghFilter='all',ghQ='';const creatorNames={};
 function renderGameHub(){const box=$('#ghBox');if(!box)return;
   const games=allGames().map(g=>({...g,cname:creatorNames[g.uid]||''}));
   games.forEach(g=>{if(g.uid&&!creatorNames[g.uid])C()?.getUser(g.uid).then(u=>{creatorNames[g.uid]=u.name||'';if(ghQ)renderGameHub()})});
   const q=ghQ.toLowerCase();const match=g=>!q||[g.title,g.desc,g.cname].some(x=>(x||'').toLowerCase().includes(q));
-  const at=g=>g.at?.toMillis?.()||0;
-  const sorts={all:(a,b)=>(plays[b.key]||0)-(plays[a.key]||0),trending:(a,b)=>(trend[b.key]||0)-(trend[a.key]||0)||(plays[b.key]||0)-(plays[a.key]||0),top:(a,b)=>(plays[b.key]||0)-(plays[a.key]||0),new:(a,b)=>at(b)-at(a),rated:(a,b)=>(b.upReviews||0)-(a.upReviews||0)};
+  const own=ownedKeys(),added=g=>own.indexOf(g.key);
+  const lib=games.filter(inLib),shop=games.filter(g=>!inLib(g));
+  const sorts={all:(a,b)=>added(b)-added(a)||(plays[b.key]||0)-(plays[a.key]||0),top:(a,b)=>(plays[b.key]||0)-(plays[a.key]||0),new:(a,b)=>added(b)-added(a),az:(a,b)=>a.title.localeCompare(b.title)};
   const filt={creators:g=>g.key.startsWith('p_'),lumen:g=>g.key.startsWith('b_')}[ghFilter]||(()=>true);
-  const list=games.filter(match).filter(filt).sort(sorts[ghFilter]||sorts.all);
-  const hot=games.filter(g=>trend[g.key]).sort(sorts.trending).slice(0,8);
+  const list=lib.filter(match).filter(filt).sort(sorts[ghFilter]||sorts.all);
   $$('#ghChips button').forEach(b=>b.classList.toggle('on',b.dataset.f===ghFilter));
-  const fromCr=games.filter(g=>g.key.startsWith('p_')).sort((a,b)=>at(b)-at(a)).slice(0,8);
-  box.innerHTML=(!q&&ghFilter==='all'&&hot.length?`<h2 class="hsec">📈 Trending this week</h2><div class="hrow">${hot.map(g=>card(g)).join('')}</div>`:'')+
-    (!q&&ghFilter==='all'&&fromCr.length?`<h2 class="hsec">🛠 New from Lumen creators <button class="gh-mk" data-gtab="create">Make your own →</button></h2><div class="hrow">${fromCr.map(g=>card(g)).join('')}</div>`:'')+
-    `<h2 class="hsec">${q?`Results for “${esc(ghQ)}”`:{all:'🎮 All games',trending:'📈 Trending',top:'🔥 Most played',new:'✨ Newest',rated:'👍 Top rated',creators:'🛠 From Lumen creators',lumen:'⭐ Lumen originals'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
-    (list.length?`<div class="hgrid">${list.map(g=>card(g)).join('')}</div>`:`<p class="muted">No games found${q?' for that search':''}.</p>`);
-  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-gtab]').forEach(b=>b.onclick=e=>{e.stopPropagation();gamesTab(b.dataset.gtab)})}
+  const disc=shop.filter(match).sort((a,b)=>(trend[b.key]||0)-(trend[a.key]||0)||(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0)).slice(0,10);
+  box.innerHTML=`<h2 class="hsec">${q?`In your library: “${esc(ghQ)}”`:{all:'🎮 Your library',top:'🔥 Most played',new:'✨ Recently added',az:'🔤 A to Z',creators:'🛠 From Lumen creators',lumen:'⭐ Lumen originals'}[ghFilter]} <em class="count">${list.length}</em></h2>`+
+    (list.length?`<div class="hgrid">${list.map(g=>card(g)).join('')}</div>`:`<p class="muted">${q?'No games in your library match that.':'No games here yet.'} Find more in the <a href="#" data-store>Store</a>.</p>`)+
+    (disc.length?`<h2 class="hsec">🛍 ${q?'In the Store':'New in the Store'} <button class="hsec-more" data-store>Browse the Store →</button></h2><div class="hrow">${disc.map(g=>card(g)).join('')}</div>`:'')+
+    (!me?'<div class="banner" style="margin-top:16px">Sign in (bottom-left) to buy games and keep them in your library.</div>':'');
+  bindOpen(box);fillCreators(box);box.querySelectorAll('[data-store]').forEach(b=>b.onclick=e=>{e.preventDefault();L.market?L.market.show('game'):L.go('shop')})}
 $('#ghQ')?.addEventListener('input',e=>{ghQ=e.target.value.trim();renderGameHub()});
 $('#ghChips')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;ghFilter=b.dataset.f;renderGameHub()});
 
@@ -422,7 +473,7 @@ async function renderGamePage(){const box=$('#gpBox');const it=gpKey&&findItem(g
     <div class="gp-hero card"><div class="gp-art" style="${art(it)}">${it.image?'':`<span>${esc(it.title)}</span>`}</div>
       <div class="gp-info"><span class="hkick">🎮 Game · ${creator?`by <a href="#" data-user="${it.uid}">${esc(creator.name||'a creator')}</a>`:'Lumen original'}</span><h1>${esc(it.title)}</h1>${it.desc?`<p>${esc(it.desc)}</p>`:''}
         <div class="gp-stats"><span>▶ <b>${fmtN(plays[gpKey]||0)}</b> plays</span>${it.uid?`<span>⏱ <b>${fmtN(it.minutes||0)}</b> min played</span><span>💬 <b>${fmtN(it.mentions||0)}</b> mentions</span>`:''}<span>👍 <b>${reviews.length?pct+'%':'–'}</b> of ${fmtN(reviews.length)} review${reviews.length===1?'':'s'}</span>${trend[gpKey]?`<span>📈 <b>${fmtN(trend[gpKey])}</b> this week</span>`:''}</div>
-        <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px">${unlocked(it)?'<button class="btn-acc gp-play" id="gpPlay">▶ Play now</button>':`<button class="btn-acc gp-play" id="gpUnlock">🔓 Unlock for ✦ ${fmtN(L.plan?.price(it.price)??it.price)}${L.plan?.lite()?' <s style="opacity:.6">'+fmtN(it.price)+'</s>':''}</button>`}<button id="gpMention" title="Write a post about it">✍️ Post about it</button></div></div></div>
+        <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:16px">${unlocked(it)?'<button class="btn-acc gp-play" id="gpPlay">▶ Play now</button>':`<button class="btn-acc gp-play" id="gpUnlock">${it.price>0?`🛒 Buy for ✦ ${fmtN(L.plan?.price(it.price)??it.price)}${L.plan?.lite()?' <s style="opacity:.6">'+fmtN(it.price)+'</s>':''}`:'＋ Get it free'}</button>`}${L.market?'<button id="gpStore">🛍 Store page</button>':''}<button id="gpMention" title="Write a post about it">✍️ Post about it</button></div></div></div>
     <div class="gp-grid"><div class="card"><h2>Reviews</h2>
       ${reviews.length?`<div class="gp-bar"><span style="width:${pct}%"></span></div><p class="muted" style="font-size:13px;margin:6px 0 14px">${up} recommend it · ${reviews.length-up} don't</p>`:''}
       ${!me?'<div class="banner">Sign in to write a review.</div>':own?'<div class="banner">This is your game. Reviews from players show up here, and every positive one earns you ✦ 50 Glow.</div>':
@@ -434,7 +485,7 @@ async function renderGamePage(){const box=$('#gpBox');const it=gpKey&&findItem(g
       ${others.length?`<div class="card"><h2>More games</h2><div class="gp-more">${others.map(g=>card(g,{small:true})).join('')}</div></div>`:''}</div></div>`;
   bindGo(box);bindOpen(box.querySelector('.gp-more')||document.createElement('div'));fillCreators(box);
   box.querySelectorAll('[data-user]').forEach(el=>el.onclick=e=>{e.preventDefault();L.openUser?.(el.dataset.user)});
-  $('#gpPlay')&&($('#gpPlay').onclick=()=>launch(gpKey));$('#gpUnlock')&&($('#gpUnlock').onclick=()=>me?unlockGame(gpKey):toast('Sign in first'));
+  $('#gpPlay')&&($('#gpPlay').onclick=()=>launch(gpKey));$('#gpStore')&&($('#gpStore').onclick=()=>L.market.open(gpKey));$('#gpUnlock')&&($('#gpUnlock').onclick=()=>me?unlockGame(gpKey):toast('Sign in first'));
   $('#gpMention').onclick=()=>{L.go('posts');const t=$('#postText');if(t){t.value=(t.value?t.value+' ':'')+it.title+' ';t.focus()}};
   $$('#gpUp button').forEach(b=>b.onclick=()=>{revUp=b.dataset.up==='1';$$('#gpUp button').forEach(x=>x.classList.toggle('on',x===b))});
   $('#gpSend')?.addEventListener('click',sendReview);

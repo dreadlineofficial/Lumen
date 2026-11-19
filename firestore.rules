@@ -36,8 +36,8 @@ service cloud.firestore {
     function today() { return string(int(math.floor(request.time.toMillis() / 86400000))); }
     function okImage(v) { return v is string && v.size() < 900000 && (v == '' || v.matches('^(https://|data:image/).*')); }
 
-    // Shop prices: must match js/cosmetics.js
-    function prices() { return {'nfx_ice': 300, 'nfx_toxic': 300, 'nfx_glitch': 400, 'nfx_wave': 350, 'nfx_sparkle': 350, 'nfx_shadow': 250, 'nfx_retro': 350, 'nfx_candy': 300, 'fx_bokeh': 350, 'fx_butterflies': 400, 'fx_sunrays': 350, 'fx_ripples': 300, 'fx_sparks': 400, 'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_blood': 500, 'fx_bloodrain': 450, 'fx_eyes': 450, 'fx_static': 400, 'fx_hands': 450, 'fx_claws': 400, 'fx_flicker': 350, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400}; }
+    // Shop prices: must match js/cosmetics.js (and BUILTINS in js/hub.js for paid built-in games)
+    function prices() { return {'nfx_ice': 300, 'nfx_toxic': 300, 'nfx_glitch': 400, 'nfx_wave': 350, 'nfx_sparkle': 350, 'nfx_shadow': 250, 'nfx_retro': 350, 'nfx_candy': 300, 'fx_bokeh': 350, 'fx_butterflies': 400, 'fx_sunrays': 350, 'fx_ripples': 300, 'fx_sparks': 400, 'fx_aurora': 400, 'fx_snow': 300, 'fx_sakura': 350, 'fx_fireflies': 350, 'fx_stars': 300, 'fx_matrix': 450, 'fx_embers': 400, 'fx_bubbles': 250, 'fx_confetti': 300, 'fx_rain': 250, 'fx_hearts': 300, 'fx_storm': 500, 'fx_meteor': 450, 'fx_leaves': 300, 'fx_pixel': 350, 'fx_glitter': 400, 'fx_lanterns': 450, 'fx_grid': 400, 'fx_fog': 300, 'fx_blood': 500, 'fx_bloodrain': 450, 'fx_eyes': 450, 'fx_static': 400, 'fx_hands': 450, 'fx_claws': 400, 'fx_flicker': 350, 'fx_galaxy': 500, 'buddy_ted': 500, 'buddy_blob': 300, 'buddy_bot': 400, 'buddy_pip': 300, 'buddy_boo': 350, 'buddy_mochi': 400, 'deco_neon': 250, 'deco_halo': 300, 'deco_flame': 400, 'deco_crown': 350, 'deco_orbit': 300, 'deco_catears': 250, 'deco_glitch': 400, 'deco_sparkle': 300, 'plate_ocean': 200, 'plate_sunset': 200, 'plate_galaxy': 350, 'plate_vapor': 300, 'plate_forest': 200, 'plate_lava': 350, 'plate_holo': 450, 'plate_sakura': 250, 'nfx_rainbow': 300, 'nfx_chrome': 350, 'nfx_fire': 400, 'nfx_neon': 300, 'theme_sakura': 300, 'theme_ocean': 300, 'theme_ember': 300, 'theme_emerald': 300, 'theme_synthwave': 450, 'theme_mono': 250, 'theme_aurora': 400, 'b_fixinggood': 800}; }
     function profileOk(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 24
         && d.nameLower == d.name.lower()
@@ -149,7 +149,7 @@ service cloud.firestore {
 
     }
 
-    // Collecting Glow from a post: 50 per new paid-out view, 150 per new paid-out comment,
+    // Collecting Glow from a post: 10 per new paid-out view, 50 per new paid-out comment,
     // checked against the post's counters before and after the same batched write.
     // Redeeming a Glow code: + exactly the code's amount, paired with this account's one-time redemption record
     function codePath(c) { return /databases/$(database)/documents/codes/$(c); }
@@ -160,7 +160,7 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/codes/$(c)/used/$(uid()))
         && nc == oc + get(codePath(c)).data.amount;
     }
-    // Collecting creator Glow: 20 per minute other people played the game, 50 per post that mentioned it,
+    // Collecting creator Glow: 10 per minute other people played the game, 50 per post that mentioned it,
     // 50 per positive review, checked against the project's paid-out counters before and after the same write.
     function projPath(id) { return /databases/$(database)/documents/projects/$(id); }
     function projEarnOk(o, n, oc, nc) {
@@ -168,7 +168,7 @@ service cloud.firestore {
       let pb = get(projPath(pid)).data;
       let pa = getAfter(projPath(pid)).data;
       return pid != '' && pa.uid == uid()
-        && bonusOk(oc, nc, 20 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
+        && bonusOk(oc, nc, 10 * (pa.get('paidMin', 0) - pb.get('paidMin', 0)) + 50 * (pa.get('paidMent', 0) - pb.get('paidMent', 0)) + 50 * (pa.get('paidRev', 0) - pb.get('paidRev', 0))
              + (pa.get('paidSold', 0) - pb.get('paidSold', 0)))
         && nc > oc;
     }
@@ -182,13 +182,13 @@ service cloud.firestore {
         && payOk(oc, nc, get(itemPath(id)).data.price)
         && getAfter(itemPath(id)).data.get('sales', 0) == get(itemPath(id)).data.get('sales', 0) + 1;
     }
-    // unlocking a paid game: exactly its price, paired with the game's sale counter (owned gets "p_<game id>")
+    // Marketplace: buying a product (or getting a free one) costs exactly its price, paired with its sale counter (owned gets "p_<id>")
     function gameBuyOk(n, oc, nc, no, oo) {
       let id = n.get('lastBuy', '');
       let pid = id.split('_')[1];
       return id.matches('^p_[A-Za-z0-9]{10,40}$') && no.hasAny([id]) && !oo.hasAny([id])
-        && get(projPath(pid)).data.status == 'approved' && get(projPath(pid)).data.uid != uid() && get(projPath(pid)).data.get('price', 0) > 0
-        && payOk(oc, nc, get(projPath(pid)).data.price)
+        && get(projPath(pid)).data.status == 'approved' && get(projPath(pid)).data.uid != uid() && get(projPath(pid)).data.type != 'site'
+        && payOk(oc, nc, get(projPath(pid)).data.get('price', 0))
         && getAfter(projPath(pid)).data.get('sales', 0) == get(projPath(pid)).data.get('sales', 0) + 1;
     }
     // creators equip their own approved shop items for free
@@ -208,7 +208,7 @@ service cloud.firestore {
       let pb = get(postPath(pid)).data;
       let pa = getAfter(postPath(pid)).data;
       return pid != '' && pa.uid == uid() && pa.get('flagged', null) == null
-        && bonusOk(oc, nc, 50 * (pa.get('paidViews', 0) - pb.get('paidViews', 0)) + 150 * (pa.get('paidComments', 0) - pb.get('paidComments', 0)))
+        && bonusOk(oc, nc, 10 * (pa.get('paidViews', 0) - pb.get('paidViews', 0)) + 50 * (pa.get('paidComments', 0) - pb.get('paidComments', 0)))
         && nc > oc;
     }
 
@@ -336,14 +336,20 @@ service cloud.firestore {
         && request.resource.data.about is string && request.resource.data.about.size() <= 600;
       allow update, delete: if isAdmin();
     }
-    // projects: creators submit games and sites; the admin reviews, features, hides and deletes
+    // projects = Marketplace products: creators submit games, websites, ebooks, documents, resources and anything else;
+    // the admin reviews, features, hides and deletes. A product is delivered as a link, an uploaded file (up to 3 MB)
+    // or an uploaded HTML game; links and files sit in projects/{id}/private, readable once you own it.
     function projectOk(d) {
-      return d.type in ['game', 'site'] && d.title is string && d.title.size() >= 2 && d.title.size() <= 60
-        && d.url is string && d.url.size() <= 500 && (d.url.matches('^https://.*') || (d.get('price', 0) > 0 && d.url == ''))
+      return d.type in ['game', 'site', 'ebook', 'doc', 'asset', 'other'] && d.title is string && d.title.size() >= 2 && d.title.size() <= 60
+        && d.url is string && d.url.size() <= 500 && (d.url.matches('^https://.*') || (d.type != 'site' && d.url == ''))
+        && d.get('deliver', 'link') in ['link', 'file', 'html'] && (d.get('deliver', 'link') != 'html' || d.type == 'game')
+        && (d.type != 'site' || d.get('deliver', 'link') == 'link')
+        && d.get('fname', '') is string && d.get('fname', '').size() <= 120 && d.get('fmime', '') is string && d.get('fmime', '').size() <= 100
+        && d.get('fsize', 0) is int && d.get('fsize', 0) >= 0 && d.get('fsize', 0) <= 3145728
         && d.get('price', 0) is int && d.get('price', 0) >= 0 && d.get('price', 0) <= 5000 && d.get('price', 0) % 10 == 0
-        && (d.type == 'game' || d.get('price', 0) == 0)
+        && (d.type != 'site' || d.get('price', 0) == 0)
         && d.get('cut', 0) is int && (d.get('price', 0) == 0 ? d.get('cut', 0) == 0 : d.get('cut', 0) * 10 == d.get('price', 0) * 9)
-        && d.get('desc', '').size() <= 300 && okImage(d.get('image', '')) && d.get('image', '').size() < 900000
+        && d.get('desc', '').size() <= 1500 && okImage(d.get('image', '')) && d.get('image', '').size() < 900000
         && d.get('ix', 50) is int && d.get('ix', 50) >= 0 && d.get('ix', 50) <= 100
         && d.get('iy', 50) is int && d.get('iy', 50) >= 0 && d.get('iy', 50) <= 100
         && d.get('iz', 100) is int && d.get('iz', 100) >= 100 && d.get('iz', 100) <= 400
@@ -361,14 +367,14 @@ service cloud.firestore {
         && d().get('featured', false) == false && projectOk(d()) && !d().keys().hasAny(counters());
       // a creator changes the link, picture or type: back into review (counters can't be touched)
       allow update: if active() && isCreator() && o().uid == uid()
-        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'status', 'at'])
+        && keys().hasOnly(['type', 'title', 'url', 'desc', 'image', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'status', 'at', 'deliver', 'fname', 'fsize', 'fmime'])
         && d().status == 'pending' && projectOk(d());
       // a creator edits the listing itself (title, description, framing, price): stays live
       allow update: if active() && isCreator() && o().uid == uid()
         && keys().hasOnly(['title', 'desc', 'ix', 'iy', 'iz', 'ar', 'price', 'cut', 'at']) && d().status == o().status && projectOk(d());
-      // someone unlocks a paid game (paired with the purchase on their account)
-      allow update: if active() && o().status == 'approved' && o().type == 'game' && o().get('price', 0) > 0 && uid() != o().uid
-        && keys().hasOnly(['sales', 'sold', 'lastBuyer']) && d().sales == o().get('sales', 0) + 1 && d().sold == o().get('sold', 0) + o().cut && d().lastBuyer == uid()
+      // someone buys (or gets a free) product (paired with the purchase on their account)
+      allow update: if active() && o().status == 'approved' && o().type != 'site' && uid() != o().uid
+        && keys().hasOnly(['sales', 'sold', 'lastBuyer']) && d().sales == o().get('sales', 0) + 1 && d().sold == o().get('sold', 0) + o().get('cut', 0) && d().lastBuyer == uid()
         && !get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id])
         && getAfter(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id]);
       allow update: if isAdmin() && projectOk(d()) && d().status in ['pending', 'approved', 'rejected'];
@@ -384,7 +390,7 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/projects/$(id)/mentions/$(d().lastMention))
         && existsAfter(/databases/$(database)/documents/projects/$(id)/mentions/$(d().lastMention));
       // a new positive review by someone else (paired with the review)
-      allow update: if active() && live() && uid() != o().uid && keys().hasOnly(['upReviews', 'lastReview'])
+      allow update: if active() && o().status == 'approved' && uid() != o().uid && keys().hasOnly(['upReviews', 'lastReview'])
         && d().upReviews == o().get('upReviews', 0) + 1 && d().lastReview == uid()
         && !exists(/databases/$(database)/documents/projects/$(id)/reviews/$(uid()))
         && getAfter(/databases/$(database)/documents/projects/$(id)/reviews/$(uid())).data.up == true;
@@ -393,7 +399,7 @@ service cloud.firestore {
         && d().get('paidMin', 0) == o().get('minutes', 0) && d().get('paidMent', 0) == o().get('mentions', 0) && d().get('paidRev', 0) == o().get('upReviews', 0)
         && d().get('paidSold', 0) == o().get('sold', 0);
 
-      // a paid game's link: only its creator, the admin and people who unlocked it can read it
+      // a product's link or uploaded file: only its creator, the admin and people who own it can read it
       match /private/{doc} {
         allow read: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin()
           || get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id]));
@@ -401,7 +407,23 @@ service cloud.firestore {
           && (getAfter(projPath(id)).data.status == 'pending' || isAdmin())
           && request.resource.data.keys().hasOnly(['url']) && request.resource.data.url is string
           && request.resource.data.url.size() <= 500 && request.resource.data.url.matches('^https://.*');
+        // an uploaded file or HTML game: its details here, the data in up to 6 pieces of 900 KB
+        allow create, update: if active() && doc == 'file' && getAfter(projPath(id)).data.uid == uid()
+          && (getAfter(projPath(id)).data.status == 'pending' || isAdmin())
+          && request.resource.data.keys().hasOnly(['name', 'mime', 'bytes', 'parts'])
+          && request.resource.data.name is string && request.resource.data.name.size() <= 120
+          && request.resource.data.mime is string && request.resource.data.mime.size() <= 100
+          && request.resource.data.bytes is int && request.resource.data.bytes > 0 && request.resource.data.bytes <= 3145728
+          && request.resource.data.parts is int && request.resource.data.parts >= 1 && request.resource.data.parts <= 6;
         allow delete: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin());
+        match /parts/{n} {
+          allow read: if signedIn() && (get(projPath(id)).data.uid == uid() || isAdmin()
+            || get(/databases/$(database)/documents/users/$(uid())).data.get('owned', []).hasAny(['p_' + id]));
+          allow create, update: if active() && doc == 'file' && n.matches('^[0-5]$') && getAfter(projPath(id)).data.uid == uid()
+            && (getAfter(projPath(id)).data.status == 'pending' || isAdmin())
+            && request.resource.data.keys().hasOnly(['d']) && request.resource.data.d is string && request.resource.data.d.size() <= 900000;
+          allow delete: if signedIn() && (!exists(projPath(id)) || get(projPath(id)).data.uid == uid() || isAdmin());
+        }
       }
 
       // playtime: one record per player per game per day; +1 minute at most every 50 seconds, up to 4 hours a day

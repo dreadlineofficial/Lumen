@@ -442,7 +442,7 @@ $('#postBtn').onclick=async()=>{if(!me)return openModal('authModal');const text=
     try{await b.commit()}catch(err){if(!ment.length)throw err;await F.setDoc(ref,data)}$('#postText').value='';$('#postImgClear').click();toast('Posted')}catch(e){toast('Could not post: '+e.message)}$('#postBtn').disabled=false};
 const postAgo=t=>ago(ms(t));
 let feedPosts=new Map();
-const VIEW_GLOW=50,COMMENT_GLOW=150;
+const VIEW_GLOW=10,COMMENT_GLOW=50; // must match earnOk in firestore.rules
 const REASONS={useless:'Useless or low-effort post',spam:'Spam or repeated posts',rude:'Rude or harmful',other:'Something else'};
 const muted=()=>myProfile?.mutedPosts||[];
 let allFeed=[];
