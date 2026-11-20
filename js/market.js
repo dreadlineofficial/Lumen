@@ -83,13 +83,13 @@ async function buyNow(key){const it=byKey(key);if(!it)return toast('That isn’t
   if(has(it))return toast('You already own '+it.title);if(it.uid===me())return toast('This is yours');if(busy)return;
   const c=cost(it);if(coins()<c)return toast(`You need ✦ ${fmtN(c)} Glow (you have ${fmtN(coins())}). Claim free Glow every day at the top of the Store.`);
   if(c>0&&!confirm(`Buy ${it.title} for ✦ ${fmtN(c)}${c<it.price?' (Lite 10% off)':''}? You'll have ✦ ${fmtN(coins()-c)} left. It's yours forever.`))return;
-  busy=true;try{await buyOne(it,{coins:coins(),owned:[...ownedKeys()]});cart=cart.filter(k=>k!==key);store('lumen.cart',cart);thanks([it])}catch(e){toast('Couldn’t buy it: '+why(e))}busy=false;render()}
+  busy=true;try{await buyOne(it,{coins:coins(),owned:[...ownedKeys()]});cart=cart.filter(k=>k!==key);store('lumen.cart',cart);thanks([it])}catch(e){if(e.code==='permission-denied')C().diagnose?.('Buy '+it.title);else toast('Couldn’t buy it: '+e.message)}busy=false;render()}
 async function checkout(){if(!me())return toast('Sign in first');if(busy)return;const items=cart.map(byKey).filter(it=>it&&!has(it)&&it.uid!==me());
   if(!items.length){cart=[];store('lumen.cart',cart);return render()}
   const total=items.reduce((a,it)=>a+cost(it),0);if(total>coins())return toast(`Your cart costs ✦ ${fmtN(total)} but you have ✦ ${fmtN(coins())}. Remove something or claim more Glow.`);
   if(!confirm(`Place your order: ${items.length} item${items.length===1?'':'s'} for ${total?'✦ '+fmtN(total):'free'}?`))return;
   busy=true;const st={coins:coins(),owned:[...ownedKeys()]},done=[];
-  for(const it of items){try{await buyOne(it,st);done.push(it)}catch(e){toast(`Stopped at ${it.title}: ${why(e)}`);break}}
+  for(const it of items){try{await buyOne(it,st);done.push(it)}catch(e){if(e.code==='permission-denied')C().diagnose?.('Checkout');else toast(`Stopped at ${it.title}: ${e.message}`);break}}
   cart=cart.filter(k=>!done.some(d=>d.key===k));store('lumen.cart',cart);busy=false;closeCart();if(done.length)thanks(done);render()}
 function thanks(list){const el=document.createElement('div');el.className='mk-thanks';const spent=list.reduce((a,it)=>a+cost(it),0);
   el.innerHTML=`<div class="mk-thanks-box mk-surface"><div class="mk-ok"><span>✓</span><div><b>Order placed, thank you!</b><small>${list.length} item${list.length===1?'':'s'}${spent?` · ✦ ${fmtN(spent)}`:' · free'} · instant access</small></div></div>
@@ -210,7 +210,7 @@ function productPage(it){const [ic,lb]=label(it),cc=catOf(it),own=it.uid&&it.uid
        `<button class="mk-btn ${cart.includes(it.key)?'mk-in':'mk-cta'} mk-wide mk-addcart" data-cart="${esc(it.key)}">${cart.includes(it.key)?'✓ Added to cart · remove':'🛒 Add to cart'}</button><button class="mk-btn mk-buy mk-wide" data-buy="${esc(it.key)}">${it.price?'Buy now':'Get it now, free'}</button>`}
      ${cart.includes(it.key)?'<a href="#" class="mk-a mk-gocart" data-gocart>Go to cart ›</a>':''}
 `;
-  return`<nav class="mk-crumbs"><a href="#" data-mkhome>Store</a> › <a href="#" data-mkcat="${cc[0]}" data-browse>${cc[2]}</a> › <span>${esc(it.title)}</span></nav>
+  return`<div class="mk-crumbs"><a href="#" data-mkhome>Store</a> › <a href="#" data-mkcat="${cc[0]}" data-browse>${cc[2]}</a> › <span>${esc(it.title)}</span></div>
   <div class="mk-pdp mk-surface">
     <div class="mk-gal"><div class="mk-gal-in">${ps.length>1?`<div class="mk-thumbs">${ps.map((x,i)=>`<button class="${i===galI?'on':''}" data-gal="${i}" style="${x.style}" aria-label="Picture ${i+1}"></button>`).join('')}</div>`:''}
       <div class="mk-cover" id="mkCover" style="${ps[galI].style}">${H().coverOf(it)?'':`<span>${esc(it.title)}</span>`}${ps.length>1?`<button class="mk-gnav l" data-galnav="-1" aria-label="Previous picture">‹</button><button class="mk-gnav r" data-galnav="1" aria-label="Next picture">›</button><em class="mk-gcount">${galI+1} / ${ps.length}</em>`:''}</div></div>
