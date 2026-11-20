@@ -49,7 +49,7 @@ function startAdminHub(){if(adminOn||!me||!isAdmin())return;adminOn=true;const {
   unsubs.push(F.onSnapshot(col('projects'),s=>{allProjects=s.docs.map(d=>({id:d.id,...d.data()}));L.onAdminData?.()},()=>{}));
   $('#navCreator').style.display='';refresh()}
 L.onAdminStart=(prev=>()=>{prev?.();startAdminHub()})(L.onAdminStart);
-const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
+const prevP=L.onProfile;L.onProfile=p=>{prevP?.(p);const uid=p?.uid||null;if(uid===me)return;if(uid)setTimeout(()=>C()?.rulesOk?.().then(()=>L.onAdminData?.()),1500);stop();me=uid;myApp=null;myProjects=[];myItems=[];allItems=[];live=[];plays={};hubCfg={};
   if($('#navCreator'))$('#navCreator').style.display=me?'':'none';if(me&&C())start();refresh()};
 L.onFeed=()=>{if($('#v-hub')?.classList.contains('on'))renderHub()};
 function refresh(){renderHub();renderCreator();renderGameHub();L.market?.refresh?.();if(gpKey&&$('#v-gamepage')?.classList.contains('on'))renderGamePage();L.browser?.refresh?.()}
@@ -455,7 +455,7 @@ async function collect(){const btn=$('#crCollect');btn.disabled=true;let got=0,f
   for(const p of myProjects.filter(p=>unpaid(p)>0)){try{got+=await payout('projects',p.id)}catch(e){fail=e}}
   for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){try{got+=await payout('shopItems',it.id)}catch(e){fail=e}}
   if(got)toast(`+${fmtN(got)} ✦ Glow collected`);
-  if(fail)toast(fail.code==='permission-denied'?'Some Glow couldn’t be collected: Firebase refused it. Make sure the latest firestore.rules are published, then try again.':'Couldn’t collect: '+fail.message);
+  if(fail)toast(fail.code==='permission-denied'?((await C().rulesOk?.())===false?C().rulesMsg:'Some Glow couldn’t be collected right now. Try again in a minute.'):'Couldn’t collect: '+fail.message);
   renderCreator()}
 
 /* ---------- playtime: +1 minute for the creator for every full minute someone else plays ---------- */

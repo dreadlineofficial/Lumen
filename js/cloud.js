@@ -599,7 +599,7 @@ async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got
         await b.commit();got+=amt;break}
       catch(e){if(e.code!=='permission-denied'||i===3){fail=e;break}await new Promise(r=>setTimeout(r,700))}}}
   if(got)toast(`+${got.toLocaleString()} ✦ Glow collected`);
-  if(fail)toast(fail.code==='permission-denied'?'Some Glow couldn’t be collected: Firebase refused it. Make sure the latest firestore.rules are published, then try again.':'Couldn’t collect: '+fail.message);
+  if(fail)toast(fail.code==='permission-denied'?((await checkRules())===false?RULES_MSG:'Some Glow couldn’t be collected right now. Try again in a minute.'):'Couldn’t collect: '+fail.message);
   btn.disabled=false;renderAnalytics()}
 $('#ckFilter')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;feedF=b.dataset.f;$$('#ckFilter button').forEach(x=>x.classList.toggle('on',x===b));drawFeed()});
 $('#postTabs')?.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;$$('#postTabs button').forEach(x=>x.classList.toggle('on',x===b));$('#feedWrap').style.display=b.dataset.pt==='feed'?'':'none';$('#analytics').style.display=b.dataset.pt==='an'?'':'none';if(b.dataset.pt==='an')renderAnalytics()});
@@ -607,6 +607,11 @@ $('#postTabs')?.addEventListener('click',e=>{const b=e.target.closest('[data-pt]
 /* ---------- server channels, bans, admin inbox ---------- */
 let serverChannels=null,banned=false,inbox=[];
 const ADMIN_UID='P1z4pyemPiZqpS65YBTdzI469yO2';
+// Are the published Firestore rules up to date? Only the newest rules allow reading rulesCheck/RULES_V
+// (it must match "match /rulesCheck" in firestore.rules). null = not known yet.
+const RULES_V='2026-11-20a';let rulesLive=null;
+async function checkRules(){if(!me)return null;try{await F.getDoc(D('rulesCheck',RULES_V));rulesLive=true}catch(e){if(e.code==='permission-denied')rulesLive=false}return rulesLive}
+const RULES_MSG='Firebase is still running older security rules, so this can’t be saved yet. The Lumen owner needs to publish the latest firestore.rules (Admin → Overview shows how).';
 const isOwner=()=>me?.uid===ADMIN_UID;
 const isAdmin=()=>isOwner()||(!!me&&plan.staff());
 function listenServer(){unsubs.push(F.onSnapshot(D('server','config'),s=>{const c=s.data()?.channels;serverChannels=Array.isArray(c)&&c.length?c:null;renderRooms();renderAdmin()},()=>{}));
@@ -649,6 +654,8 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
      <form class="row" id="addCh"><input id="newCh" placeholder="new-channel" maxlength="30"><button class="btn-acc">Add</button></form></div>`;
   const todo=[reports.length&&[`🚩 ${new Set(reports.map(r=>r.post)).size} reported post${new Set(reports.map(r=>r.post)).size>1?'s':''} to check`,'reports'],hc.shop&&[`🎨 ${hc.shop} shop item${hc.shop>1?'s':''} to review`,'shop'],hc.apps&&[`🛠 ${hc.apps} creator application${hc.apps>1?'s':''} waiting`,'creators'],hc.queue&&[`📦 ${hc.queue} project${hc.queue>1?'s':''} to review`,'projects']].filter(Boolean);
   const overview=`<div class="an-stats">${stat('👥','Accounts',allUsers.length,'users')}${stat('🟢','Online friends',friendIds().filter(u=>status(u)!=='offline').length)}${stat('⛔','Banned',bannedSet.size,'users')}${stat('🛠','Creators',hc.creators,'creators')}${stat('📦','Live projects',hc.live,'projects')}${isOwner()?stat('✦','Glow codes',glowCodes.length,'codes')+stat('💎','Premium',allUsers.filter(u=>tierOf(u)).length,'pcodes'):stat('💎','Premium members',allUsers.filter(u=>tierOf(u)).length)}</div>
+     ${rulesLive===false?`<div class="banner rules-warn" style="margin-bottom:14px"><b>⚠️ Firebase is running older security rules.</b> Collecting Glow, the Store and other new features will be refused until the latest rules are published.
+       ${isOwner()?`<ol style="margin:8px 0 0;padding-left:20px;line-height:1.7"><li>Open <a href="https://raw.githubusercontent.com/dreadlineofficial/Lumen/main/firestore.rules" target="_blank" rel="noopener">the latest rules</a>, press Ctrl+A then Ctrl+C.</li><li>Open <a href="https://console.firebase.google.com/project/lumen-864cf/firestore/rules" target="_blank" rel="noopener">Firestore → Rules</a>, click in the editor, press Ctrl+A then Ctrl+V, and click <b>Publish</b>.</li><li>Or set up automatic publishing once (SETUP.md, step 7) and it happens on every update.</li></ol>`:' Tell the Lumen owner.'}</div>`:rulesLive===true&&isOwner()?'<div class="muted" style="font-size:12.5px;margin:-4px 0 12px">✅ Firebase security rules are up to date.</div>':''}
      ${isOwner()?'':`<div class="banner" style="margin-bottom:14px">💎 You have the control panel through Lumen ${plan.ult()&&!liveK('pro')?'Ultimate':'Pro'}. Glow gifts and codes stay with the Lumen owner.</div>`}
      <div class="card"><h2>📥 To do</h2><div class="list">${todo.map(([t,k])=>`<button class="adm-todo" data-atab="${k}">${t}<span>Open →</span></button>`).join('')||'<p class="muted">All caught up. Nothing waiting for you.</p>'}</div></div>
      <div class="adm-quick">${[['users','👥','Manage accounts',isOwner()?'Rename, gift Glow, message, ban':'Rename, message, ban'],['hub','🏠','Customise the Hub','Banner, announcement, featured picks'],['projects','📦','Review projects','Approve, feature, hide or delete'],['channels','#','Chat channels','Add and remove global rooms']].map(([k,i,t,d])=>`<button class="card" data-atab="${k}"><span style="font-size:24px">${i}</span><b>${t}</b><span class="muted">${d}</span></button>`).join('')}</div>`;
@@ -693,5 +700,5 @@ function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. 
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={ownerId:ADMIN_UID,F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,isOwner,tierOf,tierTag,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
+L.cloud={rulesOk:checkRules,rulesMsg:RULES_MSG,ownerId:ADMIN_UID,F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,isOwner,tierOf,tierTag,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
 L.onCloudReady?.();

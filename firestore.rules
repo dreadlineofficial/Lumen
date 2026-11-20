@@ -556,6 +556,11 @@ service cloud.firestore {
       }
     }
 
+    // lets Lumen check that these rules are the ones published (js/cloud.js RULES_V must match; bump both together)
+    match /rulesCheck/{v} {
+      allow get: if signedIn() && v == '2026-11-20a';
+    }
+
     match /server/{doc} {
       allow read: if signedIn();
       allow write: if isAdmin() && request.resource.data.get('channels', []).size() <= 40 && request.resource.data.get('pinned', []).size() <= 30
