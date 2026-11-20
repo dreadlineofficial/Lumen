@@ -82,6 +82,17 @@ People see a "Google hasn't verified this app" screen until you submit the app f
 ## 6. Put it online
 In the Lumen repo on GitHub, open **Settings → Pages → Deploy from a branch → `main` / `(root)` → Save**. A minute later the site is live at `https://dreadlineofficial.github.io/Lumen/`.
 
+## 7. (Recommended) Publish the rules automatically
+Every Lumen update that saves new kinds of data comes with new `firestore.rules`. Instead of pasting them into Firebase each time, let GitHub publish them for you. You set this up once:
+1. Open <https://console.firebase.google.com/project/lumen-864cf/settings/serviceaccounts/adminsdk> and click **Generate new private key**, then **Generate key**. A `.json` file downloads. Keep it private: it can change your Firebase project.
+2. Open <https://github.com/dreadlineofficial/Lumen/settings/secrets/actions> and click **New repository secret**.
+3. Name it `FIREBASE_SERVICE_ACCOUNT`. Open the downloaded file in Notepad, copy everything in it into **Secret**, and click **Add secret**. Then delete the downloaded file.
+4. Open <https://github.com/dreadlineofficial/Lumen/actions/workflows/firestore-rules.yml>, click **Run workflow**, then **Run workflow** again. When it shows a green ✓, the rules are published.
+
+From then on, whenever `firestore.rules` changes on `main`, they're published automatically. **Admin → Overview** in Lumen tells you if the published rules are out of date.
+
+If the run fails with a "permission" error, open <https://console.cloud.google.com/iam-admin/iam?project=lumen-864cf>, click ✏️ next to the account ending in `firebase-adminsdk-…`, click **Add another role**, pick **Firebase Rules Admin**, save, and run the workflow again.
+
 ## Using it
 - **Learning Portal first:** Lumen always opens on the Learning Portal. Each person should add their classes and their own notes on the **Timetable** page so the portal shows the right subject at the right time.
 - **User's guide:** everything is explained at the top of **Settings**.
