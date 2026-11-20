@@ -588,12 +588,19 @@ function renderAnalytics(){const box=$('#analytics');if(!box||!me)return;
     <div class="card"><table class="an-table"><thead><tr><th>Post</th><th>Views</th><th>Likes</th><th>Comments</th><th>Glow</th></tr></thead><tbody>${myPosts.map(p=>`<tr><td><div class="an-post">${safeImg(p.image)?`<img src="${safeImg(p.image)}" alt="">`:''}<span>${esc((p.text||'Image post').replace(/^#{1,3}\s*/gm,'').slice(0,70))}</span></div><small class="muted">${postAgo(p.at)}</small></td>
       <td><div class="an-bar"><i style="width:${Math.round((p.views||0)/max*100)}%"></i></div>${p.views||0}</td><td>${(p.likes||[]).length}</td><td>${p.ecomments||0}</td><td>${p.flagged?`<span class="rep-tag" title="${esc((p.flagged.reason||'')+(p.flagged.note?': '+p.flagged.note:''))}">🚩 0</span>`:unpaid(p)?`<span class="price">+${unpaid(p)}</span>`:'✓'}</td></tr>${p.flagged?`<tr class="rep-row"><td colspan="5">🚩 This post was reported and the Lumen team agreed: <b>${esc(p.flagged.reason||'')}</b>${p.flagged.note?` · “${esc(p.flagged.note)}”`:''}. It earns no Glow.</td></tr>`:''}`).join('')||'<tr><td colspan="5" class="muted">You haven’t posted yet.</td></tr>'}</tbody></table></div>`;
   $('#collectBtn').onclick=collectAll}
-async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got=0;
-  for(const p of myPosts.filter(p=>unpaid(p)>0)){const amt=plan.bonus(unpaid(p));const b=F.writeBatch(db);
-    b.update(D('posts',p.id),{paidViews:p.views||0,paidComments:p.ecomments||0});
-    b.update(D('users',me.uid),{coins:(+myProfile.coins||0)+got+amt,lastEarn:p.id});
-    try{await b.commit();got+=amt}catch(e){toast('Couldn’t collect: '+e.message);break}}
-  if(got)toast(`+${got.toLocaleString()} ✦ Glow collected`);renderAnalytics()}
+// each post's payout uses fresh server numbers (balance and counters), so earlier payouts aren't counted twice;
+// if a view or comment lands in between, it's tried again with the new numbers
+async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got=0,fail=null;
+  for(const p of myPosts.filter(p=>unpaid(p)>0)){
+    for(let i=0;i<4;i++){try{const [s,u]=await Promise.all([F.getDoc(D('posts',p.id)),F.getDoc(D('users',me.uid))]);const x=s.data();const raw=x?unpaid(x):0;if(raw<=0)break;
+        const amt=plan.bonus(raw),b=F.writeBatch(db);
+        b.update(D('posts',p.id),{paidViews:x.views||0,paidComments:x.ecomments||0});
+        b.update(D('users',me.uid),{coins:(+u.data()?.coins||0)+amt,lastEarn:p.id});
+        await b.commit();got+=amt;break}
+      catch(e){if(e.code!=='permission-denied'||i===3){fail=e;break}await new Promise(r=>setTimeout(r,700))}}}
+  if(got)toast(`+${got.toLocaleString()} ✦ Glow collected`);
+  if(fail)toast(fail.code==='permission-denied'?'Some Glow couldn’t be collected: Firebase refused it. Make sure the latest firestore.rules are published, then try again.':'Couldn’t collect: '+fail.message);
+  btn.disabled=false;renderAnalytics()}
 $('#ckFilter')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;feedF=b.dataset.f;$$('#ckFilter button').forEach(x=>x.classList.toggle('on',x===b));drawFeed()});
 $('#postTabs')?.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;$$('#postTabs button').forEach(x=>x.classList.toggle('on',x===b));$('#feedWrap').style.display=b.dataset.pt==='feed'?'':'none';$('#analytics').style.display=b.dataset.pt==='an'?'':'none';if(b.dataset.pt==='an')renderAnalytics()});
 

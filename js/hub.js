@@ -10,6 +10,10 @@ const BUILTINS=[{key:'b_nightbound',title:'Nightbound',type:'game',desc:'1v4 asy
   {key:'b_lumisleap',title:"Lumi's Leap",type:'game',desc:'2D platformer · six worlds',url:()=>'games/lumis-leap.html',image:'games/lumis-leap-poster.webp'}];
 let me=null,hubCfg={},live=[],plays={},trend={},myItems=[],allItems=[],myApp=null,myProjects=[],allApps=[],allProjects=[],unsubs=[];
 const C=()=>L.cloud;
+// Fixing Good moved from a built-in game (plays under "b_fixinggood") to a Store product: its counts carry over
+let rawPlays={},rawTrend={};
+function mergePlays(){plays={...rawPlays};trend={...rawTrend};const id=hubCfg.fixingGood;if(!id)return;const k='p_'+id;
+  plays[k]=(rawPlays[k]||0)+(rawPlays.b_fixinggood||0);trend[k]=(rawTrend[k]||0)+(rawTrend.b_fixinggood||0)}
 const stop=()=>{unsubs.forEach(u=>u());unsubs=[]};
 const isAdmin=()=>C()?.isAdmin?.();
 const isCreator=()=>myApp?.status==='approved'||!!isAdmin();
@@ -30,9 +34,9 @@ const earned=p=>RATE.min*(p.minutes||0)+RATE.mention*(p.mentions||0)+RATE.review
 
 /* ---------- live data ---------- */
 function start(){const {F,D,db}=C();const col=(...p)=>F.collection(db,...p);
-  unsubs.push(F.onSnapshot(D('server','hub'),s=>{hubCfg=s.data()||{};refresh()},()=>{}));
+  unsubs.push(F.onSnapshot(D('server','hub'),s=>{hubCfg=s.data()||{};mergePlays();refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('status','==','approved')),s=>{live=s.docs.map(d=>({id:d.id,...d.data()}));refresh()},()=>{}));
-  unsubs.push(F.onSnapshot(col('plays'),s=>{const t=DAY();plays={};trend={};s.docs.forEach(d=>{const x=d.data();plays[d.id]=+x.count||0;let w=0;for(let i=0;i<7;i++)w+=+x['d'+(t-i)]||0;trend[d.id]=w});refresh()},()=>{}));
+  unsubs.push(F.onSnapshot(col('plays'),s=>{const t=DAY();rawPlays={};rawTrend={};s.docs.forEach(d=>{const x=d.data();rawPlays[d.id]=+x.count||0;let w=0;for(let i=0;i<7;i++)w+=+x['d'+(t-i)]||0;rawTrend[d.id]=w});mergePlays();refresh()},()=>{}));
   unsubs.push(F.onSnapshot(D('creatorApps',me),s=>{myApp=s.exists()?s.data():null;$('#navCreator').style.display='';refresh()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('projects'),F.where('uid','==',me)),s=>{myProjects=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0));renderCreator()},()=>{}));
   unsubs.push(F.onSnapshot(F.query(col('shopItems'),F.where('uid','==',me)),s=>{myItems=s.docs.map(d=>({id:d.id,...d.data()}));myItems.forEach(i=>L.cos.refresh(i.id,i.at?.toMillis?.()));renderCreator()},()=>{}));
@@ -436,16 +440,23 @@ async function moveFG(btn){if(!C().isOwner()||hubCfg.fixingGood)return;
     await saveHub({fixingGood:ref.id,hiddenBuiltins:[...new Set([...(hubCfg.hiddenBuiltins||[]),'b_fixinggood'])],pinned:(hubCfg.pinned||[]).map(k=>k==='b_fixinggood'?'p_'+ref.id:k)},'Done: Fixing Good is your Store product. Edit it in the Creator Dashboard.')}
   catch(e){btn.disabled=false;btn.textContent='Move Fixing Good into the Store';toast('Couldn’t move it: '+(e.code==='permission-denied'?'Firebase refused it (publish the latest rules first)':e.message))}}
 async function saveHub(data,msg){try{await C().F.setDoc(C().D('server','hub'),data,{merge:true});if(msg)toast(msg)}catch(e){toast(e.code==='permission-denied'?'Firebase refused this. Re-publish the latest firestore.rules.':e.message)}}
-async function collect(){const {F,D,db}=C();const btn=$('#crCollect');btn.disabled=true;let got=0;
-  const bonus=x=>L.plan?.bonus(x)??x;
-  for(const p of myProjects.filter(p=>unpaid(p)>0)){const amt=bonus(unpaid(p));const b=F.writeBatch(db);
-    b.update(D('projects',p.id),{paidMin:p.minutes||0,paidMent:p.mentions||0,paidRev:p.upReviews||0,paidSold:p.sold||0});
-    b.update(D('users',me),{coins:(+C().profile()?.coins||0)+got+amt,lastProj:p.id});
-    try{await b.commit();got+=amt}catch(e){toast(e.code==='permission-denied'?'Couldn’t collect yet (new plays just came in, or the rules need re-publishing). Try again.':e.message);break}}
-  for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){const amt=bonus(it.earned-(it.paidEarned||0));const b=F.writeBatch(db);
-    b.update(D('shopItems',it.id),{paidEarned:it.earned});b.update(D('users',me),{coins:(+C().profile()?.coins||0)+got+amt,lastItem:it.id});
-    try{await b.commit();got+=amt}catch(e){toast(e.code==='permission-denied'?'Couldn’t collect yet (a sale just came in). Try again.':e.message);break}}
-  if(got)toast(`+${fmtN(got)} ✦ Glow collected`);renderCreator()}
+// One payout (a product or a shop item). The balance and the earnings are read fresh from the server right before
+// the write, so earlier payouts in the same click are never counted twice; if a sale or a play lands in between,
+// the rules refuse it and it's simply tried again with the new numbers.
+async function payout(kind,id){const {F,D,db}=C();const bonus=x=>L.plan?.bonus(x)??x;
+  for(let i=0;i<4;i++){const [s,u]=await Promise.all([F.getDoc(D(kind,id)),F.getDoc(D('users',me))]);const x=s.data();if(!x)return 0;
+    const raw=kind==='projects'?unpaid(x):Math.max(0,(x.earned||0)-(x.paidEarned||0));if(raw<=0)return 0;const amt=bonus(raw),b=F.writeBatch(db);
+    if(kind==='projects')b.update(D(kind,id),{paidMin:x.minutes||0,paidMent:x.mentions||0,paidRev:x.upReviews||0,paidSold:x.sold||0});
+    else b.update(D(kind,id),{paidEarned:x.earned||0});
+    b.update(D('users',me),{coins:(+u.data()?.coins||0)+amt,[kind==='projects'?'lastProj':'lastItem']:id});
+    try{await b.commit();return amt}catch(e){if(e.code!=='permission-denied'||i===3)throw e;await new Promise(r=>setTimeout(r,700))}}
+  return 0}
+async function collect(){const btn=$('#crCollect');btn.disabled=true;let got=0,fail=null;
+  for(const p of myProjects.filter(p=>unpaid(p)>0)){try{got+=await payout('projects',p.id)}catch(e){fail=e}}
+  for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){try{got+=await payout('shopItems',it.id)}catch(e){fail=e}}
+  if(got)toast(`+${fmtN(got)} ✦ Glow collected`);
+  if(fail)toast(fail.code==='permission-denied'?'Some Glow couldn’t be collected: Firebase refused it. Make sure the latest firestore.rules are published, then try again.':'Couldn’t collect: '+fail.message);
+  renderCreator()}
 
 /* ---------- playtime: +1 minute for the creator for every full minute someone else plays ---------- */
 let timer=null,secs=0;const timeM={};
