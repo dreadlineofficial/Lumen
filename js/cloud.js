@@ -85,8 +85,51 @@ async function doSync(){if(!me||!myProfile||syncing||!subReady)return;const t=pl
   if(p.buddy&&!plan.lite())d.buddy='';if((p.stickers||[]).length&&!plan.lite())d.stickers=[];
   if(!plan.lite()){if(['script','pixel','gothic','wide'].includes(p.nameFont))d.nameFont='sans';if(p.cardBorder&&p.cardBorder!=='none')d.cardBorder='';
     if(['aurora','holo','midnight'].includes(p.cardStyle))d.cardStyle='glass';if(/^media:/.test(p.avatar||''))d.avatar='';if(/^media:/.test(p.banner||''))d.banner=''}
+  Object.assign(d,healthOf({...p,...d},mySub).fix);
   if(!Object.keys(d).length)return;syncing=true;try{await F.updateDoc(D('users',me.uid),d)}catch(e){console.warn('plan sync',e.code||e.message)}syncing=false}
 L.syncTier=syncTier;
+/* ---------- account health ----------
+   firestore.rules check the WHOLE profile on every save (profileOk, tierOk, equipOk, stickersOk), so one bad field makes
+   every purchase, collect and equip fail. healthOf() repeats those checks and returns what's wrong plus the fix. */
+const PREM={lite:['nfx_gold','fx_golddust','deco_laurel'],upgrade:['fx_prism','deco_prism','plate_prism','nfx_prism'],pro:['fx_circuit','deco_proorbit','plate_pro','nfx_pro'],ultimate:['fx_nebula','deco_crownhalo','plate_ult','nfx_ult']};
+const sameTs=(a,b)=>!!a&&!!b&&(a.isEqual?a.isEqual(b):tsMs(a)===tsMs(b));
+function healthOf(p,sub){const issues=[],fix={},live=k=>tsMs(sub?.[k])>Date.now(),lite=live('lite')||live('pro')||live('ultimate');
+  const top=live('ultimate')?'ultimate':live('pro')?'pro':live('lite')?'lite':'',own=p.owned||[];
+  const name=typeof p.name==='string'?p.name:'';
+  if(name.length<2||name.length>24){issues.push('Your name must be 2 to 24 characters');const n=(name.trim()||'Lumen user').slice(0,24);if(n.length>=2){fix.name=n;fix.nameLower=n.toLowerCase()}}
+  else if(p.nameLower!==name.toLowerCase()){issues.push('Your saved name is out of step');fix.nameLower=name.toLowerCase()}
+  if(typeof p.bio==='string'&&p.bio.length>300){issues.push('Your “about me” is over 300 characters');fix.bio=p.bio.slice(0,300)}
+  const av=p.avatar||'';if(/^media:/.test(av)?!lite:(av&&!(/^(https:\/\/|data:image\/)/.test(av)&&av.length<120000))){issues.push('Your profile picture needs Lumen Lite or is too big');fix.avatar=''}
+  if(/^media:/.test(p.banner||'')&&!lite){issues.push('Your animated banner needs Lumen Lite');fix.banner=''}
+  if('buddyX' in p&&!(Number.isInteger(p.buddyX)&&p.buddyX>=-1&&p.buddyX<=100)){issues.push('Your buddy spot is invalid');fix.buddyX=-1}
+  if(Array.isArray(p.mutedPosts)&&p.mutedPosts.length>300){issues.push('Your muted list is too long');fix.mutedPosts=p.mutedPosts.slice(-300)}
+  const tierBad=(p.tier||'')!==''&&!(['lite','pro','ultimate'].includes(p.tier)&&sameTs(sub?.[p.tier],p.tierUntil));
+  if(tierBad){issues.push('Your plan tag doesn’t match your plan');fix.tier=top;fix.tierUntil=top?sub[top]:0}
+  if(p.up&&!sameTs(sub?.upgrade,p.upUntil)){issues.push('Your Upgrade tag doesn’t match your plan');fix.up=live('upgrade');fix.upUntil=live('upgrade')?sub.upgrade:0}
+  if(!lite){if(['script','pixel','gothic','wide'].includes(p.nameFont)){issues.push('Your name font needs Lumen Lite');fix.nameFont='sans'}
+    if(p.cardBorder&&p.cardBorder!=='none'){issues.push('Your card border needs Lumen Lite');fix.cardBorder=''}
+    if(['aurora','holo','midnight'].includes(p.cardStyle)){issues.push('Your card style needs Lumen Lite');fix.cardStyle='glass'}}
+  const wears=v=>!v||own.includes(v)||Object.entries(PREM).some(([k,l])=>l.includes(v)&&(k==='lite'?lite:k==='upgrade'?live('upgrade'):k==='pro'?live('pro')||live('ultimate'):live('ultimate')));
+  for(const k of['fx','deco','plate','nfx','theme','buddy'])if(p[k]&&!wears(p[k])){issues.push(`You’re wearing something you don’t own (${p[k]})`);fix[k]=''}
+  const st=p.stickers||[];const stOk=s=>s&&own.includes(s.id)&&[['x',0,100],['y',0,100],['s',50,200],['r',-45,45]].every(([k,a,b])=>Number.isInteger(s[k])&&s[k]>=a&&s[k]<=b)&&Object.keys(s).every(k=>['id','x','y','s','r'].includes(k));
+  // (unchanged stickers still save, so this is a quiet clean-up, not a problem)
+  if(st.length&&(!lite||st.length>3||!st.every(stOk))){fix.stickers=lite?st.filter(stOk).slice(0,3):[]}
+  return{issues,fix}}
+// Admin → Overview: check every account (reads each person's plan once)
+document.addEventListener('click',async e=>{if(e.target.id!=='healthBtn'||!isAdmin())return;const b=e.target,out=$('#healthOut');b.disabled=true;b.textContent='Checking…';
+  const bad=[];for(const u of allUsers){try{const s=(await F.getDoc(D('subs',u.uid))).data()||{};const h=healthOf(u,s);if(h.issues.length)bad.push([u,h.issues])}catch{}}
+  b.disabled=false;b.textContent='Check again';
+  out.innerHTML=bad.length?`<p style="margin:10px 0 6px"><b>${bad.length} of ${allUsers.length} accounts</b> can’t buy or collect right now:</p><div class="list">${bad.map(([u,is])=>`<div class="person"><div class="info"><b>${esc(u.name||u.uid)}</b><span>${is.map(esc).join(' · ')}</span></div></div>`).join('')}</div>`:`<p style="margin:10px 0 0">✅ All ${allUsers.length} accounts are fine.</p>`});
+async function myHealth(){const [p,s]=await Promise.all([F.getDoc(D('users',me.uid)),F.getDoc(D('subs',me.uid))]);return healthOf(p.data()||{},s.data()||{})}
+async function fixMe(fix){await F.updateDoc(D('users',me.uid),fix)}
+// shown when Firebase refuses a purchase or a collect: says why, and fixes the account if that's the reason
+async function diagnose(what){if(!me)return;const r=await checkRules().catch(()=>null);let h={issues:[],fix:{}};try{h=await myHealth()}catch{}
+  const owner=isOwner();
+  $('#userCard').innerHTML=`<h2>🩺 Why “${esc(what)}” didn’t work</h2>${r===false?`<div class="banner"><b>Firebase is running older security rules.</b> ${owner?'Publish the latest <code>firestore.rules</code>: Admin → Overview shows the steps.':'The Lumen owner needs to publish the latest rules. Please let them know.'}</div>`:''}
+    ${h.issues.length?`<p>Your account has ${h.issues.length===1?'a problem':'some problems'} that Firebase refuses to save, so every purchase or collect fails until ${h.issues.length===1?'it’s':'they’re'} fixed:</p><ul>${h.issues.map(i=>`<li>${esc(i)}</li>`).join('')}</ul><button class="btn-acc" id="fixMeBtn">Fix my account</button>`:
+      r===false?'':`<p class="muted">Your account looks fine and the rules are up to date. Someone may have bought or changed it at the same moment, so try again. If it keeps failing, send the Lumen owner a screenshot of this.</p>`}`;
+  openModal('userModal');
+  $('#fixMeBtn')?.addEventListener('click',async e=>{e.target.disabled=true;try{await fixMe(h.fix);toast('Fixed. Try again now.');closeModal('userModal')}catch(err){e.target.disabled=false;toast('Couldn’t fix it automatically: '+(err.code==='permission-denied'&&r===false?'the rules need publishing first':err.message))}})}
 /* Labs: early features for Lite members */
 const LABS=['tilt','fade','bubbles'];
 function applyLabs(){const on=plan.lite();LABS.forEach(k=>{const el=$('#lab_'+k);if(el){el.disabled=!on;el.checked=!!cfg['lab_'+k]}document.body.classList.toggle('lab-'+k,on&&!!cfg['lab_'+k])});const l=$('#labLock');if(l)l.style.display=on?'none':''}
@@ -599,7 +642,7 @@ async function collectAll(){const btn=$('#collectBtn');btn.disabled=true;let got
         await b.commit();got+=amt;break}
       catch(e){if(e.code!=='permission-denied'||i===3){fail=e;break}await new Promise(r=>setTimeout(r,700))}}}
   if(got)toast(`+${got.toLocaleString()} ✦ Glow collected`);
-  if(fail)toast(fail.code==='permission-denied'?((await checkRules())===false?RULES_MSG:'Some Glow couldn’t be collected right now. Try again in a minute.'):'Couldn’t collect: '+fail.message);
+  if(fail){if(fail.code==='permission-denied')diagnose('Collect');else toast('Couldn’t collect: '+fail.message)}
   btn.disabled=false;renderAnalytics()}
 $('#ckFilter')?.addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;feedF=b.dataset.f;$$('#ckFilter button').forEach(x=>x.classList.toggle('on',x===b));drawFeed()});
 $('#postTabs')?.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;$$('#postTabs button').forEach(x=>x.classList.toggle('on',x===b));$('#feedWrap').style.display=b.dataset.pt==='feed'?'':'none';$('#analytics').style.display=b.dataset.pt==='an'?'':'none';if(b.dataset.pt==='an')renderAnalytics()});
@@ -656,6 +699,7 @@ function renderAdmin(){const box=$('#adminBox');if(!box||!isAdmin())return;
   const overview=`<div class="an-stats">${stat('👥','Accounts',allUsers.length,'users')}${stat('🟢','Online friends',friendIds().filter(u=>status(u)!=='offline').length)}${stat('⛔','Banned',bannedSet.size,'users')}${stat('🛠','Creators',hc.creators,'creators')}${stat('📦','Live projects',hc.live,'projects')}${isOwner()?stat('✦','Glow codes',glowCodes.length,'codes')+stat('💎','Premium',allUsers.filter(u=>tierOf(u)).length,'pcodes'):stat('💎','Premium members',allUsers.filter(u=>tierOf(u)).length)}</div>
      ${rulesLive===false?`<div class="banner rules-warn" style="margin-bottom:14px"><b>⚠️ Firebase is running older security rules.</b> Collecting Glow, the Store and other new features will be refused until the latest rules are published.
        ${isOwner()?`<ol style="margin:8px 0 0;padding-left:20px;line-height:1.7"><li>Open <a href="https://raw.githubusercontent.com/dreadlineofficial/Lumen/main/firestore.rules" target="_blank" rel="noopener">the latest rules</a>, press Ctrl+A then Ctrl+C.</li><li>Open <a href="https://console.firebase.google.com/project/lumen-864cf/firestore/rules" target="_blank" rel="noopener">Firestore → Rules</a>, click in the editor, press Ctrl+A then Ctrl+V, and click <b>Publish</b>.</li><li>Or set up automatic publishing once (SETUP.md, step 7) and it happens on every update.</li></ol>`:' Tell the Lumen owner.'}</div>`:rulesLive===true&&isOwner()?'<div class="muted" style="font-size:12.5px;margin:-4px 0 12px">✅ Firebase security rules are up to date.</div>':''}
+     <div class="card" style="margin-bottom:14px"><h2>🩺 Account health</h2><p class="muted" style="font-size:13px;margin:4px 0 10px">Finds accounts whose profile Firebase refuses to save (so their purchases and collects fail). Each one is fixed automatically the next time that person opens Lumen.</p><button id="healthBtn">Check all accounts</button><div id="healthOut"></div></div>
      ${isOwner()?'':`<div class="banner" style="margin-bottom:14px">💎 You have the control panel through Lumen ${plan.ult()&&!liveK('pro')?'Ultimate':'Pro'}. Glow gifts and codes stay with the Lumen owner.</div>`}
      <div class="card"><h2>📥 To do</h2><div class="list">${todo.map(([t,k])=>`<button class="adm-todo" data-atab="${k}">${t}<span>Open →</span></button>`).join('')||'<p class="muted">All caught up. Nothing waiting for you.</p>'}</div></div>
      <div class="adm-quick">${[['users','👥','Manage accounts',isOwner()?'Rename, gift Glow, message, ban':'Rename, message, ban'],['hub','🏠','Customise the Hub','Banner, announcement, featured picks'],['projects','📦','Review projects','Approve, feature, hide or delete'],['channels','#','Chat channels','Add and remove global rooms']].map(([k,i,t,d])=>`<button class="card" data-atab="${k}"><span style="font-size:24px">${i}</span><b>${t}</b><span class="muted">${d}</span></button>`).join('')}</div>`;
@@ -700,5 +744,5 @@ function adminErr(e){toast(e.code==='permission-denied'?'Firebase refused this. 
 async function saveChannels(list){if(!list.length)return toast('Keep at least one channel');try{await F.setDoc(D('server','config'),{channels:list});toast('Channels updated')}catch(e){adminErr(e)}}
 
 /* shared with shop.js */
-L.cloud={rulesOk:checkRules,rulesMsg:RULES_MSG,ownerId:ADMIN_UID,F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,isOwner,tierOf,tierTag,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
+L.cloud={diagnose,healthOf,rulesOk:checkRules,rulesMsg:RULES_MSG,ownerId:ADMIN_UID,F,D,db,me:()=>me,profile:()=>myProfile,card,pic,nameHTML,getUser,isAdmin,isOwner,tierOf,tierTag,feed:()=>feedPosts};L.openUser=showUser;L.cloud.friendLobbies=()=>!me||!cfg.seeOthers?[]:friendIds().filter(u=>status(u)&&status(u)!=='offline').map(u=>({uid:u,lb:presence.get(u)?.act?.lobby})).filter(x=>x.lb&&/^[A-Z0-9]{3,12}$/.test(x.lb.code)).map(x=>({uid:x.uid,code:x.lb.code,n:+x.lb.n||1,max:+x.lb.max||5}));L.openDm=openDm;L.cloud.openDmId=()=>panes.dm.convo?.type==='dm'?panes.dm.convo.id:null;
 L.onCloudReady?.();

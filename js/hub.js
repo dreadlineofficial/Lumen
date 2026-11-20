@@ -455,7 +455,7 @@ async function collect(){const btn=$('#crCollect');btn.disabled=true;let got=0,f
   for(const p of myProjects.filter(p=>unpaid(p)>0)){try{got+=await payout('projects',p.id)}catch(e){fail=e}}
   for(const it of myItems.filter(i=>(i.earned||0)>(i.paidEarned||0))){try{got+=await payout('shopItems',it.id)}catch(e){fail=e}}
   if(got)toast(`+${fmtN(got)} ✦ Glow collected`);
-  if(fail)toast(fail.code==='permission-denied'?((await C().rulesOk?.())===false?C().rulesMsg:'Some Glow couldn’t be collected right now. Try again in a minute.'):'Couldn’t collect: '+fail.message);
+  if(fail){if(fail.code==='permission-denied')C().diagnose?.('Collect');else toast('Couldn’t collect: '+fail.message)}
   renderCreator()}
 
 /* ---------- playtime: +1 minute for the creator for every full minute someone else plays ---------- */
